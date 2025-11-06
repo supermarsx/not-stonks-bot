@@ -1,104 +1,55 @@
-# Database Package Initialization
+"""
+Database Package Initialization
+Provides database initialization and session management functions
+"""
 
-import logging
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngine
-from sqlalchemy.orm import sessionmaker
+from .models import *
+from .migrations.migration_manager import MigrationManager
+from config.database import init_db, get_db, get_db_context, AsyncSessionLocal
 
-logger = logging.getLogger(__name__)
-
-
-class DatabaseManager:
+async def init_database(database_config):
     """
-    Manages database connections and sessions for the trading orchestrator.
-    """
+    Initialize database with configuration
     
-    def __init__(self, database_url: str):
-        self.database_url = database_url
-        self.engine: Optional[AsyncEngine] = None
-        self.session_factory: Optional[sessionmaker] = None
+    Args:
+        database_config: Database configuration object with url and echo settings
+    """
+    try:
+        # Run database migrations if needed
+        migration_manager = MigrationManager()
+        await migration_manager.run_migrations()
         
-    async def initialize(self):
-        """
-        Initialize database engine and session factory.
-        """
-        try:
-            self.engine = create_async_engine(
-                self.database_url,
-                echo=False,
-                pool_pre_ping=True,
-                pool_recycle=3600
-            )
-            
-            self.session_factory = sessionmaker(
-                self.engine,
-                class_=AsyncSession,
-                expire_on_commit=False
-            )
-            
-            logger.info("Database engine initialized successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize database engine: {e}")
-            raise
-    
-    async def get_session(self) -> AsyncSession:
-        """
-        Get a new database session.
-        """
-        if not self.session_factory:
-            raise RuntimeError("Database not initialized. Call initialize() first.")
+        # Initialize database tables
+        await init_db()
         
-        return self.session_factory()
+        return True
+    except Exception as e:
+        print(f"❌ Database initialization failed: {str(e)}")
+        raise
+
+async def get_database_session():
+    """
+    Get database session for dependency injection
     
-    async def close(self):
-        """
-        Close database connections.
-        """
-        if self.engine:
-            await self.engine.dispose()
-            logger.info("Database connections closed")
-
-
-# Global database manager instance
-db_manager: Optional[DatabaseManager] = None
-
-
-def get_db_manager() -> Optional[DatabaseManager]:
+    Returns:
+        Async database session
     """
-    Get the global database manager instance.
-    """
-    return db_manager
+    async for session in get_db():
+        yield session
 
+async def close_database_connections():
+    """Close all database connections"""
+    from config.database import engine
+    await engine.dispose()
 
-async def initialize_database(database_url: str) -> DatabaseManager:
-    """
-    Initialize the global database manager.
-    """
-    global db_manager
-    
-    db_manager = DatabaseManager(database_url)
-    await db_manager.initialize()
-    
-    return db_manager
-
-
-async def get_database_session() -> AsyncSession:
-    """
-    Get a database session from the global manager.
-    """
-    if not db_manager:
-        raise RuntimeError("Database not initialized. Call initialize_database() first.")
-    
-    return await db_manager.get_session()
-
-
-async def close_database():
-    """
-    Close the global database connection.
-    """
-    global db_manager
-    
-    if db_manager:
-        await db_manager.close()
-        db_manager = None
+# Export commonly used database functions
+__all__ = [
+    "init_database",
+    "get_database_session", 
+    "close_database_connections",
+    "MigrationManager",
+    "init_db",
+    "get_db",
+    "get_db_context",
+    "AsyncSessionLocal"
+]
