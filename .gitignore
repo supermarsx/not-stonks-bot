@@ -1,0 +1,145 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Trading Platform Specific
+# API Keys and Configuration
+config.json
+config.*.json
+credentials/
+keys/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/
+databases/
+
+# Trading data and logs
+trading_data/
+logs/
+*.log
+*.log.*
+
+# Browser data
+.browser_screenshots/
+.screenshots/
+selenium-screenshots/
+
+# Memory and cache files
+.memory/
+memories/
+*.cache
+.cache/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temporary/
+
+# Analytics and metrics
+analytics/
+metrics/
+monitoring/
+
+# Demo and testing
+demo_data/
+test_data/
+sandbox/
+
+# External integrations
+external_api/
+
+# Research and analysis
+research/
+analysis/
+notebooks/
+*.ipynb
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+coverage.xml
+*.coverage
+*.cover
+.coverage
+
+# Documentation
+docs/_build/
+docs/build/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Security
+secrets.yml
+secrets.yaml
+.secrets/
+
+# Log files that might contain sensitive data
+access.log
+error.log
+auth.log
+
+# Data exports
+*.csv
+*.xlsx
+*.json
+*.parquet
