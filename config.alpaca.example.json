@@ -1,0 +1,112 @@
+{
+  "$schema": "https://schema.trading-orchestrator.dev/broker/alpaca/v1",
+  "brokers": {
+    "enabled": ["alpaca"],
+    "alpaca": {
+      "name": "Alpaca Trading",
+      "type": "alpaca",
+      "api_key": "${ALPACA_API_KEY}",
+      "secret_key": "${ALPACA_SECRET_KEY}",
+      "api_url": "https://paper-api.alpaca.markets",
+      "data_url": "https://data.alpaca.markets",
+      "sandbox": true,
+      "rate_limit": {
+        "requests_per_minute": 200,
+        "requests_per_day": 10000,
+        "orders_per_minute": 30,
+        "orders_per_day": 1000
+      },
+      "order_types": [
+        "market",
+        "limit",
+        "stop",
+        "stop_limit"
+      ],
+      "time_in_force": [
+        "day",
+        "gtc",
+        "ioc",
+        "fok"
+      ],
+      "supported_assets": [
+        "stocks",
+        "etfs",
+        "crypto"
+      ],
+      "crypto_pairs": [
+        "BTC/USD",
+        "ETH/USD",
+        "LTC/USD",
+        "BCH/USD"
+      ],
+      "websocket": {
+        "enabled": true,
+        "stream_url": "wss://stream.data.alpaca.markets/v2",
+        "heartbeat_interval": 30,
+        "reconnect_attempts": 5
+      },
+      "account": {
+        "currency": "USD",
+        "buying_power": 200000,
+        "regt_buying_power": 200000,
+        "daytrading_buying_power": 0,
+        "cash": 100000,
+        "portfolio_value": 100000,
+        "equity": 100000,
+        "last_equity": 100000,
+        "multiplier": 2
+      },
+      "settings": {
+        "connection_timeout": 10,
+        "read_timeout": 30,
+        "max_retries": 3,
+        "retry_backoff_factor": 1.0,
+        "enable_rate_limit": true,
+        "track_responses": true
+      },
+      "features": {
+        "fractional_shares": true,
+        "extended_hours": false,
+        "fractional_crypto": true,
+        "options_trading": false,
+        "short_selling": true,
+        "margin_trading": false
+      },
+      "compliance": {
+        "pdt_protection": true,
+        "wash_sale_detection": true,
+        "pattern_day_trader_rules": true,
+        "risk_management_enabled": true
+      },
+      "data": {
+        "Bars": {
+          "enabled": true,
+          "timeframe": "1Min",
+          "limit": 1000
+        },
+        "Trades": {
+          "enabled": true,
+          "limit": 1000
+        },
+        "Quotes": {
+          "enabled": true,
+          "limit": 1000
+        },
+        "News": {
+          "enabled": true,
+          "limit": 50
+        }
+      }
+    }
+  },
+  "database": {
+    "path": "./data/alpaca_trading.db",
+    "backup_enabled": true,
+    "backup_interval_hours": 6,
+    "backup_retention_days": 30
+  },
+  "system": {
+    "log_level": "INFO",
+    "debug_mode": false
+  }
+}

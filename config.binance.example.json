@@ -1,0 +1,201 @@
+{
+  "$schema": "https://schema.trading-orchestrator.dev/broker/binance/v1",
+  "brokers": {
+    "enabled": ["binance"],
+    "binance": {
+      "name": "Binance Exchange",
+      "type": "binance",
+      "api_key": "${BINANCE_API_KEY}",
+      "secret_key": "${BINANCE_SECRET_KEY}",
+      "api_url": "https://api.binance.com",
+      "testnet": true,
+      "rate_limit": {
+        "orders_per_second": 10,
+        "orders_per_day": 100000,
+        "weight_per_minute": 1200,
+        "weight_per_second": 10,
+        "raw_requests_per_minute": 6000
+      },
+      "order_types": [
+        "market",
+        "limit",
+        "stop_loss_limit",
+        "take_profit_limit",
+        "limit_maker"
+      ],
+      "time_in_force": [
+        "GTC",
+        "IOC",
+        "FOK"
+      ],
+      "supported_assets": [
+        "spot",
+        "futures"
+      ],
+      "spot_trading": {
+        "enabled": true,
+        "quote_assets": ["USDT", "BUSD", "BTC", "ETH"],
+        "min_trade_amount": 10.0,
+        "min_notional": 10.0
+      },
+      "futures_trading": {
+        "enabled": false,
+        "contract_types": [
+          "USDT-M",
+          "COIN-M"
+        ],
+        "margin_types": [
+          "isolated",
+          "cross"
+        ],
+        "leverage_limits": {
+          "USDT-M": {
+            "min": 1,
+            "max": 125
+          },
+          "COIN-M": {
+            "min": 1,
+            "max": 75
+          }
+        }
+      },
+      "websocket": {
+        "enabled": true,
+        "stream_url": "wss://stream.binance.com:9443/ws/",
+        "combined_stream_url": "wss://stream.binance.com:9443/stream",
+        "futures_stream_url": "wss://fstream.binance.com/ws/",
+        "heartbeat_interval": 30,
+        "reconnect_attempts": 5,
+        "reconnect_delay": 5
+      },
+      "account": {
+        "accountType": "SPOT",
+        "canTrade": true,
+        "canWithdraw": true,
+        "canDeposit": true,
+        "balances": [
+          {
+            "asset": "USDT",
+            "free": "10000.00000000",
+            "locked": "0.00000000"
+          },
+          {
+            "asset": "BTC",
+            "free": "0.50000000",
+            "locked": "0.00000000"
+          }
+        ]
+      },
+      "settings": {
+        "connection_timeout": 10,
+        "read_timeout": 30,
+        "max_retries": 3,
+        "retry_backoff_factor": 1.0,
+        "enable_rate_limit": true,
+        "track_responses": true,
+        "validate_orders": true
+      },
+      "features": {
+        "testnet_trading": true,
+        "spot_trading": true,
+        "futures_trading": false,
+        "margin_trading": false,
+        "lending": false,
+        "staking": false
+      },
+      "filters": {
+        "price_filter": {
+          "enabled": true,
+          "min_price": 0.00001,
+          "max_price": 1000000,
+          "tick_size": 0.00001
+        },
+        "lot_size": {
+          "enabled": true,
+          "min_qty": 0.001,
+          "max_qty": 1000,
+          "step_size": 0.001
+        },
+        "notional": {
+          "enabled": true,
+          "min_notional": 10.0
+        },
+        "iceberg_parts": {
+          "enabled": true,
+          "limit": 10
+        }
+      },
+      "symbols": {
+        "USDT": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "ADAUSDT",
+          "DOTUSDT",
+          "LINKUSDT",
+          "LTCUSDT",
+          "BCHUSDT",
+          "XLMUSDT",
+          "EOSUSDT",
+          "TRXUSDT"
+        ],
+        "BUSD": [
+          "BTCBUSD",
+          "ETHBUSD",
+          "ADABUSD"
+        ]
+      },
+      "compliance": {
+        "max_position_size_usd": 100000,
+        "max_daily_volume_usd": 1000000,
+        "risk_management_enabled": true,
+        "stop_loss_mandatory": false,
+        "max_leverage": 3.0
+      },
+      "data": {
+        "klines": {
+          "enabled": true,
+          "intervals": [
+            "1m",
+            "3m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "4h",
+            "6h",
+            "8h",
+            "12h",
+            "1d",
+            "3d",
+            "1w",
+            "1M"
+          ],
+          "limit": 1000
+        },
+        "ticker": {
+          "enabled": true,
+          "stream": true
+        },
+        "depth": {
+          "enabled": true,
+          "levels": [5, 10, 20, 50, 100, 500, 1000]
+        },
+        "trades": {
+          "enabled": true,
+          "limit": 1000
+        }
+      }
+    }
+  },
+  "database": {
+    "path": "./data/binance_trading.db",
+    "backup_enabled": true,
+    "backup_interval_hours": 6,
+    "backup_retention_days": 30
+  },
+  "system": {
+    "log_level": "INFO",
+    "debug_mode": false
+  }
+}
