@@ -63,7 +63,7 @@ class RiskLimit(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<RiskLimit(id={self.id}, type='{self.limit_type}', limit={self.limit_value}, current={self.current_value})"
+        return f"<RiskLimit(id={self.id}, type='{self.limit_type}', limit={self.limit_value}, current={self.current_value})>"
 
 
 class RiskEvent(Base):
@@ -107,7 +107,7 @@ class RiskEvent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     def __repr__(self):
-        return f"<RiskEvent(id={self.id}, type='{self.event_type}', level='{self.risk_level}')"
+        return f"<RiskEvent(id={self.id}, type='{self.event_type}', level='{self.risk_level}')>"
 
 
 class ComplianceRule(Base):
@@ -143,7 +143,7 @@ class ComplianceRule(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<ComplianceRule(id={self.id}, code='{self.rule_code}', name='{self.rule_name}')"
+        return f"<ComplianceRule(id={self.id}, code='{self.rule_code}', name='{self.rule_name}')>"
 
 
 class CircuitBreaker(Base):
@@ -182,4 +182,4 @@ class CircuitBreaker(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<CircuitBreaker(id={self.id}, name='{self.breaker_name}', active={self.is_active})"
+        return f"<CircuitBreaker(id={self.id}, name='{self.breaker_name}', active={self.is_active})>"

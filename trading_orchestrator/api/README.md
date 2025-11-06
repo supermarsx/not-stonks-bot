@@ -1,909 +1,703 @@
-"""
-Trading Orchestrator Strategy API
+# Trading Strategy API Integration Layer
 
-A comprehensive REST API and WebSocket service for managing trading strategies,
-backtesting, performance analysis, and real-time monitoring.
+## Overview
+
+The Trading Strategy API Integration Layer provides a comprehensive REST API and WebSocket endpoints for managing trading strategies, real-time monitoring, backtesting, and performance analysis. This layer integrates seamlessly with the existing strategy framework and provides a modern, scalable interface for strategy management.
 
 ## Architecture
 
-The API is built with FastAPI and provides:
+### Core Components
 
-- **Strategy Management**: CRUD operations for trading strategies
-- **Backtesting Engine**: Historical strategy testing with Monte Carlo simulation
-- **Performance Analytics**: Real-time and historical performance metrics
-- **WebSocket Streaming**: Live strategy signals, performance updates, and alerts
-- **Authentication & Authorization**: JWT-based auth with role-based access control
-- **Database Integration**: SQLAlchemy models for persistent data storage
+1. **REST API Endpoints** (`/api/strategies/*`)
+   - Complete CRUD operations for strategies
+   - Backtesting and performance analysis
+   - Strategy comparison and ranking
+   - Strategy templates and ensembles
 
-## API Structure
+2. **WebSocket Endpoints** (`/ws/*`)
+   - Real-time strategy signal streaming
+   - Live performance metrics updates
+   - Strategy alert notifications
+   - System notifications
 
+3. **Authentication & Authorization**
+   - JWT-based authentication
+   - Role-based access control (RBAC)
+   - Strategy-specific permissions
+
+4. **Data Models**
+   - Pydantic schemas for validation
+   - SQLAlchemy models for persistence
+   - Complex type encoding/decoding
+
+## API Endpoints
+
+### Strategy Management
+
+#### List Strategies
 ```
-api/
-├── main.py                    # FastAPI application entry point
-├── auth/                      # Authentication & authorization
-│   ├── authentication.py      # JWT token management
-│   └── authorization.py       # Role-based access control
-├── database/                  # Database models
-│   └── models.py              # SQLAlchemy strategy models
-├── routers/                   # API route handlers
-│   ├── dependencies.py        # Common dependencies
-│   └── strategies.py          # Strategy CRUD endpoints
-├── schemas/                   # Pydantic request/response models
-│   └── __init__.py            # Strategy schemas
-├── utils/                     # Utility functions
-│   ├── error_handlers.py      # Centralized error handling
-│   ├── json_encoder.py        # Custom JSON encoding
-│   └── response_formatter.py  # Response formatting
-└── websocket/                 # WebSocket endpoints
-    ├── manager.py             # Connection management
-    ├── router.py              # WebSocket route handlers
-    └── strategy_websocket.py  # Strategy-specific WebSocket
+GET /api/strategies
 ```
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `size`: Items per page (default: 20, max: 100)
+- `category`: Filter by strategy category
+- `status`: Filter by strategy status
+- `risk_level`: Filter by risk level
+- `search`: Search in name and description
+- `tags`: Filter by tags
+- `sort_by`: Sort field (default: created_at)
+- `sort_order`: Sort order (asc/desc)
 
-## Authentication
-
-### JWT Token Authentication
-
-All API endpoints (except health checks) require authentication via JWT tokens.
-
-**Token Format:**
+#### Get Strategy Details
 ```
-Authorization: Bearer <jwt_token>
-```
-
-**User Roles:**
-- `ADMIN`: Full system access
-- `TRADER`: Strategy management and execution
-- `VIEWER`: Read-only access
-- `ANALYST`: Read access with analytics features
-
-### Permissions
-
-Available permissions:
-- `READ_STRATEGIES`: View strategy information
-- `WRITE_STRATEGIES`: Create/update strategies
-- `EXECUTE_STRATEGIES`: Start/stop strategy execution
-- `DELETE_STRATEGIES`: Remove strategies
-- `MANAGE_USERS`: User management (admin only)
-- `VIEW_PERFORMANCE`: Access performance metrics
-- `RUN_BACKTESTS`: Execute backtesting
-- `MANAGE_SYSTEM`: System configuration
-
-## Strategy Management
-
-### Create Strategy
-
-```http
-POST /api/strategies
-Content-Type: application/json
-Authorization: Bearer <token>
-
-{
-  "name": "Moving Average Crossover",
-  "description": "Classic MA crossover strategy",
-  "category": "momentum",
-  "parameters": {
-    "fast_period": 10,
-    "slow_period": 20,
-    "symbol": "AAPL"
-  },
-  "risk_level": "medium",
-  "tags": ["momentum", "crossover"],
-  "timeframe": "1h",
-  "symbols": ["AAPL", "GOOGL"]
-}
-```
-
-### List Strategies
-
-```http
-GET /api/strategies?page=1&size=20&category=momentum&status=active
-Authorization: Bearer <token>
-```
-
-### Get Strategy Details
-
-```http
 GET /api/strategies/{strategy_id}
-Authorization: Bearer <token>
 ```
+Returns detailed information about a specific strategy including configuration, performance metrics, and recent signals.
 
-### Update Strategy
-
-```http
-PUT /api/strategies/{strategy_id}
-Content-Type: application/json
-Authorization: Bearer <token>
-
-{
-  "name": "Updated Strategy Name",
-  "parameters": {
-    "fast_period": 15,
-    "slow_period": 30
-  }
-}
+#### Create Strategy
 ```
-
-### Delete Strategy
-
-```http
-DELETE /api/strategies/{strategy_id}
-Authorization: Bearer <token>
+POST /api/strategies
 ```
-
-### Start/Stop Strategy
-
-```http
-POST /api/strategies/{strategy_id}/start
-Authorization: Bearer <token>
-
-POST /api/strategies/{strategy_id}/stop
-Authorization: Bearer <token>
-```
-
-## Performance Analytics
-
-### Get Performance Metrics
-
-```http
-GET /api/strategies/{strategy_id}/performance?period=30d
-Authorization: Bearer <token>
-```
-
-**Response:**
+**Request Body:**
 ```json
 {
-  "success": true,
-  "data": {
-    "total_return": 15.2,
-    "sharpe_ratio": 1.8,
-    "max_drawdown": -5.3,
-    "win_rate": 0.65,
-    "total_trades": 142,
-    "profit_factor": 1.4,
-    "volatility": 0.12,
-    "beta": 1.1,
-    "alpha": 0.08
+  "config": {
+    "name": "Momentum Strategy",
+    "description": "Price momentum based strategy",
+    "category": "momentum",
+    "parameters": {
+      "fast_period": 12,
+      "slow_period": 26,
+      "signal_period": 9
+    },
+    "risk_level": "medium",
+    "tags": ["momentum", "technical"],
+    "timeframe": "1h",
+    "symbols": ["AAPL", "GOOGL", "MSFT"]
   },
-  "message": "Strategy performance retrieved successfully"
+  "auto_start": false,
+  "validate_parameters": true
 }
 ```
 
-### Strategy Comparison
-
-```http
-POST /api/strategies/compare?period=30d&metrics=sharpe_ratio,total_return
-Content-Type: application/json
-Authorization: Bearer <token>
-
-{
-  "strategy_ids": ["strat_1", "strat_2", "strat_3"]
-}
+#### Update Strategy
 ```
+PUT /api/strategies/{strategy_id}
+```
+Update strategy configuration, parameters, or status.
 
-## Backtesting
+#### Delete Strategy
+```
+DELETE /api/strategies/{strategy_id}
+```
+Permanently delete a strategy (requires ownership or admin privileges).
 
-### Run Backtest
+#### Strategy Control
+```
+POST /api/strategies/{strategy_id}/start
+POST /api/strategies/{strategy_id}/stop
+```
+Start or stop strategy execution.
 
-```http
+### Performance & Analysis
+
+#### Get Strategy Signals
+```
+GET /api/strategies/{strategy_id}/signals
+```
+**Query Parameters:**
+- `limit`: Maximum number of signals (default: 50, max: 500)
+- `since`: Get signals since timestamp
+
+#### Get Performance Metrics
+```
+GET /api/strategies/{strategy_id}/performance
+```
+**Query Parameters:**
+- `period`: Performance period (1d, 7d, 30d, 90d, 1y, all)
+
+#### Run Backtest
+```
 POST /api/strategies/{strategy_id}/backtest
-Content-Type: application/json
-Authorization: Bearer <token>
-
+```
+**Request Body:**
+```json
 {
   "start_date": "2023-01-01T00:00:00Z",
   "end_date": "2023-12-31T23:59:59Z",
   "initial_capital": 100000,
   "commission": 0.001,
   "slippage": 0.0005,
-  "symbols": ["AAPL", "GOOGL"],
   "include_monte_carlo": true,
-  "monte_carlo_runs": 1000
+  "monte_carlo_runs": 1000,
+  "walk_forward": false
 }
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "backtest_id": "bt_12345",
-    "status": "started",
-    "strategy_id": "strat_1",
-    "message": "Backtest started. Use the backtest ID to check status."
-  },
-  "message": "Backtest started successfully"
-}
+#### Compare Strategies
 ```
-
-### Get Backtest Results
-
-```http
-GET /api/strategies/backtest/{backtest_id}
-Authorization: Bearer <token>
+POST /api/strategies/compare
 ```
+**Query Parameters:**
+- `strategy_ids`: List of strategy IDs to compare (2-10 strategies)
+- `period`: Comparison period (7d, 30d, 90d, 1y, all)
+- `metrics`: Specific metrics to compare
 
-## Strategy Signals
+### Strategy History & Templates
 
-### Get Recent Signals
-
-```http
-GET /api/strategies/{strategy_id}/signals?limit=50
-Authorization: Bearer <token>
+#### Get Strategy History
 ```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "sig_123",
-      "strategy_id": "strat_1",
-      "symbol": "AAPL",
-      "signal_type": "buy",
-      "confidence": 0.85,
-      "price": 150.25,
-      "quantity": 100,
-      "timestamp": "2023-12-01T10:30:00Z",
-      "metadata": {
-        "source": "ma_crossover",
-        "fast_ma": 149.5,
-        "slow_ma": 148.2
-      }
-    }
-  ],
-  "message": "Strategy signals retrieved successfully"
-}
+GET /api/strategies/{strategy_id}/history
 ```
+**Query Parameters:**
+- `limit`: Maximum number of history records (default: 100)
+- `event_type`: Filter by event type
+- `since`: Get history since timestamp
 
-## Strategy Templates
-
-### Get Templates
-
-```http
-GET /api/strategies/templates?category=momentum&risk_level=medium
-Authorization: Bearer <token>
+#### Get Strategy Templates
 ```
+GET /api/strategies/templates
+```
+**Query Parameters:**
+- `category`: Filter templates by category
+- `risk_level`: Filter templates by risk level
 
-## Strategy Ensembles
-
-### Create Ensemble
-
-```http
+#### Create Strategy Ensemble
+```
 POST /api/strategies/ensemble
-Content-Type: application/json
-Authorization: Bearer <token>
-
+```
+**Request Body:**
+```json
 {
-  "name": "Diversified Portfolio",
-  "description": "Ensemble of momentum and mean reversion strategies",
+  "name": "Multi-Strategy Portfolio",
+  "description": "Balanced portfolio of multiple strategies",
   "strategy_weights": {
-    "strat_momentum_1": 0.4,
-    "strat_momentum_2": 0.3,
-    "strat_mean_reversion_1": 0.3
+    "strategy_id_1": 0.4,
+    "strategy_id_2": 0.3,
+    "strategy_id_3": 0.3
   },
   "rebalance_frequency": "daily",
   "risk_management": {
-    "max_portfolio_risk": 0.02,
+    "max_drawdown": 0.1,
     "stop_loss": 0.05
   }
 }
 ```
 
+### Categories & Statistics
+
+#### Get Strategy Categories
+```
+GET /api/strategies/categories
+```
+Returns all available strategy categories with usage statistics.
+
+### System Endpoints
+
+#### Health Check
+```
+GET /api/health
+```
+System health monitoring endpoint.
+
+#### System Overview
+```
+GET /api/system/overview
+```
+Comprehensive system status and statistics (requires authentication).
+
 ## WebSocket Endpoints
 
-### Strategy Signals (Real-time)
-
-```javascript
-const ws = new WebSocket('ws://api.example.com/ws/strategies/strat_123/signals?user_id=user_1&token=jwt_token');
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === 'new_signal') {
-    console.log('New signal:', data.data);
-  }
-};
-
-// Send ping
-ws.send(JSON.stringify({ type: 'ping' }));
+### Strategy Signals
 ```
-
-### Strategy Performance (Real-time)
-
-```javascript
-const ws = new WebSocket('ws://api.example.com/ws/strategies/strat_123/performance?user_id=user_1&token=jwt_token&frequency=5');
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === 'performance_update') {
-    console.log('Performance update:', data.data);
-  }
-};
+ws://server/ws/strategies/{strategy_id}/signals
 ```
+**Query Parameters:**
+- `user_id`: User ID for authentication
+- `token`: Authentication token
+
+**Features:**
+- Real-time signal streaming
+- Historical signals on connection
+- Signal filtering support
+
+### Strategy Performance
+```
+ws://server/ws/strategies/{strategy_id}/performance
+```
+**Query Parameters:**
+- `user_id`: User ID for authentication
+- `token`: Authentication token
+- `frequency`: Update frequency in seconds (1-60)
+
+**Features:**
+- Live performance metrics updates
+- Configurable update frequency
+- Real-time status monitoring
 
 ### Strategy Alerts
-
-```javascript
-const ws = new WebSocket('ws://api.example.com/ws/strategies/alerts?user_id=user_1&token=jwt_token&strategy_ids=strat_123,strat_456');
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === 'strategy_alert') {
-    console.log('Alert:', data.data);
-  }
-};
 ```
+ws://server/ws/strategies/alerts
+```
+**Query Parameters:**
+- `user_id`: User ID for authentication
+- `token`: Authentication token
+- `strategy_ids`: Comma-separated strategy IDs
+
+**Features:**
+- Strategy status change notifications
+- Performance alerts
+- Risk warnings
+- Strategy error notifications
 
 ### System Notifications
+```
+ws://server/ws/system/notifications
+```
+**Query Parameters:**
+- `user_id`: User ID for authentication
+- `token`: Authentication token
+- `types`: Comma-separated notification types
 
-```javascript
-const ws = new WebSocket('ws://api.example.com/ws/system/notifications?user_id=user_1&token=jwt_token&types=system,strategy');
+**Features:**
+- System-wide notifications
+- API status updates
+- Maintenance notifications
 
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === 'system_notification') {
-    console.log('Notification:', data.data);
-  }
-};
+## Authentication & Authorization
+
+### Authentication
+The API uses JWT-based authentication. Include the token in the Authorization header:
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+### Demo Credentials
+For testing purposes, a demo user is available:
+- **Username:** demo@example.com
+- **Password:** demo123
+- **Token:** Generated automatically upon login
+
+### Roles & Permissions
+
+#### Admin Role
+- Full access to all strategies
+- User management capabilities
+- System administration features
+- Can execute, modify, and delete any strategy
+
+#### Trader Role
+- Create and manage own strategies
+- Execute and modify strategies
+- View performance metrics
+- Create ensembles
+- Place trades
+
+#### Analyst Role
+- View strategy performance
+- Run backtests
+- Compare strategies
+- View trade history
+
+#### Viewer Role
+- Read-only access to strategies
+- View performance metrics
+- Limited access to strategy details
+
+### Permission System
+Strategies implement granular permissions:
+- **read**: View strategy details and performance
+- **write**: Modify strategy configuration
+- **execute**: Start/stop strategy execution
+- **delete**: Permanently delete strategy
+- **share**: Share strategy with other users
+
+## Data Models
+
+### Strategy Configuration
+```python
+class StrategyConfig(BaseModel):
+    name: str
+    description: Optional[str]
+    category: StrategyCategory
+    parameters: Dict[str, Any]
+    risk_level: RiskLevel
+    tags: List[str]
+    timeframe: str
+    symbols: List[str]
+```
+
+### Performance Metrics
+```python
+class StrategyPerformance(BaseModel):
+    total_return: float
+    sharpe_ratio: float
+    sortino_ratio: Optional[float]
+    calmar_ratio: Optional[float]
+    max_drawdown: float
+    win_rate: float
+    profit_factor: Optional[float]
+    total_trades: int
+    winning_trades: int
+    losing_trades: int
+    # ... additional metrics
+```
+
+### Backtest Request
+```python
+class BacktestRequest(BaseModel):
+    strategy_id: str
+    start_date: datetime
+    end_date: datetime
+    initial_capital: float
+    commission: float = 0.0
+    slippage: float = 0.0
+    symbols: Optional[List[str]]
+    include_monte_carlo: bool = False
+    monte_carlo_runs: int = 1000
+    walk_forward: bool = False
+    walk_forward_window: int = 252
 ```
 
 ## Error Handling
 
-### Standard Error Response
-
+### Standard Error Response Format
 ```json
 {
   "success": false,
-  "message": "Bad request",
-  "detail": "Strategy name cannot be empty",
-  "errors": [
-    {
-      "field": "name",
-      "message": "Strategy name cannot be empty",
-      "type": "value_error"
-    }
-  ],
-  "timestamp": "2023-12-01T10:30:00Z"
+  "message": "Error description",
+  "detail": "Detailed error information",
+  "errors": ["Specific error details"],
+  "timestamp": "2023-12-01T12:00:00Z"
 }
 ```
 
-### Common HTTP Status Codes
+### HTTP Status Codes
+- **200**: Success
+- **201**: Created
+- **400**: Bad Request (validation errors)
+- **401**: Unauthorized (authentication required)
+- **403**: Forbidden (insufficient permissions)
+- **404**: Not Found (resource doesn't exist)
+- **422**: Unprocessable Entity (validation failed)
+- **429**: Too Many Requests (rate limited)
+- **500**: Internal Server Error
 
-- `200 OK`: Successful request
-- `201 Created`: Resource created successfully
-- `204 No Content`: Resource deleted successfully
-- `400 Bad Request`: Invalid request data
-- `401 Unauthorized`: Authentication required
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `422 Unprocessable Entity`: Validation error
-- `500 Internal Server Error`: Server error
+### Error Types
+- `VALIDATION_ERROR`: Request validation failed
+- `AUTHENTICATION_ERROR`: Invalid or missing authentication
+- `AUTHORIZATION_ERROR`: Insufficient permissions
+- `NOT_FOUND`: Resource not found
+- `CONFLICT`: Resource conflict
+- `DATABASE_ERROR`: Database operation failed
+- `EXTERNAL_SERVICE_ERROR`: External API/service error
 
-## Rate Limiting
+## Database Schema
 
-API endpoints are rate-limited to prevent abuse:
+The API uses SQLAlchemy models for data persistence:
 
-- **General endpoints**: 1000 requests per hour per user
-- **Strategy execution**: 100 requests per hour per user
-- **Backtesting**: 10 requests per hour per user
-- **WebSocket connections**: 10 concurrent connections per user
+### Core Models
+- **User**: User authentication and profile
+- **StrategyDB**: Strategy configuration and metadata
+- **StrategyPerformanceDB**: Performance metrics
+- **StrategySignalDB**: Trading signals
+- **BacktestDB**: Backtest results
+- **StrategyHistoryDB**: Event history
+- **UserStrategyPermission**: Strategy access permissions
 
-Rate limit headers:
-```
-X-RateLimit-Limit: 1000
-X-RateLimit-Remaining: 999
-X-RateLimit-Reset: 1640995200
-```
-
-## Pagination
-
-List endpoints support pagination:
-
-**Query Parameters:**
-- `page`: Page number (default: 1)
-- `size`: Items per page (default: 20, max: 100)
-- `sort_by`: Sort field
-- `sort_order`: Sort direction (asc/desc)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [...],
-  "pagination": {
-    "total": 150,
-    "page": 1,
-    "size": 20,
-    "pages": 8,
-    "has_next": true,
-    "has_prev": false
-  },
-  "message": "Data retrieved successfully"
-}
-```
-
-## Filtering and Search
-
-### Strategy Filters
-
-```http
-GET /api/strategies?category=momentum&status=active&risk_level=medium&tags=trend&search=crossover
-Authorization: Bearer <token>
-```
-
-**Available Filters:**
-- `category`: Strategy category (momentum, mean_reversion, etc.)
-- `status`: Strategy status (active, inactive, testing, error)
-- `risk_level`: Risk level (low, medium, high)
-- `tags`: Filter by tags (comma-separated)
-- `search`: Search in name, description, and tags
-- `created_by`: Filter by creator
-
-### Sort Options
-
-- `created_at`: Creation date (default)
-- `updated_at`: Last update
-- `name`: Strategy name
-- `total_return`: Performance (requires performance data)
-- `sharpe_ratio`: Risk-adjusted returns
-- `max_drawdown`: Maximum drawdown
-
-## WebSocket Message Types
-
-### Outgoing Messages
-
-**Connection Acknowledgment:**
-```json
-{
-  "type": "connected",
-  "data": {
-    "connection_id": "conn_123",
-    "status": "connected",
-    "message": "WebSocket connection established"
-  },
-  "timestamp": "2023-12-01T10:30:00Z"
-}
-```
-
-**Strategy Signal:**
-```json
-{
-  "type": "new_signal",
-  "strategy_id": "strat_123",
-  "data": {
-    "id": "sig_456",
-    "symbol": "AAPL",
-    "signal_type": "buy",
-    "confidence": 0.85,
-    "price": 150.25
-  },
-  "timestamp": "2023-12-01T10:30:00Z"
-}
-```
-
-**Performance Update:**
-```json
-{
-  "type": "performance_update",
-  "strategy_id": "strat_123",
-  "data": {
-    "total_return": 15.2,
-    "sharpe_ratio": 1.8,
-    "max_drawdown": -5.3,
-    "timestamp": "2023-12-01T10:30:00Z"
-  },
-  "timestamp": "2023-12-01T10:30:00Z"
-}
-```
-
-**Alert Notification:**
-```json
-{
-  "type": "strategy_alert",
-  "data": {
-    "strategy_id": "strat_123",
-    "alert_type": "drawdown_limit",
-    "severity": "warning",
-    "message": "Drawdown limit of 5% reached",
-    "data": {
-      "current_drawdown": -5.2,
-      "limit": -5.0
-    }
-  },
-  "timestamp": "2023-12-01T10:30:00Z"
-}
-```
-
-### Incoming Messages
-
-**Ping/Pong:**
-```json
-{
-  "type": "ping"
-}
-```
-
-**Request Performance Data:**
-```json
-{
-  "type": "request_performance",
-  "strategy_id": "strat_123"
-}
-```
-
-**Subscribe/Unsubscribe:**
-```json
-{
-  "type": "subscribe",
-  "subscriptions": ["performance", "signals"]
-}
-```
-
-## Health Checks
-
-### System Health
-
-```http
-GET /api/health
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "status": "healthy",
-    "components": {
-      "database": "healthy",
-      "redis": "healthy",
-      "trading_engine": "healthy",
-      "websocket_manager": "healthy"
-    },
-    "timestamp": "2023-12-01T10:30:00Z"
-  }
-}
-```
-
-### System Overview
-
-```http
-GET /api/system/overview
-Authorization: Bearer <token>
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_strategies": 25,
-    "active_strategies": 12,
-    "total_trades_today": 145,
-    "total_portfolio_value": 2500000,
-    "daily_return": 0.85,
-    "system_uptime": "7d 12h 30m",
-    "connected_websockets": 8
-  },
-  "message": "System overview retrieved successfully"
-}
-```
+### Indexes & Constraints
+- Optimized indexes for common query patterns
+- Foreign key constraints for data integrity
+- Unique constraints for business rules
+- Composite indexes for complex queries
 
 ## Configuration
 
 ### Environment Variables
-
 ```bash
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/trading_db
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+API_RELOAD=false
+API_BASE_URL=http://localhost:8000
 
-# Authentication
-JWT_SECRET_KEY=your-secret-key
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_HOURS=24
+# Security
+API_CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+API_ALLOWED_HOSTS=localhost,127.0.0.1
+ENVIRONMENT=development
 
-# Redis (for caching and sessions)
-REDIS_URL=redis://localhost:6379/0
-
-# External APIs
-ALPHA_VANTAGE_API_KEY=your-api-key
-BINANCE_API_KEY=your-binance-key
-BINANCE_SECRET_KEY=your-binance-secret
-
-# WebSocket
-WS_MAX_CONNECTIONS=1000
-WS_PING_INTERVAL=30
-WS_PING_TIMEOUT=10
-
-# Rate Limiting
-RATE_LIMIT_REQUESTS=1000
-RATE_LIMIT_WINDOW=3600
+# Logging
+LOG_LEVEL=INFO
 ```
 
-### API Configuration
-
+### API Settings
 ```python
-# main.py
-app = FastAPI(
-    title="Trading Orchestrator Strategy API",
-    description="Comprehensive API for trading strategy management",
-    version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
-)
-
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://app.example.com"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Rate limiting
-app.add_middleware(
-    RateLimitMiddleware,
-    calls=1000,
-    period=3600  # 1 hour
-)
+# config/settings.py
+class APISettings(BaseSettings):
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    api_reload: bool = False
+    api_base_url: str = "http://localhost:8000"
+    api_cors_origins: str = "*"
+    api_allowed_hosts: str = "localhost"
+    token_expiry_hours: int = 24
+    max_sessions_per_user: int = 5
 ```
 
-## Database Schema
+## Integration Examples
 
-### Strategy Model
-
-```sql
-CREATE TABLE strategies (
-    id VARCHAR(50) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    category VARCHAR(50) NOT NULL,
-    status VARCHAR(20) DEFAULT 'inactive',
-    risk_level VARCHAR(10) DEFAULT 'medium',
-    tags JSON DEFAULT '[]',
-    timeframe VARCHAR(20) DEFAULT '1h',
-    symbols JSON DEFAULT '[]',
-    parameters JSON DEFAULT '{}',
-    created_by VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_executed TIMESTAMP WITH TIME ZONE,
-    execution_count INTEGER DEFAULT 0
-);
-
-CREATE INDEX idx_strategies_created_by ON strategies(created_by);
-CREATE INDEX idx_strategies_category_status ON strategies(category, status);
-CREATE INDEX idx_strategies_created_at ON strategies(created_at);
-```
-
-### Performance Model
-
-```sql
-CREATE TABLE strategy_performance (
-    id VARCHAR(50) PRIMARY KEY,
-    strategy_id VARCHAR(50) UNIQUE NOT NULL,
-    total_return FLOAT DEFAULT 0.0,
-    sharpe_ratio FLOAT DEFAULT 0.0,
-    max_drawdown FLOAT DEFAULT 0.0,
-    win_rate FLOAT DEFAULT 0.0,
-    total_trades INTEGER DEFAULT 0,
-    calculated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### Signals Model
-
-```sql
-CREATE TABLE strategy_signals (
-    id VARCHAR(50) PRIMARY KEY,
-    strategy_id VARCHAR(50) NOT NULL,
-    symbol VARCHAR(20) NOT NULL,
-    signal_type VARCHAR(10) NOT NULL,
-    confidence FLOAT DEFAULT 0.0,
-    price FLOAT,
-    signal_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_signals_strategy_time ON strategy_signals(strategy_id, signal_time);
-CREATE INDEX idx_signals_symbol_time ON strategy_signals(symbol, signal_time);
-```
-
-## Testing
-
-### API Testing
-
-```bash
-# Install testing dependencies
-pip install pytest pytest-asyncio httpx
-
-# Run tests
-pytest tests/api/
-
-# Run with coverage
-pytest --cov=api tests/api/
-```
-
-### Example Test
-
+### Python Client Example
 ```python
-# tests/test_strategies.py
-import pytest
-from httpx import AsyncClient
+import requests
+import websockets
+import json
 
-@pytest.mark.asyncio
-async def test_create_strategy():
-    async with AsyncClient(base_url="http://test") as client:
-        response = await client.post(
-            "/api/strategies",
-            json={
-                "name": "Test Strategy",
-                "category": "momentum",
-                "parameters": {}
-            },
-            headers={"Authorization": "Bearer test_token"}
+class TradingStrategyAPI:
+    def __init__(self, base_url: str, token: str):
+        self.base_url = base_url
+        self.headers = {"Authorization": f"Bearer {token}"}
+    
+    def get_strategies(self, category=None, status=None):
+        params = {}
+        if category:
+            params["category"] = category
+        if status:
+            params["status"] = status
+        
+        response = requests.get(
+            f"{self.base_url}/api/strategies",
+            headers=self.headers,
+            params=params
         )
+        return response.json()
+    
+    def create_strategy(self, config):
+        response = requests.post(
+            f"{self.base_url}/api/strategies",
+            headers=self.headers,
+            json=config
+        )
+        return response.json()
+    
+    async def stream_signals(self, strategy_id, callback):
+        uri = f"ws://{self.base_url}/ws/strategies/{strategy_id}/signals"
         
-        assert response.status_code == 201
-        data = response.json()
-        assert data["success"] is True
-        assert data["data"]["name"] == "Test Strategy"
+        async with websockets.connect(uri) as websocket:
+            async for message in websocket:
+                data = json.loads(message)
+                if data["type"] == "new_signal":
+                    callback(data["data"])
 ```
 
-### WebSocket Testing
-
-```python
-# tests/test_websocket.py
-import pytest
-from websockets.sync.client import connect
-
-def test_strategy_signals_websocket():
-    with connect("ws://test/ws/strategies/strat_123/signals?user_id=test") as websocket:
-        # Send ping
-        websocket.send('{"type": "ping"}')
+### JavaScript Client Example
+```javascript
+class TradingStrategyAPI {
+    constructor(baseUrl, token) {
+        this.baseUrl = baseUrl;
+        this.headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+    }
+    
+    async getStrategies(filters = {}) {
+        const params = new URLSearchParams(filters);
+        const response = await fetch(`${this.baseUrl}/api/strategies?${params}`, {
+            headers: this.headers
+        });
+        return response.json();
+    }
+    
+    async createStrategy(config) {
+        const response = await fetch(`${this.baseUrl}/api/strategies`, {
+            method: 'POST',
+            headers: this.headers,
+            body: JSON.stringify(config)
+        });
+        return response.json();
+    }
+    
+    connectSignals(strategyId, onSignal) {
+        const ws = new WebSocket(`ws://${this.baseUrl}/ws/strategies/${strategyId}/signals`);
         
-        # Receive pong
-        response = websocket.recv(timeout=5)
-        data = json.loads(response)
-        assert data["type"] == "pong"
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'new_signal') {
+                onSignal(data.data);
+            }
+        };
+        
+        return ws;
+    }
+}
 ```
+
+## Monitoring & Logging
+
+### Health Checks
+- `/api/health`: Basic health check
+- Component-specific health monitoring
+- Database connectivity checks
+- External service status
+
+### Logging
+- Structured logging with JSON format
+- Different log levels (DEBUG, INFO, WARNING, ERROR)
+- Performance metrics logging
+- Error tracking and alerting
+
+### Metrics
+- API request/response times
+- WebSocket connection counts
+- Strategy execution statistics
+- Backtest completion rates
 
 ## Deployment
 
-### Docker
+### Development
+```bash
+# Start API server
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
+# Access documentation
+open http://localhost:8000/api/docs
+```
+
+### Production
+```bash
+# Start with production settings
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# With SSL
+uvicorn api.main:app --host 0.0.0.0 --port 443 --ssl-keyfile=key.pem --ssl-certfile=cert.pem
+```
+
+### Docker
 ```dockerfile
-# Dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
-
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 COPY . .
-
 EXPOSE 8000
 
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-```yaml
-# docker-compose.yml
-version: '3.8'
+## Testing
 
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://user:pass@db:5432/trading_db
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - db
-      - redis
+### API Testing
+```python
+import pytest
+from fastapi.testclient import TestClient
+from api.main import app
+
+client = TestClient(app)
+
+def test_get_strategies():
+    response = client.get("/api/strategies")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert "pagination" in data
+
+def test_create_strategy():
+    strategy_config = {
+        "name": "Test Strategy",
+        "category": "momentum",
+        "parameters": {}
+    }
     
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=trading_db
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=pass
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    
-  redis:
-    image: redis:7-alpine
-    
-volumes:
-  postgres_data:
+    response = client.post("/api/strategies", json=strategy_config)
+    assert response.status_code == 201
 ```
 
-### Production Deployment
+### WebSocket Testing
+```python
+import pytest
+from fastapi.testclient import TestClient
+import websocket
 
-```bash
-# Build and deploy
-docker-compose -f docker-compose.prod.yml up -d
-
-# Scale API instances
-docker-compose -f docker-compose.prod.yml up -d --scale api=3
+def test_websocket_signals():
+    client = TestClient(app)
+    
+    # Create strategy first
+    strategy_id = create_test_strategy()
+    
+    # Test WebSocket connection
+    ws = websocket.create_connection(f"ws://localhost/ws/strategies/{strategy_id}/signals")
+    
+    # Receive signal
+    message = ws.recv()
+    data = json.loads(message)
+    assert data["type"] == "recent_signals"
+    
+    ws.close()
 ```
 
-## Monitoring
+## Security Considerations
 
-### Application Metrics
+### Authentication
+- JWT token-based authentication
+- Token expiration and refresh
+- Session management
+- Secure token storage
 
-The API exposes Prometheus metrics at `/api/metrics`:
+### Authorization
+- Role-based access control
+- Strategy-specific permissions
+- Resource ownership validation
+- Admin privilege separation
 
-- `api_requests_total`: Total API requests
-- `api_request_duration_seconds`: Request duration
-- `websocket_connections_active`: Active WebSocket connections
-- `strategies_active`: Number of active strategies
-- `backtests_running`: Number of running backtests
-
-### Logging
-
-Structured logging with JSON format:
-
-```json
-{
-  "timestamp": "2023-12-01T10:30:00Z",
-  "level": "INFO",
-  "logger": "api.routers.strategies",
-  "message": "Strategy created successfully",
-  "request_id": "req_12345",
-  "user_id": "user_123",
-  "strategy_id": "strat_456",
-  "action": "create_strategy"
-}
-```
-
-## Security
-
-### API Security
-
-- JWT token authentication
-- Role-based access control (RBAC)
-- Rate limiting
-- CORS protection
-- Input validation and sanitization
-- SQL injection protection
+### Input Validation
+- Pydantic model validation
+- SQL injection prevention
 - XSS protection
-
-### WebSocket Security
-
-- Token-based authentication
-- Connection rate limiting
-- Message validation
-- Automatic reconnection handling
+- Rate limiting
 
 ### Data Protection
+- Sensitive data encryption
+- Secure communication (HTTPS/WSS)
+- Data privacy compliance
+- Audit logging
 
-- Encrypted API communications (HTTPS/WSS)
-- Secure password hashing (bcrypt)
-- Database connection encryption
-- Sensitive data masking in logs
+## Performance Optimization
 
-## Support
+### Caching
+- Strategy configuration caching
+- Performance metrics caching
+- WebSocket connection pooling
+- Database query optimization
 
-For support and questions:
+### Scalability
+- Horizontal scaling support
+- Load balancing ready
+- Async/await patterns
+- Background task processing
 
-- **Documentation**: `/api/docs` (Swagger UI) and `/api/redoc` (ReDoc)
-- **API Status**: `/api/health`
-- **Email**: support@example.com
-- **GitHub Issues**: Create an issue in the project repository
+### Monitoring
+- Real-time performance metrics
+- API response time tracking
+- Error rate monitoring
+- Resource utilization tracking
 
-## Changelog
+## Future Enhancements
 
-### v1.0.0 (2023-12-01)
+### Planned Features
+- Strategy marketplace
+- Community sharing
+- Advanced analytics
+- Machine learning integration
+- Mobile app support
 
-- Initial API release
-- Strategy CRUD operations
-- WebSocket real-time updates
-- Backtesting engine
-- Performance analytics
-- Authentication & authorization
-- Rate limiting and security
-- Comprehensive documentation
+### API Versioning
+- Version management
+- Backward compatibility
+- Deprecation handling
+- Migration guides
+
+This comprehensive API integration layer provides a robust foundation for strategy management, real-time monitoring, and performance analysis, enabling both simple and advanced use cases while maintaining security, scalability, and developer experience.

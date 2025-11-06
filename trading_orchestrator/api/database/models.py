@@ -488,7 +488,7 @@ class FrequencyAlertDB(Base):
     severity = Column(String(10), nullable=False, index=True)
     message = Column(Text, nullable=False)
     
-    # threshold values
+    #пп threshold values
     threshold_value = Column(Float)
     current_value = Column(Float)
     

@@ -14,7 +14,7 @@ import pytest
 import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 
@@ -443,8 +443,8 @@ class TestExitEnums:
         
         # Test enum iteration
         all_statuses = list(ExitStatus)
-        assert len(all_statuses) >= 7
-        assert ExitStatus.INITIALIZING in all_statuses
+        assert len(all_status) >= 7
+        assert ExitStatus.INITIALIZING in all_status
 
 
 class TestExitCondition:

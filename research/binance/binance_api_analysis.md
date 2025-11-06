@@ -2,13 +2,13 @@
 
 ## Executive Summary and Integration Objectives
 
-Binance's Spot Application Programming Interface (API) provides a comprehensive suite for integrating trading applications with the exchange's market data, order management, and account information. At its core, the API offers REST endpoints for market data and trading operations, and WebSocket streams for real-time market data and user account updates. Responses follow a consistent JavaScript Object Notation (JSON) format with millisecond precision on timestamps, and the platform implements rate limits and order constraints that directly shape system architecture and operational resilience. These characteristics define the integration surface that trading systems must address, including compliance with authentication and time discipline, careful management of rate budgets, and robust error handling across synchronous and asynchronous interfaces.[^2][^12]
+Binance’s Spot Application Programming Interface (API) provides a comprehensive suite for integrating trading applications with the exchange’s market data, order management, and account information. At its core, the API offers REST endpoints for market data and trading operations, and WebSocket streams for real-time market data and user account updates. Responses follow a consistent JavaScript Object Notation (JSON) format with millisecond precision on timestamps, and the platform implements rate limits and order constraints that directly shape system architecture and operational resilience. These characteristics define the integration surface that trading systems must address, including compliance with authentication and time discipline, careful management of rate budgets, and robust error handling across synchronous and asynchronous interfaces.[^2][^12]
 
-This report's objectives are to outline the capabilities and constraints of the Binance Spot API, with practical guidance for trading system integration. Specifically, it covers market data endpoints, order management operations, account and permissions queries, WebSocket streams, rate limits and error responses, authentication methods, supported order types and conditional parameters, trading restrictions and filters, best practices in time synchronization, error handling, and strategies for order book integrity and rate-limit-aware architectures. The report is intended for software engineers, quantitative developers, solution architects, and technical product managers responsible for building and maintaining robust integrations.
+This report’s objectives are to outline the capabilities and constraints of the Binance Spot API, with practical guidance for trading system integration. Specifically, it covers market data endpoints, order management operations, account and permissions queries, WebSocket streams, rate limits and error responses, authentication methods, supported order types and conditional parameters, trading restrictions and filters, best practices in time synchronization, error handling, and strategies for order book integrity and rate-limit-aware architectures. The report is intended for software engineers, quantitative developers, solution architects, and technical product managers responsible for building and maintaining robust integrations.
 
 ## API Foundations: Structure, Base Endpoints, and Data Conventions
 
-The Binance Spot API adopts straightforward conventions that reduce ambiguity and facilitate predictable integration. By default, responses are returned in JSON with timestamps in milliseconds. When microsecond-level precision is required, clients can set the `X-MBX-TIME-UNIT` header to `MICROSECOND` (or microsecond). REST requests have a server-side timeout of approximately ten seconds, and responses generally return data in chronological order unless specified otherwise. Time filtering parameters such as `startTime` and `endTime` follow clear semantics, and the system provides explicit guidance on error states, including the TIMEOUT error code for cases where the backend matching engine's execution status may be unknown.[^2]
+The Binance Spot API adopts straightforward conventions that reduce ambiguity and facilitate predictable integration. By default, responses are returned in JSON with timestamps in milliseconds. When microsecond-level precision is required, clients can set the `X-MBX-TIME-UNIT` header to `MICROSECOND` (or microsecond). REST requests have a server-side timeout of approximately ten seconds, and responses generally return data in chronological order unless specified otherwise. Time filtering parameters such as `startTime` and `endTime` follow clear semantics, and the system provides explicit guidance on error states, including the TIMEOUT error code for cases where the backend matching engine’s execution status may be unknown.[^2]
 
 Base endpoints exist for REST and WebSocket communication, with distinct hosts for public market data. The public market data base endpoint is designated to handle high volumes of non-private queries, and developers are advised to leverage this endpoint for market data-only use cases. While the developer center redacts exact URLs for some endpoints, it highlights that multiple REST base endpoints exist, and that the last four endpoints provide improved performance with a tradeoff in stability. This performance-stability note encourages operational designs that are resilient to endpoint selection and failover, especially under load.[^2]
 
@@ -42,14 +42,14 @@ These semantics support deterministic pagination and backfill strategies, allowi
 
 ## Market Data Endpoints (REST): Capabilities and Weights
 
-Binance's REST market data endpoints cover depth, trades, aggregated trades, candlesticks (klines), UI-optimized klines, average price, 24-hour ticker statistics, trading day statistics, symbol price tickers, best book tickers, and rolling window statistics. Each endpoint has specific parameters, weights, and data sources, and several impose practical constraints such as maximum `limit` values or symbol filtering by trading status.[^3]
+Binance’s REST market data endpoints cover depth, trades, aggregated trades, candlesticks (klines), UI-optimized klines, average price, 24-hour ticker statistics, trading day statistics, symbol price tickers, best book tickers, and rolling window statistics. Each endpoint has specific parameters, weights, and data sources, and several impose practical constraints such as maximum `limit` values or symbol filtering by trading status.[^3]
 
 Before detailing individual endpoints, it is useful to summarize weights for high-impact endpoints, particularly those that scale with the number of symbols requested or the depth requested.
 
 Table 3: Market data endpoint weights summary (selected endpoints)
 
 | Endpoint                               | Weight / Cost Model                                                                                                           |
-|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+|----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
 | GET /api/v3/depth (order book)         | 5 (limit 1–100); 25 (101–500); 50 (501–1000); 250 (1001–5000).                                                                |
 | GET /api/v3/ticker/24hr                | 2 (symbol provided, single); 80 (symbol omitted, returns all); scales by number of symbols: 2 (≤20), 40 (21–100), 80 (≥101). |
 | GET /api/v3/ticker/price               | 2 (single symbol); 4 (symbol omitted or symbols list).                                                                        |
@@ -57,7 +57,7 @@ Table 3: Market data endpoint weights summary (selected endpoints)
 | GET /api/v3/ticker/tradingDay          | 4 per requested symbol, capped at 200 when `symbols` count > 50.                                                              |
 | GET /api/v3/ticker (rolling window)    | 4 per requested symbol; cap at 200 when `symbols` count > 50.                                                                 |
 
-The order book endpoint's weight scales with the depth requested, incentivizing conservative `limit` choices. Ticker endpoints differentiate costs between single-symbol queries and bulk (all symbols) queries, requiring careful batching and caching strategies for large symbol universes.[^3]
+The order book endpoint’s weight scales with the depth requested, incentivizing conservative `limit` choices. Ticker endpoints differentiate costs between single-symbol queries and bulk (all symbols) queries, requiring careful batching and caching strategies for large symbol universes.[^3]
 
 Table 4: Order book depth limit vs weight mapping
 
@@ -99,11 +99,11 @@ Table 6: Ticker endpoint parameters and weight comparison
 | /api/v3/ticker/bookTicker   | `symbol`/`symbols`; `symbolStatus`      | 2 (single symbol); 4 (symbol omitted or list).                              |
 | /api/v3/ticker (rolling)    | `symbol`/`symbols`; `windowSize`; `type` | 4 per symbol; cap at 200 when `symbols` > 50; effective window may be wider. |
 
-These endpoints' cost profiles encourage targeted queries and caching for frequently used symbols, and caution against blanket polling of all symbols, which can exhaust REQUEST_WEIGHT budgets quickly.[^3]
+These endpoints’ cost profiles encourage targeted queries and caching for frequently used symbols, and caution against blanket polling of all symbols, which can exhaust REQUEST_WEIGHT budgets quickly.[^3]
 
 ## WebSocket Streams: Real-time Market Data and Connection Management
 
-Binance offers WebSocket streams for real-time market data, including aggregate trades, trades, klines, tickers (individual and all-market), rolling window statistics, book tickers, partial depth, and diff depth updates. The platform supports raw streams and combined streams, with a maximum of 1024 streams per connection. The server issues a `ping` frame approximately every 20 seconds, and clients must respond with a `pong` within one minute to avoid disconnection. The connection's validity typically spans 24 hours, and per-IP connection limits enforce fairness and protect server resources. While the developer center provides redacted base URLs, the documented streams, payloads, and management messages provide a clear operational model for subscribing, unsubscribing, listing subscriptions, and configuring stream properties.[^4]
+Binance offers WebSocket streams for real-time market data, including aggregate trades, trades, klines, tickers (individual and all-market), rolling window statistics, book tickers, partial depth, and diff depth updates. The platform supports raw streams and combined streams, with a maximum of 1024 streams per connection. The server issues a `ping` frame approximately every 20 seconds, and clients must respond with a `pong` within one minute to avoid disconnection. The connection’s validity typically spans 24 hours, and per-IP connection limits enforce fairness and protect server resources. While the developer center provides redacted base URLs, the documented streams, payloads, and management messages provide a clear operational model for subscribing, unsubscribing, listing subscriptions, and configuring stream properties.[^4]
 
 Table 7: WebSocket stream types and update speeds
 
@@ -147,17 +147,17 @@ Table 9: Diff depth synchronization procedure
 
 | Step                                              | Purpose                                                                 | Error Handling                                               |
 |---------------------------------------------------|-------------------------------------------------------------------------|--------------------------------------------------------------|
-| Buffer diff events and note first event's `U`     | Prepare to align snapshot and incremental updates.                      | If snapshot `lastUpdateId` < buffered event `U`, re-fetch.   |
+| Buffer diff events and note first event’s `U`     | Prepare to align snapshot and incremental updates.                      | If snapshot `lastUpdateId` < buffered event `U`, re-fetch.   |
 | Fetch depth snapshot via REST                     | Establish baseline order book state.                                    | If mismatch persists, restart process.                       |
-| Discard buffered events with `u` ≤ snapshot ID    | Ensure only subsequent updates are applied.                              | First buffered event's `U` must fall within [U; u] range.    |
+| Discard buffered events with `u` ≤ snapshot ID    | Ensure only subsequent updates are applied.                              | First buffered event’s `U` must fall within [U; u] range.    |
 | Apply buffered and subsequent diff updates        | Reconcile local order book with incremental changes.                     | Ignore if `u` < local update ID; restart if `U` > local ID.  |
 | Remove levels with zero quantity; update quantities | Maintain accurate depth levels.                                         | Set order book update ID to event `u` after applying.        |
 
-This procedure ensures deterministic alignment with the exchange's canonical order book and reduces race conditions in fast-moving markets. Engineers should instrument gap detection and automatic restart logic to mitigate packet reordering or transient connectivity issues.[^4]
+This procedure ensures deterministic alignment with the exchange’s canonical order book and reduces race conditions in fast-moving markets. Engineers should instrument gap detection and automatic restart logic to mitigate packet reordering or transient connectivity issues.[^4]
 
 ## Account Information and Permissions
 
-Account information is exposed via REST endpoints that provide balances, trading permissions, commission rates, filters, order status, order lists, trade history, and features related to Self-Trade Prevention (STP) and Smart Order Routing (SOR). Permissions flags such as `canTrade`, `canWithdraw`, and `canDeposit` indicate the account's capabilities and are essential for pre-trade validation. Additional fields summarize commissions and account-level constraints, and symbol-specific filters inform acceptable order parameters and asset-level limits.[^10]
+Account information is exposed via REST endpoints that provide balances, trading permissions, commission rates, filters, order status, order lists, trade history, and features related to Self-Trade Prevention (STP) and Smart Order Routing (SOR). Permissions flags such as `canTrade`, `canWithdraw`, and `canDeposit` indicate the account’s capabilities and are essential for pre-trade validation. Additional fields summarize commissions and account-level constraints, and symbol-specific filters inform acceptable order parameters and asset-level limits.[^10]
 
 Table 10: Account endpoints and weights
 
@@ -196,13 +196,13 @@ Table 11: Trading endpoint matrix (overview)
 | Create order         | POST /api/v3/order                               | TRADE (SIGNED)          | ACK, RESULT, FULL                   | Behavior depends on `newOrderRespType`; MARKET and LIMIT default to FULL; others default to ACK.|
 | Query order status   | GET /api/v3/order                                | TRADE (SIGNED)          | N/A                                 | Requires `symbol` and either `orderId` or `origClientOrderId`.                                  |
 | Cancel order         | DELETE /api/v3/order                             | TRADE (SIGNED)          | ACK-like                             | Cancel by `orderId` or `origClientOrderId`.                                                    |
-| Cancel by symbol     | DELETE /api3/openOrders                          | TRADE (SIGNED)          | ACK-like                             | Cancel all open orders for a symbol.                                                            |
+| Cancel by symbol     | DELETE /api3/openOrders                          | TRADE (SIGNED)          | ACK-like                             | Cancel all open orders for a symbol.                                                           |
 | Open orders          | GET /api/v3/openOrders                           | TRADE (SIGNED)          | N/A                                 | High weight when symbol omitted; use judiciously.                                              |
 | All orders           | GET /api/v3/allOrders                            | TRADE (SIGNED)          | N/A                                 | Time window ≤ 24 hours; use pagination for large histories.                                     |
 | Order amendments     | GET /api/v3/order/amendments                     | TRADE (SIGNED)          | N/A                                 | Amendment history; supports filtering by execution ID.                                         |
 | Order list (OCO)     | GET /api/v3/orderList; GET /api/v3/allOrderList; GET /api/v3/openOrderList | TRADE (SIGNED) | N/A | OCO/OTOCO order list lifecycles and statuses.                                                  |
 
-The trading endpoints' security type indicates signed endpoints requiring valid API keys and signatures; `recvWindow` defines request validity window, and `timestamp` ensures time-bounded execution. The test endpoint is recommended for dry-run validations in production systems, particularly to prevent invalid signatures or filter violations from consuming order rate budgets.[^11]
+The trading endpoints’ security type indicates signed endpoints requiring valid API keys and signatures; `recvWindow` defines request validity window, and `timestamp` ensures time-bounded execution. The test endpoint is recommended for dry-run validations in production systems, particularly to prevent invalid signatures or filter violations from consuming order rate budgets.[^11]
 
 ### Order Lists (OCO and OTOCO)
 
@@ -228,7 +228,7 @@ Table 13: Common HTTP error codes and recommended handling
 | 418  | IP Banned                                   | Stop traffic until `retryAfter`; implement cooldown and reduce request cadence; audit clients.   |
 | -1007| TIMEOUT                                     | Do not assume matching engine outcome; query user data stream or status endpoints to reconcile.  |
 
-Intervals used for rate limits include SECOND, MINUTE, HOUR, and DAY. Some intervals are nested (e.g., 10-second windows within a minute), and exhausting a shorter interval requires waiting for it to expire, even if longer intervals show capacity. Reset times are fixed (e.g., DAY resets at 00:00 UTC; 10-second windows reset at 00, 10, 20, ... seconds). WS API connections are constrained per IP (e.g., 300 connections per 5 minutes), and connecting to the WS API itself consumes REQUEST_WEIGHT (e.g., 2 weight per connection), which should be included in budgeting. Client designs should avoid tight reconnect loops and consolidate streams to minimize weight overhead.[^1][^7][^6]
+Intervals used for rate limits include SECOND, MINUTE, HOUR, and DAY. Some intervals are nested (e.g., 10-second windows within a minute), and exhausting a shorter interval requires waiting for it to expire, even if longer intervals show capacity. Reset times are fixed (e.g., DAY resets at 00:00 UTC; 10-second windows reset at 00, 10, 20, ... seconds). WS API connections are constrained per IP (e.g., 300 connections per 5 minutes), and connecting to the WS API itself consumes REQUEST_WEIGHT (e.g., 2 weight per connection), which should be included in budgeting. Client designs should avoid tight reconnect loops and consolidate streams to minimize weight overhead.[^1][^7]
 
 ### Order Rate Limits (Spot)
 
@@ -239,7 +239,7 @@ Table 14: Spot order rate limits by interval and monitoring
 | Interval     | Limit      | Monitoring Endpoint                   | Notes                                                      |
 |--------------|------------|----------------------------------------|------------------------------------------------------------|
 | 10 seconds   | 100 orders | GET api/v3/rateLimit/order             | Count excludes filled orders (partial or full).            |
-| 24 hours     | 200,000    | GET api/v3/rateLimit/order             | Per account; shared across API keys.                      |
+| 24 hours     | 200,000    | GET api/v3/rateLimit/order             | Per account; shared across API keys.                       |
 
 ## Authentication and Security
 
@@ -248,7 +248,7 @@ Binance supports multiple algorithms for signing requests: Hash-based Message Au
 Table 15: Authentication methods comparison
 
 | Algorithm | Typical Use Case                               | Key Management Implications                                       | Operational Considerations                                         |
-|-----------|-------------------------------------------------|--------------------------------------------------------------------|--------------------------------------------------------------------|
+|-----------|-------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------|
 | HMAC      | Broad support across REST and WS APIs           | Secret key used to sign requests; must be kept confidential         | Deterministic signature parameter ordering; common in trading bots. |
 | RSA       | Environments preferring public-key cryptography | Keypair generation and secure storage required                      | Heavier compute cost; ensure robust signature encoding.            |
 | Ed25519   | Modern elliptic curve signature scheme          | Similar to RSA; supports compact signatures                         | Validate library support; ensure consistent encoding.              |
@@ -261,7 +261,7 @@ While all three algorithms are supported, HMAC-SHA256 remains the most common fo
 
 ## Supported Order Types and Parameters
 
-Binance supports a range of Spot order types: Market, Limit, Stop-Limit, Stop-Market, OCO (One Cancels the Other), Trailing Stop, OTO (One Triggers the Other), and OTOCO (One Triggers a One Cancels the Other). These order types map to conditional behaviors that trigger market or limit orders when specified criteria are met. Time in force (TIF) options such as Good-Til-Canceled (GTC), Immediate-or-Cancel (IOC), and Fill-or-Kill (FOK) govern execution finality, and iceberg quantities allow splitting larger orders into controlled slices. Self-Trade Prevention modes influence order behavior in the presence of potential self-matching, and Smart Order Routing (SOR) allocations provide transparency into execution paths. The trading endpoints clarify conditional fields in responses, and the support FAQ offers accessible descriptions of each order type's behavior.[^11][^9]
+Binance supports a range of Spot order types: Market, Limit, Stop-Limit, Stop-Market, OCO (One Cancels the Other), Trailing Stop, OTO (One Triggers the Other), and OTOCO (One Triggers a One Cancels the Other). These order types map to conditional behaviors that trigger market or limit orders when specified criteria are met. Time in force (TIF) options such as Good-Til-Canceled (GTC), Immediate-or-Cancel (IOC), and Fill-or-Kill (FOK) govern execution finality, and iceberg quantities allow splitting larger orders into controlled slices. Self-Trade Prevention modes influence order behavior in the presence of potential self-matching, and Smart Order Routing (SOR) allocations provide transparency into execution paths. The trading endpoints clarify conditional fields in responses, and the support FAQ offers accessible descriptions of each order type’s behavior.[^11][^9]
 
 Table 16: Order types vs trigger conditions and execution behavior
 
@@ -289,7 +289,7 @@ Order responses may include conditional fields depending on the order type and s
 
 ## Trading Restrictions and Filters
 
-Trading restrictions are defined via exchange and symbol filters, including limits on the number of orders and order lists, and asset-specific caps under `MAX_ASSET`. The `/api/v3/myFilters` endpoint enumerates filters relevant to the account and symbol, which materially affect pre-trade validations. Trading permissions are exposed via `canTrade`, `canDeposit`, and `canWithdraw`, and must be confirmed before submitting orders. The platform also enforces symbol status filters, and REST responses may include errors such as `-1220 SYMBOL_DOES_NOT_MATCH_STATUS` when requesting data for symbols that do not match the specified trading status. These restrictions and filters should be integrated into the trading system's validation pipeline.[^10][^3]
+Trading restrictions are defined via exchange and symbol filters, including limits on the number of orders and order lists, and asset-specific caps under `MAX_ASSET`. The `/api/v3/myFilters` endpoint enumerates filters relevant to the account and symbol, which materially affect pre-trade validations. Trading permissions are exposed via `canTrade`, `canDeposit`, and `canWithdraw`, and must be confirmed before submitting orders. The platform also enforces symbol status filters, and REST responses may include errors such as `-1220 SYMBOL_DOES_NOT_MATCH_STATUS` when requesting data for symbols that do not match the specified trading status. These restrictions and filters should be integrated into the trading system’s validation pipeline.[^10][^3]
 
 Table 18: Filter types and examples
 

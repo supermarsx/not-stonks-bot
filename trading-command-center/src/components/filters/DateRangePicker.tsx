@@ -1,378 +1,306 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { MatrixButton } from '../ui/MatrixButton';
-import { MatrixInput } from '../ui/MatrixInput';
-import { MatrixCard } from '../ui/MatrixCard';
-import { format, subDays, subMonths, subYears, isAfter, isBefore, isSameDay, parseISO } from 'date-fns';
+import { MatrixButton } from '../MatrixButton';
+import { MatrixInput } from '../MatrixInput';
+import { format, subDays, subMonths, subYears, isAfter, isBefore, parseISO } from 'date-fns';
 
-export interface DateRange {
+interface DateRange {
   startDate: Date;
   endDate: Date;
 }
 
 interface DateRangePickerProps {
-  value?: DateRange;
-  onChange: (dateRange: DateRange) => void;
-  placeholder?: string;
-  minDate?: Date;
-  maxDate?: Date;
-  showTime?: boolean;
-  disabled?: boolean;
+  onDateRangeChange: (dateRange: DateRange) => void;
+  initialDateRange?: DateRange;
+  presetRanges?: {
+    label: string;
+    getValue: () => { startDate: Date; endDate: Date };
+  }[];
   className?: string;
+  disabled?: boolean;
+  maxDate?: Date;
+  minDate?: Date;
 }
 
-const DateRangePicker: React.FC<DateRangePickerProps> = ({
-  value,
-  onChange,
-  placeholder = "Select date range",
-  minDate,
-  maxDate,
-  showTime = false,
+export const DateRangePicker: React.FC<DateRangePickerProps> = ({
+  onDateRangeChange,
+  initialDateRange,
+  presetRanges = [],
+  className = "",
   disabled = false,
-  className = ""
+  maxDate = new Date(),
+  minDate,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState<Date>(value?.startDate || new Date());
-  const [selectingStart, setSelectingStart] = useState(true);
-  const [tempStartDate, setTempStartDate] = useState<Date | null>(value?.startDate || null);
-  const [tempEndDate, setTempEndDate] = useState<Date | null>(value?.endDate || null);
+  const [selectedRange, setSelectedRange] = useState<DateRange>(
+    initialDateRange || {
+      startDate: subMonths(new Date(), 3),
+      endDate: new Date(),
+    }
+  );
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [view, setView] = useState<'range' | 'quick'>('quick');
 
-  const presetRanges = [
-    {
-      label: 'Today',
-      getValue: () => {
-        const today = new Date();
-        return { startDate: today, endDate: today };
-      }
-    },
-    {
-      label: 'Yesterday',
-      getValue: () => {
-        const yesterday = subDays(new Date(), 1);
-        return { startDate: yesterday, endDate: yesterday };
-      }
-    },
+  // Default preset ranges
+  const defaultPresetRanges = [
     {
       label: 'Last 7 Days',
-      getValue: () => {
-        const end = new Date();
-        const start = subDays(end, 6);
-        return { startDate: start, endDate: end };
-      }
+      getValue: () => ({
+        startDate: subDays(new Date(), 7),
+        endDate: new Date(),
+      }),
     },
     {
       label: 'Last 30 Days',
-      getValue: () => {
-        const end = new Date();
-        const start = subDays(end, 29);
-        return { startDate: start, endDate: end };
-      }
+      getValue: () => ({
+        startDate: subDays(new Date(), 30),
+        endDate: new Date(),
+      }),
     },
     {
       label: 'Last 3 Months',
-      getValue: () => {
-        const end = new Date();
-        const start = subMonths(end, 3);
-        return { startDate: start, endDate: end };
-      }
+      getValue: () => ({
+        startDate: subMonths(new Date(), 3),
+        endDate: new Date(),
+      }),
     },
     {
       label: 'Last 6 Months',
-      getValue: () => {
-        const end = new Date();
-        const start = subMonths(end, 6);
-        return { startDate: start, endDate: end };
-      }
+      getValue: () => ({
+        startDate: subMonths(new Date(), 6),
+        endDate: new Date(),
+      }),
     },
     {
       label: 'Last Year',
-      getValue: () => {
-        const end = new Date();
-        const start = subYears(end, 1);
-        return { startDate: start, endDate: end };
-      }
+      getValue: () => ({
+        startDate: subYears(new Date(), 1),
+        endDate: new Date(),
+      }),
     },
     {
       label: 'Year to Date',
-      getValue: () => {
-        const end = new Date();
-        const start = new Date(end.getFullYear(), 0, 1);
-        return { startDate: start, endDate: end };
-      }
-    }
+      getValue: () => ({
+        startDate: new Date(new Date().getFullYear(), 0, 1),
+        endDate: new Date(),
+      }),
+    },
   ];
 
-  const formatDateDisplay = (date: Date) => {
-    if (!date) return '';
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      ...(showTime && { hour: '2-digit', minute: '2-digit' })
-    };
-    return date.toLocaleDateString('en-US', options);
-  };
+  const allPresetRanges = [...defaultPresetRanges, ...presetRanges];
 
-  const formatDateForInput = (date: Date) => {
-    if (!date) return '';
-    return format(date, 'yyyy-MM-dd');
-  };
+  // Calendar generation
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
 
-  const handleApplyRange = () => {
-    if (tempStartDate && tempEndDate && !isAfter(tempStartDate, tempEndDate)) {
-      onChange({ startDate: tempStartDate, endDate: tempEndDate });
-      setIsOpen(false);
-    }
-  };
-
-  const handlePresetSelect = (preset: typeof presetRanges[0]) => {
-    const range = preset.getValue();
-    onChange(range);
-    setIsOpen(false);
-  };
-
-  const handleDateClick = (date: Date) => {
-    if (disabled) return;
-
-    // Check if date is within allowed range
-    if (minDate && isBefore(date, minDate)) return;
-    if (maxDate && isAfter(date, maxDate)) return;
-
-    if (selectingStart || !tempStartDate) {
-      setTempStartDate(date);
-      setTempEndDate(null);
-      setSelectingStart(false);
-    } else {
-      if (isAfter(date, tempStartDate) || isSameDay(date, tempStartDate)) {
-        setTempEndDate(date);
-        setSelectingStart(true);
-        // Auto-apply if end date is selected
-        setTimeout(() => handleApplyRange(), 100);
-      } else {
-        setTempEndDate(date);
-        setSelectingStart(true);
-        setTimeout(() => handleApplyRange(), 100);
-      }
-    }
-  };
-
-  const isDateInRange = (date: Date) => {
-    if (!tempStartDate || !tempEndDate) return false;
-    return !isBefore(date, tempStartDate) && !isAfter(date, tempEndDate);
-  };
-
-  const isDateSelected = (date: Date) => {
-    return (tempStartDate && isSameDay(date, tempStartDate)) ||
-           (tempEndDate && isSameDay(date, tempEndDate));
-  };
-
-  const isDateDisabled = (date: Date) => {
-    if (minDate && isBefore(date, minDate)) return true;
-    if (maxDate && isAfter(date, maxDate)) return true;
-    return false;
-  };
-
-  const generateCalendarDays = (month: Date) => {
-    const year = month.getFullYear();
-    const monthIndex = month.getMonth();
-    
-    const firstDay = new Date(year, monthIndex, 1);
-    const lastDay = new Date(year, monthIndex + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
     const days = [];
-    const currentDate = new Date(startDate);
-    
-    for (let i = 0; i < 42; i++) {
-      days.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
+
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
     }
-    
+
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+
     return days;
   };
 
-  const calendarDays = generateCalendarDays(currentMonth);
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const isDateInRange = (date: Date) => {
+    return !isBefore(date, selectedRange.startDate) && !isAfter(date, selectedRange.endDate);
+  };
 
-  const displayValue = value ? 
-    `${formatDateDisplay(value.startDate)} - ${formatDateDisplay(value.endDate)}` : 
-    placeholder;
+  const isDateSelected = (date: Date) => {
+    return date.toDateString() === selectedRange.startDate.toDateString() ||
+           date.toDateString() === selectedRange.endDate.toDateString();
+  };
+
+  const handleDateClick = (date: Date | null) => {
+    if (!date || disabled) return;
+
+    if (view === 'range') {
+      if (isBefore(date, selectedRange.startDate) || isAfter(date, selectedRange.endDate)) {
+        // Reset range with new start date
+        setSelectedRange({
+          startDate: date,
+          endDate: date,
+        });
+      } else {
+        // Complete the range
+        const newRange = {
+          startDate: selectedRange.startDate,
+          endDate: date,
+        };
+        setSelectedRange(newRange);
+        onDateRangeChange(newRange);
+        setIsOpen(false);
+        setView('quick');
+      }
+    }
+  };
+
+  const handlePresetRangeSelect = (presetRange: typeof allPresetRanges[0]) => {
+    const newRange = presetRange.getValue();
+    setSelectedRange(newRange);
+    onDateRangeChange(newRange);
+    setIsOpen(false);
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prev => {
+      const newMonth = new Date(prev);
+      if (direction === 'prev') {
+        newMonth.setMonth(prev.getMonth() - 1);
+      } else {
+        newMonth.setMonth(prev.getMonth() + 1);
+      }
+      return newMonth;
+    });
+  };
+
+  const formatDisplayRange = () => {
+    const formatOptions: Intl.DateTimeFormatOptions = { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    };
+    return `${format(selectedRange.startDate, formatOptions)} - ${format(selectedRange.endDate, formatOptions)}`;
+  };
 
   return (
     <div className={`relative ${className}`}>
       <MatrixButton
-        variant="outline"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        variant="secondary"
+        onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full justify-between text-left"
+        className="w-full justify-between min-w-[280px]"
       >
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4" />
-          <span className={value ? 'text-matrix-green' : 'text-matrix-green/70'}>
-            {displayValue}
-          </span>
+          <span className="font-mono">{formatDisplayRange()}</span>
         </div>
-        <ChevronDown className={`w-4 h-4 transition-transform ${
-          isOpen ? 'rotate-180' : ''
-        }`} />
+        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </MatrixButton>
 
       {isOpen && (
-        <MatrixCard className="absolute top-full left-0 right-0 z-50 mt-1 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Preset Ranges */}
-            <div>
-              <h4 className="text-matrix-green font-medium mb-2">Quick Select</h4>
-              <div className="space-y-1">
-                {presetRanges.map((preset) => (
-                  <MatrixButton
-                    key={preset.label}
-                    variant="ghost"
-                    onClick={() => handlePresetSelect(preset)}
-                    className="w-full justify-start text-sm"
-                  >
-                    {preset.label}
-                  </MatrixButton>
-                ))}
-              </div>
-            </div>
+        <div className="absolute top-full left-0 mt-2 bg-matrix-black border border-matrix-green rounded-lg shadow-lg z-50 p-4 min-w-[320px]">
+          {/* View Toggle */}
+          <div className="flex gap-2 mb-4">
+            <MatrixButton
+              size="sm"
+              variant={view === 'quick' ? 'primary' : 'secondary'}
+              onClick={() => setView('quick')}
+            >
+              Quick Ranges
+            </MatrixButton>
+            <MatrixButton
+              size="sm"
+              variant={view === 'range' ? 'primary' : 'secondary'}
+              onClick={() => setView('range')}
+            >
+              Custom Range
+            </MatrixButton>
+          </div>
 
-            {/* Calendar */}
+          {view === 'quick' ? (
+            /* Quick Preset Ranges */
+            <div className="space-y-2">
+              <h4 className="text-matrix-green font-mono text-sm mb-3">Select Range</h4>
+              {allPresetRanges.map((preset, index) => (
+                <button
+                  key={index}
+                  onClick={() => handlePresetRangeSelect(preset)}
+                  className="w-full text-left px-3 py-2 text-matrix-green hover:bg-matrix-green/10 rounded font-mono text-sm transition-colors"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            /* Custom Range Calendar */
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-4">
                 <MatrixButton
-                  variant="ghost"
                   size="sm"
-                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                  variant="secondary"
+                  onClick={() => navigateMonth('prev')}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </MatrixButton>
-                <h4 className="text-matrix-green font-medium">
-                  {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                <h4 className="text-matrix-green font-mono">
+                  {format(currentMonth, 'MMMM yyyy')}
                 </h4>
                 <MatrixButton
-                  variant="ghost"
                   size="sm"
-                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                  variant="secondary"
+                  onClick={() => navigateMonth('next')}
+                  disabled={currentMonth >= maxDate}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </MatrixButton>
               </div>
 
-              {/* Day headers */}
               <div className="grid grid-cols-7 gap-1 mb-2">
-                {dayNames.map(day => (
-                  <div key={day} className="text-center text-xs text-matrix-green/70 py-1">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                  <div key={day} className="text-center text-matrix-green/70 text-xs font-mono py-1">
                     {day}
                   </div>
                 ))}
               </div>
 
-              {/* Calendar grid */}
               <div className="grid grid-cols-7 gap-1">
-                {calendarDays.map((date, index) => {
-                  const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-                  const isInRange = isDateInRange(date);
-                  const isSelected = isDateSelected(date);
-                  const isDisabled = isDateDisabled(date);
-                  
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => handleDateClick(date)}
-                      disabled={isDisabled}
-                      className={`
-                        p-1 text-sm rounded transition-colors
-                        ${
-                          isDisabled
-                            ? 'text-matrix-green/30 cursor-not-allowed'
-                            : 'text-matrix-green hover:bg-matrix-green/20 cursor-pointer'
-                        }
-                        ${
-                          !isCurrentMonth ? 'opacity-30' : ''
-                        }
-                        ${
-                          isSelected
-                            ? 'bg-matrix-green text-matrix-darker font-medium'
-                            : ''
-                        }
-                        ${
-                          isInRange && !isSelected
-                            ? 'bg-matrix-green/20'
-                            : ''
-                        }
-                      `}
-                    >
-                      {date.getDate()}
-                    </button>
-                  );
-                })}
+                {getDaysInMonth(currentMonth).map((date, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleDateClick(date)}
+                    disabled={!date || disabled || (minDate && isBefore(date, minDate)) || (maxDate && isAfter(date, maxDate))}
+                    className={`
+                      w-8 h-8 text-sm font-mono rounded transition-colors
+                      ${!date ? '' : ''}
+                      ${!date ? 'invisible' : ''}
+                      ${date && isDateSelected(date) ? 'bg-matrix-green text-matrix-black' : ''}
+                      ${date && isDateInRange(date) && !isDateSelected(date) ? 'bg-matrix-green/20 text-matrix-green' : ''}
+                      ${date && !isDateInRange(date) ? 'text-matrix-green/50 hover:bg-matrix-green/10' : ''}
+                      ${date && (minDate && isBefore(date, minDate) || maxDate && isAfter(date, maxDate)) ? 'text-matrix-green/30 cursor-not-allowed' : ''}
+                      ${date && !isDateSelected(date) && !isDateInRange(date) ? 'hover:bg-matrix-green/10' : ''}
+                    `}
+                  >
+                    {date?.getDate()}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-matrix-green/30">
+                <div className="flex gap-2">
+                  <MatrixButton
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Cancel
+                  </MatrixButton>
+                  <MatrixButton
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      onDateRangeChange(selectedRange);
+                      setIsOpen(false);
+                    }}
+                  >
+                    Apply
+                  </MatrixButton>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Manual date inputs */}
-          <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-matrix-green/20">
-            <div>
-              <label className="block text-xs text-matrix-green/70 mb-1">Start Date</label>
-              <MatrixInput
-                type="date"
-                value={tempStartDate ? formatDateForInput(tempStartDate) : ''}
-                onChange={(e) => {
-                  const date = e.target.value ? parseISO(e.target.value) : null;
-                  setTempStartDate(date);
-                  if (date && tempEndDate && isAfter(date, tempEndDate)) {
-                    setTempEndDate(date);
-                  }
-                }}
-                min={minDate ? formatDateForInput(minDate) : undefined}
-                max={maxDate ? formatDateForInput(maxDate) : undefined}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-matrix-green/70 mb-1">End Date</label>
-              <MatrixInput
-                type="date"
-                value={tempEndDate ? formatDateForInput(tempEndDate) : ''}
-                onChange={(e) => {
-                  const date = e.target.value ? parseISO(e.target.value) : null;
-                  setTempEndDate(date);
-                }}
-                min={tempStartDate ? formatDateForInput(tempStartDate) : (minDate ? formatDateForInput(minDate) : undefined)}
-                max={maxDate ? formatDateForInput(maxDate) : undefined}
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-2 mt-4 pt-4 border-t border-matrix-green/20">
-            <MatrixButton
-              variant="outline"
-              onClick={() => {
-                setTempStartDate(null);
-                setTempEndDate(null);
-                setSelectingStart(true);
-              }}
-              className="flex-1"
-            >
-              Clear
-            </MatrixButton>
-            <MatrixButton
-              onClick={handleApplyRange}
-              disabled={!tempStartDate || !tempEndDate}
-              className="flex-1"
-            >
-              Apply
-            </MatrixButton>
-          </div>
-        </MatrixCard>
+          )}
+        </div>
       )}
     </div>
   );

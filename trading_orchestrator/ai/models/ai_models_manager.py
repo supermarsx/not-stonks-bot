@@ -58,7 +58,7 @@ class ModelConfig:
     supports_function_calling: bool = True
     cost_per_1k_tokens: float = 0.01
     
-
+    
 # Model registry with predefined configurations
 MODEL_REGISTRY = {
     # Tier 1: Reasoning models

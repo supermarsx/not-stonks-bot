@@ -3,39 +3,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Plus, 
-  Settings, 
   TrendingUp, 
-  TrendingDown, 
   BarChart3, 
-  Brain,
-  Copy,
-  Trash2,
+  Zap, 
+  Settings,
   Play,
   Pause,
-  CheckCircle,
-  AlertCircle,
-  Clock
+  Plus,
+  Trash2,
+  Copy,
+  FileText,
+  Brain,
+  Target,
+  Activity,
+  AlertCircle
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { useConfigStore } from '@/stores/configStore';
 
 interface Strategy {
   id: string;
   name: string;
-  type: 'momentum' | 'mean-reversion' | 'arbitrage' | 'ai-ml' | 'scalping' | 'swing' | 'position';
-  isEnabled: boolean;
-  autoStart: boolean;
-  riskProfile: 'conservative' | 'moderate' | 'aggressive';
+  description: string;
+  type: 'momentum' | 'mean_reversion' | 'arbitrage' | 'trend_following' | 'pairs_trading' | 'ai_ml' | 'custom';
+  status: 'active' | 'inactive' | 'paused' | 'testing';
   parameters: Record<string, any>;
   settings: {
+    enabled: boolean;
+    autoStart: boolean;
     maxPositionSize: number;
+    riskLevel: 'low' | 'medium' | 'high';
     confidence: number;
     lookbackPeriod: number;
   };
@@ -46,217 +49,139 @@ interface Strategy {
     sharpeRatio: number;
     maxDrawdown: number;
   };
-  status: 'active' | 'paused' | 'stopped';
-  lastRun?: Date;
+  createdAt: string;
+  lastModified: string;
 }
 
 interface StrategyTemplate {
-  type: string;
+  id: string;
   name: string;
   description: string;
+  type: string;
   defaultParameters: Record<string, any>;
-  riskProfiles: {
-    conservative: Record<string, any>;
-    moderate: Record<string, any>;
-    aggressive: Record<string, any>;
-  };
+  riskProfile: 'conservative' | 'moderate' | 'aggressive';
+  expectedReturn: string;
+  riskLevel: string;
 }
 
 const StrategyConfig: React.FC = () => {
-  const { config, updateConfig, validateConfig } = useConfigStore();
-  const [strategies, setStrategies] = useState<Strategy[]>([
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [templates] = useState<StrategyTemplate[]>([
     {
-      id: '1',
-      name: 'RSI Mean Reversion',
-      type: 'mean-reversion',
-      isEnabled: true,
-      autoStart: true,
-      riskProfile: 'moderate',
-      parameters: {
-        rsiPeriod: 14,
-        rsiOversold: 30,
-        rsiOverbought: 70,
-        stopLoss: 2,
-        takeProfit: 4
-      },
-      settings: {
-        maxPositionSize: 10000,
-        confidence: 0.7,
-        lookbackPeriod: 100
-      },
-      performance: {
-        totalTrades: 156,
-        winRate: 0.68,
-        avgReturn: 0.024,
-        sharpeRatio: 1.45,
-        maxDrawdown: 0.08
-      },
-      status: 'active',
-      lastRun: new Date(Date.now() - 3600000)
-    },
-    {
-      id: '2',
-      name: 'Momentum Breakout',
+      id: 'momentum_template',
+      name: 'Momentum Strategy',
+      description: 'Trend-following strategy based on price momentum',
       type: 'momentum',
-      isEnabled: true,
-      autoStart: false,
-      riskProfile: 'aggressive',
-      parameters: {
-        maPeriod: 20,
-        breakoutThreshold: 0.02,
-        volumeThreshold: 1.5,
-        stopLoss: 3,
-        takeProfit: 6
+      defaultParameters: {
+        period: 20,
+        threshold: 0.02,
+        maxHoldPeriod: 30
       },
-      settings: {
-        maxPositionSize: 5000,
-        confidence: 0.6,
-        lookbackPeriod: 50
-      },
-      performance: {
-        totalTrades: 89,
-        winRate: 0.61,
-        avgReturn: 0.035,
-        sharpeRatio: 1.23,
-        maxDrawdown: 0.12
-      },
-      status: 'paused',
-      lastRun: new Date(Date.now() - 7200000)
+      riskProfile: 'moderate',
+      expectedReturn: '8-12%',
+      riskLevel: 'Medium'
     },
     {
-      id: '3',
-      name: 'AI Price Predictor',
-      type: 'ai-ml',
-      isEnabled: false,
-      autoStart: false,
+      id: 'mean_reversion_template',
+      name: 'Mean Reversion',
+      description: 'Strategy based on price returning to average',
+      type: 'mean_reversion',
+      defaultParameters: {
+        lookback: 50,
+        stdThreshold: 2.0,
+        holdPeriod: 5
+      },
       riskProfile: 'conservative',
-      parameters: {
-        modelType: 'lstm',
-        epochs: 100,
-        batchSize: 32,
-        learningRate: 0.001,
-        predictionHorizon: 24
+      expectedReturn: '6-10%',
+      riskLevel: 'Low'
+    },
+    {
+      id: 'arbitrage_template',
+      name: 'Arbitrage Strategy',
+      description: 'Risk-free arbitrage between correlated instruments',
+      type: 'arbitrage',
+      defaultParameters: {
+        correlationThreshold: 0.8,
+        minSpread: 0.01,
+        maxExposure: 0.05
       },
-      settings: {
-        maxPositionSize: 20000,
-        confidence: 0.8,
-        lookbackPeriod: 200
+      riskProfile: 'conservative',
+      expectedReturn: '3-8%',
+      riskLevel: 'Low'
+    },
+    {
+      id: 'ai_ml_template',
+      name: 'AI/ML Strategy',
+      description: 'Machine learning based trading strategy',
+      type: 'ai_ml',
+      defaultParameters: {
+        modelType: 'random_forest',
+        features: ['price', 'volume', 'rsi', 'macd'],
+        predictionHorizon: 1,
+        retrainFrequency: 'daily'
       },
-      performance: {
-        totalTrades: 45,
-        winRate: 0.73,
-        avgReturn: 0.042,
-        sharpeRatio: 1.67,
-        maxDrawdown: 0.06
-      },
-      status: 'stopped'
+      riskProfile: 'aggressive',
+      expectedReturn: '15-25%',
+      riskLevel: 'High'
     }
   ]);
 
-  const [selectedStrategy, setSelectedStrategy] = useState<string>('1');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newStrategy, setNewStrategy] = useState<Partial<Strategy>>({
-    name: '',
-    type: 'momentum',
-    riskProfile: 'moderate'
-  });
+  const [activeStrategy, setActiveStrategy] = useState<string | null>(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [newStrategyName, setNewStrategyName] = useState('');
 
-  const strategyTemplates: StrategyTemplate[] = [
-    {
-      type: 'momentum',
-      name: 'Momentum Trading',
-      description: 'Follow market trends and momentum',
-      defaultParameters: {
-        maPeriod: 20,
-        breakoutThreshold: 0.02,
-        volumeThreshold: 1.5
-      },
-      riskProfiles: {
-        conservative: { maPeriod: 30, breakoutThreshold: 0.015, volumeThreshold: 2.0 },
-        moderate: { maPeriod: 20, breakoutThreshold: 0.02, volumeThreshold: 1.5 },
-        aggressive: { maPeriod: 15, breakoutThreshold: 0.025, volumeThreshold: 1.2 }
-      }
-    },
-    {
-      type: 'mean-reversion',
-      name: 'Mean Reversion',
-      description: 'Trade based on price returning to average',
-      defaultParameters: {
-        rsiPeriod: 14,
-        rsiOversold: 30,
-        rsiOverbought: 70
-      },
-      riskProfiles: {
-        conservative: { rsiOversold: 25, rsiOverbought: 75 },
-        moderate: { rsiOversold: 30, rsiOverbought: 70 },
-        aggressive: { rsiOversold: 35, rsiOverbought: 65 }
-      }
-    },
-    {
-      type: 'arbitrage',
-      name: 'Arbitrage',
-      description: 'Exploit price differences across markets',
-      defaultParameters: {
-        minSpread: 0.001,
-        maxLatency: 100,
-        minVolume: 10000
-      },
-      riskProfiles: {
-        conservative: { minSpread: 0.002, maxLatency: 50 },
-        moderate: { minSpread: 0.001, maxLatency: 100 },
-        aggressive: { minSpread: 0.0005, maxLatency: 200 }
-      }
-    },
-    {
-      type: 'ai-ml',
-      name: 'AI/ML Strategy',
-      description: 'Machine learning based trading',
-      defaultParameters: {
-        modelType: 'lstm',
-        epochs: 100,
-        batchSize: 32,
-        learningRate: 0.001
-      },
-      riskProfiles: {
-        conservative: { epochs: 50, learningRate: 0.0001, confidence: 0.9 },
-        moderate: { epochs: 100, learningRate: 0.001, confidence: 0.8 },
-        aggressive: { epochs: 200, learningRate: 0.01, confidence: 0.7 }
-      }
-    }
+  const strategyTypes = [
+    { value: 'momentum', label: 'Momentum Strategy' },
+    { value: 'mean_reversion', label: 'Mean Reversion' },
+    { value: 'arbitrage', label: 'Arbitrage' },
+    { value: 'trend_following', label: 'Trend Following' },
+    { value: 'pairs_trading', label: 'Pairs Trading' },
+    { value: 'ai_ml', label: 'AI/ML Strategy' },
+    { value: 'custom', label: 'Custom Strategy' }
   ];
 
-  const currentStrategy = strategies.find(s => s.id === selectedStrategy);
+  const riskLevels = [
+    { value: 'low', label: 'Low Risk' },
+    { value: 'medium', label: 'Medium Risk' },
+    { value: 'high', label: 'High Risk' }
+  ];
 
-  const updateStrategy = (strategyId: string, updates: Partial<Strategy>) => {
-    setStrategies(prev => prev.map(strategy => 
-      strategy.id === strategyId ? { ...strategy, ...updates } : strategy
-    ));
+  useEffect(() => {
+    loadStrategies();
+  }, []);
+
+  const loadStrategies = async () => {
+    try {
+      const savedStrategies = await window.electronAPI?.getStrategies() || [];
+      setStrategies(savedStrategies);
+    } catch (error) {
+      console.error('Failed to load strategies:', error);
+    }
   };
 
-  const createStrategy = () => {
-    if (!newStrategy.name || !newStrategy.type) {
-      toast.error('Please fill in all required fields');
-      return;
+  const saveStrategies = async () => {
+    try {
+      await window.electronAPI?.saveStrategies(strategies);
+    } catch (error) {
+      console.error('Failed to save strategies:', error);
     }
+  };
 
-    const template = strategyTemplates.find(t => t.type === newStrategy.type);
-    const riskProfile = newStrategy.riskProfile || 'moderate';
-    
-    const strategy: Strategy = {
-      id: Date.now().toString(),
-      name: newStrategy.name!,
-      type: newStrategy.type as any,
-      isEnabled: false,
-      autoStart: false,
-      riskProfile,
-      parameters: {
-        ...template?.defaultParameters,
-        ...template?.riskProfiles[riskProfile]
-      },
+  const createStrategy = (template: StrategyTemplate, customName: string) => {
+    const newStrategy: Strategy = {
+      id: `strategy_${Date.now()}`,
+      name: customName,
+      description: template.description,
+      type: template.type as Strategy['type'],
+      status: 'inactive',
+      parameters: { ...template.defaultParameters },
       settings: {
-        maxPositionSize: 10000,
+        enabled: true,
+        autoStart: false,
+        maxPositionSize: 0.1,
+        riskLevel: template.riskProfile as any,
         confidence: 0.7,
-        lookbackPeriod: 100
+        lookbackPeriod: 20
       },
       performance: {
         totalTrades: 0,
@@ -265,445 +190,626 @@ const StrategyConfig: React.FC = () => {
         sharpeRatio: 0,
         maxDrawdown: 0
       },
-      status: 'stopped'
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString()
     };
 
-    setStrategies(prev => [...prev, strategy]);
-    setNewStrategy({ name: '', type: 'momentum', riskProfile: 'moderate' });
-    setShowCreateDialog(false);
-    toast.success(`Strategy "${strategy.name}" created successfully`);
+    setStrategies([...strategies, newStrategy]);
+    setActiveStrategy(newStrategy.id);
+    setShowTemplateModal(false);
+    setNewStrategyName('');
   };
 
-  const duplicateStrategy = (strategyId: string) => {
-    const strategy = strategies.find(s => s.id === strategyId);
-    if (!strategy) return;
-
-    const duplicate: Strategy = {
-      ...strategy,
-      id: Date.now().toString(),
-      name: `${strategy.name} (Copy)`,
-      isEnabled: false,
-      status: 'stopped'
-    };
-
-    setStrategies(prev => [...prev, duplicate]);
-    toast.success('Strategy duplicated successfully');
+  const updateStrategy = (id: string, updates: Partial<Strategy>) => {
+    setStrategies(strategies.map(strategy => 
+      strategy.id === id 
+        ? { ...strategy, ...updates, lastModified: new Date().toISOString() }
+        : strategy
+    ));
   };
 
-  const deleteStrategy = (strategyId: string) => {
-    setStrategies(prev => prev.filter(s => s.id !== strategyId));
-    if (selectedStrategy === strategyId) {
-      setSelectedStrategy(strategies[0]?.id || '');
+  const deleteStrategy = (id: string) => {
+    setStrategies(strategies.filter(strategy => strategy.id !== id));
+    if (activeStrategy === id) {
+      setActiveStrategy(null);
     }
-    toast.success('Strategy deleted successfully');
   };
 
-  const toggleStrategy = (strategyId: string) => {
-    const strategy = strategies.find(s => s.id === strategyId);
-    if (!strategy) return;
+  const duplicateStrategy = (strategy: Strategy) => {
+    const duplicated: Strategy = {
+      ...strategy,
+      id: `strategy_${Date.now()}`,
+      name: `${strategy.name} (Copy)`,
+      status: 'inactive',
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      performance: {
+        totalTrades: 0,
+        winRate: 0,
+        avgReturn: 0,
+        sharpeRatio: 0,
+        maxDrawdown: 0
+      }
+    };
 
-    const newStatus = strategy.status === 'active' ? 'paused' : 'active';
-    updateStrategy(strategyId, { status: newStatus });
-    toast.success(`Strategy ${newStatus === 'active' ? 'started' : 'paused'}`);
+    setStrategies([...strategies, duplicated]);
+    setActiveStrategy(duplicated.id);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      active: 'default',
+      inactive: 'outline',
+      paused: 'secondary',
+      testing: 'secondary'
+    };
+
+    const colors: Record<string, string> = {
+      active: 'bg-green-500',
+      inactive: 'bg-gray-400',
+      paused: 'bg-yellow-500',
+      testing: 'bg-blue-500'
+    };
+
+    return (
+      <Badge variant={variants[status] || 'outline'} className="gap-1">
+        <div className={`h-2 w-2 rounded-full ${colors[status] || 'bg-gray-400'}`} />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'momentum':
+      case 'trend_following':
         return <TrendingUp className="h-4 w-4" />;
-      case 'mean-reversion':
-        return <TrendingDown className="h-4 w-4" />;
-      case 'arbitrage':
+      case 'mean_reversion':
         return <BarChart3 className="h-4 w-4" />;
-      case 'ai-ml':
+      case 'arbitrage':
+        return <Target className="h-4 w-4" />;
+      case 'ai_ml':
         return <Brain className="h-4 w-4" />;
       default:
-        return <Settings className="h-4 w-4" />;
+        return <Activity className="h-4 w-4" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-500';
-      case 'paused':
-        return 'bg-yellow-500';
-      case 'stopped':
-        return 'bg-gray-500';
-      default:
-        return 'bg-gray-400';
-    }
-  };
+  const activeStrategyData = strategies.find(strategy => strategy.id === activeStrategy);
+
+  const StrategyTemplateModal = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-4xl max-h-[80vh] overflow-auto">
+        <CardHeader>
+          <CardTitle>Create New Strategy</CardTitle>
+          <CardDescription>
+            Choose a template and configure your strategy
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <Label htmlFor="strategy-name">Strategy Name</Label>
+            <Input
+              id="strategy-name"
+              value={newStrategyName}
+              onChange={(e) => setNewStrategyName(e.target.value)}
+              placeholder="Enter strategy name"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {templates.map((template) => (
+              <Card 
+                key={template.id}
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => newStrategyName && createStrategy(template, newStrategyName)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {getTypeIcon(template.type)}
+                      <CardTitle className="text-base">{template.name}</CardTitle>
+                    </div>
+                    <Badge variant={template.riskProfile === 'conservative' ? 'default' : 
+                                   template.riskProfile === 'moderate' ? 'secondary' : 'destructive'}>
+                      {template.riskProfile}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <CardDescription>{template.description}</CardDescription>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Expected Return:</span>
+                      <div className="font-medium">{template.expectedReturn}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Risk Level:</span>
+                      <div className="font-medium">{template.riskLevel}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-sm text-muted-foreground">Default Parameters:</span>
+                    <div className="bg-gray-50 p-2 rounded text-xs font-mono">
+                      {JSON.stringify(template.defaultParameters, null, 2)}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                // Create custom strategy
+                const customStrategy: Strategy = {
+                  id: `strategy_${Date.now()}`,
+                  name: newStrategyName || 'Custom Strategy',
+                  description: 'User-defined custom strategy',
+                  type: 'custom',
+                  status: 'inactive',
+                  parameters: {},
+                  settings: {
+                    enabled: true,
+                    autoStart: false,
+                    maxPositionSize: 0.1,
+                    riskLevel: 'medium',
+                    confidence: 0.7,
+                    lookbackPeriod: 20
+                  },
+                  performance: {
+                    totalTrades: 0,
+                    winRate: 0,
+                    avgReturn: 0,
+                    sharpeRatio: 0,
+                    maxDrawdown: 0
+                  },
+                  createdAt: new Date().toISOString(),
+                  lastModified: new Date().toISOString()
+                };
+                setStrategies([...strategies, customStrategy]);
+                setActiveStrategy(customStrategy.id);
+                setShowTemplateModal(false);
+                setNewStrategyName('');
+              }}
+            >
+              Create Custom Strategy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-matrix-green">Strategy Configuration</h1>
-          <p className="text-matrix-green/70 mt-1">Configure and manage your trading strategies</p>
-        </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button className="bg-matrix-green text-black hover:bg-matrix-green/80">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Strategy
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-black border-matrix-green/20">
-            <DialogHeader>
-              <DialogTitle className="text-matrix-green">Create New Strategy</DialogTitle>
-              <DialogDescription className="text-matrix-green/70">
-                Choose a strategy type and configure its parameters
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-matrix-green">Strategy Name</Label>
-                <Input
-                  value={newStrategy.name || ''}
-                  onChange={(e) => setNewStrategy(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter strategy name"
-                  className="bg-black/40 border-matrix-green/20"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-matrix-green">Strategy Type</Label>
-                <Select
-                  value={newStrategy.type}
-                  onValueChange={(value) => setNewStrategy(prev => ({ ...prev, type: value as any }))}
-                >
-                  <SelectTrigger className="bg-black/40 border-matrix-green/20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {strategyTemplates.map(template => (
-                      <SelectItem key={template.type} value={template.type}>
-                        <div className="flex items-center gap-2">
-                          {getTypeIcon(template.type)}
-                          {template.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-matrix-green">Risk Profile</Label>
-                <Select
-                  value={newStrategy.riskProfile}
-                  onValueChange={(value) => setNewStrategy(prev => ({ ...prev, riskProfile: value as any }))}
-                >
-                  <SelectTrigger className="bg-black/40 border-matrix-green/20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="conservative">Conservative</SelectItem>
-                    <SelectItem value="moderate">Moderate</SelectItem>
-                    <SelectItem value="aggressive">Aggressive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button onClick={createStrategy} className="flex-1">
-                  Create Strategy
-                </Button>
-                <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="flex-1">
-                  Cancel
-                </Button>
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Strategy Configuration
+          </CardTitle>
+          <CardDescription>
+            Configure trading strategies and their parameters
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <div className="flex gap-4">
+              <p className="text-sm text-muted-foreground">
+                Active strategies: {strategies.filter(s => s.status === 'active').length} of {strategies.length}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Total P&L: ${strategies.reduce((sum, s) => sum + s.performance.avgReturn, 0).toFixed(2)}
+              </p>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <Button onClick={() => setShowTemplateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Strategy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Strategy Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {strategies.map((strategy) => (
-          <Card 
-            key={strategy.id} 
-            className={`border-matrix-green/20 bg-black/40 cursor-pointer transition-all hover:border-matrix-green/40 ${
-              selectedStrategy === strategy.id ? 'ring-2 ring-matrix-green/50' : ''
-            }`}
-            onClick={() => setSelectedStrategy(strategy.id)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-matrix-green/20 rounded-lg flex items-center justify-center">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Strategies List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Strategies</CardTitle>
+            <CardDescription>
+              Manage your trading strategies
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {strategies.map((strategy) => (
+              <div
+                key={strategy.id}
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  activeStrategy === strategy.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                }`}
+                onClick={() => setActiveStrategy(strategy.id)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
                     {getTypeIcon(strategy.type)}
+                    <h3 className="font-medium">{strategy.name}</h3>
+                    {getStatusBadge(strategy.status)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateStrategy(strategy);
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteStrategy(strategy.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Type:</span>
+                    <div className="font-medium capitalize">{strategy.type.replace('_', ' ')}</div>
                   </div>
                   <div>
-                    <h3 className="font-medium text-matrix-green">{strategy.name}</h3>
-                    <p className="text-xs text-matrix-green/60 capitalize">{strategy.type.replace('-', ' ')}</p>
+                    <span className="text-muted-foreground">Risk Level:</span>
+                    <div className="font-medium capitalize">{strategy.settings.riskLevel}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Trades:</span>
+                    <div className="font-medium">{strategy.performance.totalTrades}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Win Rate:</span>
+                    <div className="font-medium">{strategy.performance.winRate.toFixed(1)}%</div>
                   </div>
                 </div>
-                <Badge 
-                  variant="outline" 
-                  className={`text-xs ${getStatusColor(strategy.status)}/20 border-current`}
-                >
-                  {strategy.status}
-                </Badge>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-matrix-green/60">Risk Profile</span>
-                  <span className="text-matrix-green capitalize">{strategy.riskProfile}</span>
-                </div>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-matrix-green/60">Win Rate</span>
-                  <span className="text-matrix-green">{(strategy.performance.winRate * 100).toFixed(1)}%</span>
-                </div>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-matrix-green/60">Trades</span>
-                  <span className="text-matrix-green">{strategy.performance.totalTrades}</span>
-                </div>
-                
-                {strategy.lastRun && (
-                  <div className="text-xs text-matrix-green/50">
-                    Last run: {strategy.lastRun.toLocaleString()}
-                  </div>
-                )}
-              </div>
 
-              <div className="flex items-center gap-1 mt-3 pt-3 border-t border-matrix-green/10">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleStrategy(strategy.id);
-                  }}
-                  className="h-8 px-2"
-                >
-                  {strategy.status === 'active' ? (
-                    <Pause className="h-3 w-3" />
-                  ) : (
-                    <Play className="h-3 w-3" />
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    duplicateStrategy(strategy.id);
-                  }}
-                  className="h-8 px-2"
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteStrategy(strategy.id);
-                  }}
-                  className="h-8 px-2 text-red-400 hover:text-red-300"
-                >
-                  <Trash2 className="h-3 w-3" />
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Modified: {new Date(strategy.lastModified).toLocaleString()}
+                </div>
+              </div>
+            ))}
+
+            {strategies.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No strategies configured</p>
+                <Button onClick={() => setShowTemplateModal(true)} variant="outline" className="mt-2" size="sm">
+                  Create your first strategy
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Selected Strategy Configuration */}
-      {currentStrategy && (
-        <Card className="border-matrix-green/20 bg-black/40">
+        {/* Strategy Configuration */}
+        <Card>
           <CardHeader>
-            <CardTitle className="text-matrix-green flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              {currentStrategy.name} Configuration
-            </CardTitle>
-            <CardDescription className="text-matrix-green/70">
-              Configure parameters and settings for this strategy
+            <CardTitle>Configuration</CardTitle>
+            <CardDescription>
+              {activeStrategyData ? 'Configure strategy settings and parameters' : 'Select a strategy to configure'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="parameters" className="space-y-4">
-              <TabsList className="bg-black/60 border border-matrix-green/20">
-                <TabsTrigger value="parameters" className="data-[state=active]:bg-matrix-green/20">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Parameters
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="data-[state=active]:bg-matrix-green/20">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Settings
-                </TabsTrigger>
-                <TabsTrigger value="performance" className="data-[state=active]:bg-matrix-green/20">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Performance
-                </TabsTrigger>
-              </TabsList>
+            {activeStrategyData ? (
+              <Tabs defaultValue="basic" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="basic">Basic</TabsTrigger>
+                  <TabsTrigger value="parameters">Parameters</TabsTrigger>
+                  <TabsTrigger value="settings">Settings</TabsTrigger>
+                  <TabsTrigger value="performance">Performance</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="parameters" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(currentStrategy.parameters).map(([key, value]) => (
-                    <div key={key} className="space-y-2">
-                      <Label className="text-matrix-green capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </Label>
+                <TabsContent value="basic" className="space-y-4">
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="strategy-name-edit">Name</Label>
                       <Input
-                        type={typeof value === 'number' ? 'number' : 'text'}
-                        value={value}
-                        onChange={(e) => {
-                          const newValue = typeof value === 'number' ? 
-                            parseFloat(e.target.value) : e.target.value;
-                          updateStrategy(currentStrategy.id, {
-                            parameters: {
-                              ...currentStrategy.parameters,
-                              [key]: newValue
-                            }
-                          });
-                        }}
-                        className="bg-black/40 border-matrix-green/20"
+                        id="strategy-name-edit"
+                        value={activeStrategyData.name}
+                        onChange={(e) => updateStrategy(activeStrategyData.id, { name: e.target.value })}
                       />
                     </div>
-                  ))}
-                </div>
-              </TabsContent>
 
-              <TabsContent value="settings" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-matrix-green">Enabled</Label>
-                      <p className="text-xs text-matrix-green/60">Enable this strategy</p>
+                    <div>
+                      <Label htmlFor="strategy-type">Type</Label>
+                      <Select
+                        value={activeStrategyData.type}
+                        onValueChange={(value) => updateStrategy(activeStrategyData.id, { type: value as Strategy['type'] })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {strategyTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <Switch
-                      checked={currentStrategy.isEnabled}
-                      onCheckedChange={(checked) => updateStrategy(currentStrategy.id, { isEnabled: checked })}
-                    />
-                  </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-matrix-green">Auto Start</Label>
-                      <p className="text-xs text-matrix-green/60">Start automatically on system boot</p>
+                    <div>
+                      <Label htmlFor="strategy-description">Description</Label>
+                      <Textarea
+                        id="strategy-description"
+                        value={activeStrategyData.description}
+                        onChange={(e) => updateStrategy(activeStrategyData.id, { description: e.target.value })}
+                        placeholder="Strategy description"
+                      />
                     </div>
-                    <Switch
-                      checked={currentStrategy.autoStart}
-                      onCheckedChange={(checked) => updateStrategy(currentStrategy.id, { autoStart: checked })}
-                    />
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Status</Label>
+                        <p className="text-sm text-muted-foreground">
+                          {activeStrategyData.status === 'active' ? 'Strategy is currently running' : 
+                           activeStrategyData.status === 'paused' ? 'Strategy is paused' :
+                           'Strategy is not running'}
+                        </p>
+                      </div>
+                      <Button
+                        variant={activeStrategyData.status === 'active' ? 'destructive' : 'default'}
+                        size="sm"
+                        onClick={() => {
+                          const newStatus = activeStrategyData.status === 'active' ? 'inactive' : 'active';
+                          updateStrategy(activeStrategyData.id, { status: newStatus });
+                        }}
+                      >
+                        {activeStrategyData.status === 'active' ? (
+                          <>
+                            <Pause className="h-4 w-4 mr-2" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            Start
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="parameters" className="space-y-4">
+                  <div className="space-y-4">
+                    {Object.entries(activeStrategyData.parameters).map(([key, value]) => (
+                      <div key={key}>
+                        <Label htmlFor={`param-${key}`}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</Label>
+                        <Input
+                          id={`param-${key}`}
+                          value={String(value)}
+                          onChange={(e) => {
+                            const newParams = {
+                              ...activeStrategyData.parameters,
+                              [key]: e.target.value
+                            };
+                            updateStrategy(activeStrategyData.id, { parameters: newParams });
+                          }}
+                        />
+                      </div>
+                    ))}
+
+                    <Separator />
+
+                    <div>
+                      <Label htmlFor="new-param-name">Add Parameter</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="new-param-name"
+                          placeholder="Parameter name"
+                        />
+                        <Button variant="outline" size="sm">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="settings" className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Enable Strategy</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Allow this strategy to trade
+                        </p>
+                      </div>
+                      <Switch
+                        checked={activeStrategyData.settings.enabled}
+                        onCheckedChange={(checked) => {
+                          const newSettings = {
+                            ...activeStrategyData.settings,
+                            enabled: checked
+                          };
+                          updateStrategy(activeStrategyData.id, { settings: newSettings });
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Auto Start</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Automatically start strategy on system startup
+                        </p>
+                      </div>
+                      <Switch
+                        checked={activeStrategyData.settings.autoStart}
+                        onCheckedChange={(checked) => {
+                          const newSettings = {
+                            ...activeStrategyData.settings,
+                            autoStart: checked
+                          };
+                          updateStrategy(activeStrategyData.id, { settings: newSettings });
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Risk Level</Label>
+                      <Select
+                        value={activeStrategyData.settings.riskLevel}
+                        onValueChange={(value: 'low' | 'medium' | 'high') => {
+                          const newSettings = {
+                            ...activeStrategyData.settings,
+                            riskLevel: value
+                          };
+                          updateStrategy(activeStrategyData.id, { settings: newSettings });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {riskLevels.map((level) => (
+                            <SelectItem key={level.value} value={level.value}>
+                              {level.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label>Max Position Size: {activeStrategyData.settings.maxPositionSize}%</Label>
+                      <Slider
+                        value={[activeStrategyData.settings.maxPositionSize * 100]}
+                        onValueChange={([value]) => {
+                          const newSettings = {
+                            ...activeStrategyData.settings,
+                            maxPositionSize: value / 100
+                          };
+                          updateStrategy(activeStrategyData.id, { settings: newSettings });
+                        }}
+                        max={100}
+                        step={1}
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Confidence Threshold: {activeStrategyData.settings.confidence}</Label>
+                      <Slider
+                        value={[activeStrategyData.settings.confidence]}
+                        onValueChange={([value]) => {
+                          const newSettings = {
+                            ...activeStrategyData.settings,
+                            confidence: value
+                          };
+                          updateStrategy(activeStrategyData.id, { settings: newSettings });
+                        }}
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Lookback Period: {activeStrategyData.settings.lookbackPeriod} days</Label>
+                      <Slider
+                        value={[activeStrategyData.settings.lookbackPeriod]}
+                        onValueChange={([value]) => {
+                          const newSettings = {
+                            ...activeStrategyData.settings,
+                            lookbackPeriod: value
+                          };
+                          updateStrategy(activeStrategyData.id, { settings: newSettings });
+                        }}
+                        min={1}
+                        max={365}
+                        step={1}
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="performance" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 border rounded">
+                      <div className="text-sm text-muted-foreground">Total Trades</div>
+                      <div className="text-2xl font-bold">{activeStrategyData.performance.totalTrades}</div>
+                    </div>
+                    <div className="p-3 border rounded">
+                      <div className="text-sm text-muted-foreground">Win Rate</div>
+                      <div className="text-2xl font-bold">{activeStrategyData.performance.winRate.toFixed(1)}%</div>
+                    </div>
+                    <div className="p-3 border rounded">
+                      <div className="text-sm text-muted-foreground">Avg Return</div>
+                      <div className="text-2xl font-bold">${activeStrategyData.performance.avgReturn.toFixed(2)}</div>
+                    </div>
+                    <div className="p-3 border rounded">
+                      <div className="text-sm text-muted-foreground">Sharpe Ratio</div>
+                      <div className="text-2xl font-bold">{activeStrategyData.performance.sharpeRatio.toFixed(2)}</div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">Max Position Size</Label>
-                    <Input
-                      type="number"
-                      value={currentStrategy.settings.maxPositionSize}
-                      onChange={(e) => updateStrategy(currentStrategy.id, {
-                        settings: {
-                          ...currentStrategy.settings,
-                          maxPositionSize: parseFloat(e.target.value)
-                        }
-                      })}
-                      className="bg-black/40 border-matrix-green/20"
-                    />
+                  <div className="p-3 border rounded">
+                    <div className="text-sm text-muted-foreground">Max Drawdown</div>
+                    <div className="text-xl font-bold">{activeStrategyData.performance.maxDrawdown.toFixed(2)}%</div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">Confidence Threshold</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="1"
-                      value={currentStrategy.settings.confidence}
-                      onChange={(e) => updateStrategy(currentStrategy.id, {
-                        settings: {
-                          ...currentStrategy.settings,
-                          confidence: parseFloat(e.target.value)
-                        }
-                      })}
-                      className="bg-black/40 border-matrix-green/20"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">Lookback Period</Label>
-                    <Input
-                      type="number"
-                      value={currentStrategy.settings.lookbackPeriod}
-                      onChange={(e) => updateStrategy(currentStrategy.id, {
-                        settings: {
-                          ...currentStrategy.settings,
-                          lookbackPeriod: parseInt(e.target.value)
-                        }
-                      })}
-                      className="bg-black/40 border-matrix-green/20"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">Risk Profile</Label>
-                    <Select
-                      value={currentStrategy.riskProfile}
-                      onValueChange={(value: 'conservative' | 'moderate' | 'aggressive') => 
-                        updateStrategy(currentStrategy.id, { riskProfile: value })
-                      }
-                    >
-                      <SelectTrigger className="bg-black/40 border-matrix-green/20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="conservative">Conservative</SelectItem>
-                        <SelectItem value="moderate">Moderate</SelectItem>
-                        <SelectItem value="aggressive">Aggressive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="performance" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Card className="border-matrix-green/20 bg-black/20">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-matrix-green">{currentStrategy.performance.totalTrades}</div>
-                      <div className="text-sm text-matrix-green/60">Total Trades</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-matrix-green/20 bg-black/20">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-matrix-green">{(currentStrategy.performance.winRate * 100).toFixed(1)}%</div>
-                      <div className="text-sm text-matrix-green/60">Win Rate</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-matrix-green/20 bg-black/20">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-matrix-green">{(currentStrategy.performance.avgReturn * 100).toFixed(2)}%</div>
-                      <div className="text-sm text-matrix-green/60">Avg Return</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-matrix-green/20 bg-black/20">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-matrix-green">{currentStrategy.performance.sharpeRatio.toFixed(2)}</div>
-                      <div className="text-sm text-matrix-green/60">Sharpe Ratio</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-matrix-green/20 bg-black/20">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-matrix-green">{(currentStrategy.performance.maxDrawdown * 100).toFixed(1)}%</div>
-                      <div className="text-sm text-matrix-green/60">Max Drawdown</div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Performance metrics are updated in real-time while the strategy is running.
+                    </AlertDescription>
+                  </Alert>
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Select a strategy to configure its settings</p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      {/* Save Button */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              Changes are automatically saved to local storage
+            </p>
+            <Button onClick={saveStrategies}>
+              <FileText className="h-4 w-4 mr-2" />
+              Save All Strategies
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Template Modal */}
+      {showTemplateModal && <StrategyTemplateModal />}
     </div>
   );
 };

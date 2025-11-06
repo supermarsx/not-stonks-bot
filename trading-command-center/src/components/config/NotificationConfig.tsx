@@ -15,42 +15,41 @@ import {
   Bell, 
   Mail, 
   MessageSquare, 
-  Phone, 
-  Settings, 
-  AlertTriangle, 
-  CheckCircle, 
-  Plus, 
-  Trash2, 
-  Copy, 
-  TestTube 
+  Phone,
+  Settings,
+  AlertTriangle,
+  CheckCircle,
+  Plus,
+  Trash2,
+  Copy,
+  TestTube,
+  Clock,
+  Target,
+  Volume2,
+  Vibrate
 } from 'lucide-react';
 
-export interface NotificationChannel {
+interface NotificationChannel {
   id: string;
   name: string;
-  type: 'email' | 'sms' | 'webhook' | 'slack' | 'telegram' | 'discord';
+  type: 'email' | 'sms' | 'webhook' | 'push' | 'slack' | 'discord' | 'telegram';
   enabled: boolean;
   config: {
-    url?: string;
-    webhook?: string;
-    phone?: string;
+    endpoint?: string;
+    apiKey?: string;
+    recipients: string[];
+    template?: string;
+    webhookUrl?: string;
+    phoneNumber?: string;
     email?: string;
-    channel?: string;
-    username?: string;
-    token?: string;
   };
-}
-
-export interface NotificationTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  content: string;
-  variables: string[];
-}
-
-export interface NotificationSettings {
-  global: {
+  triggers: string[];
+  filters: {
+    minLevel: string;
+    categories: string[];
+    symbols?: string[];
+  };
+  schedule: {
     enabled: boolean;
     quietHours: {
       enabled: boolean;
@@ -58,698 +57,1021 @@ export interface NotificationSettings {
       end: string;
       timezone: string;
     };
+    cooldown: number; // minutes between similar notifications
   };
-  channels: NotificationChannel[];
-  templates: NotificationTemplate[];
-  alertRules: {
-    id: string;
-    name: string;
-    event: string;
-    severity: 'low' | 'medium' | 'high' | 'critical';
-    enabled: boolean;
-    channels: string[];
-    templateId: string;
-  }[];
-  rateLimit: {
-    enabled: boolean;
-    maxPerHour: number;
-    maxPerDay: number;
+  metrics: {
+    sentToday: number;
+    successRate: number;
+    avgResponseTime: number;
+    lastSent: string;
   };
 }
 
-const defaultNotificationSettings: NotificationSettings = {
-  global: {
+interface NotificationSettings {
+  enabled: boolean;
+  globalEnabled: boolean;
+  defaultLevel: 'info' | 'warning' | 'error' | 'critical';
+  batchNotifications: boolean;
+  batchInterval: number; // seconds
+  retryAttempts: number;
+  retryDelay: number;
+  escapeHtml: boolean;
+  includeStackTrace: boolean;
+}
+
+interface NotificationTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  variables: string[];
+  category: string;
+}
+
+const NotificationConfig: React.FC = () => {
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     enabled: true,
-    quietHours: {
-      enabled: false,
-      start: '22:00',
-      end: '08:00',
-      timezone: 'UTC'
-    }
-  },
-  channels: [
+    globalEnabled: true,
+    defaultLevel: 'warning',
+    batchNotifications: true,
+    batchInterval: 60,
+    retryAttempts: 3,
+    retryDelay: 5,
+    escapeHtml: true,
+    includeStackTrace: false
+  });
+
+  const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>([
     {
-      id: '1',
+      id: 'email_default',
       name: 'Email Notifications',
       type: 'email',
       enabled: true,
       config: {
-        email: 'admin@example.com'
+        email: 'trader@example.com',
+        recipients: ['trader@example.com'],
+        template: 'default'
+      },
+      triggers: ['trading_errors', 'risk_alerts', 'system_critical'],
+      filters: {
+        minLevel: 'warning',
+        categories: ['trading', 'risk', 'system']
+      },
+      schedule: {
+        enabled: true,
+        quietHours: {
+          enabled: true,
+          start: '22:00',
+          end: '08:00',
+          timezone: 'UTC'
+        },
+        cooldown: 30
+      },
+      metrics: {
+        sentToday: 12,
+        successRate: 0.95,
+        avgResponseTime: 2.3,
+        lastSent: new Date().toISOString()
       }
     },
     {
-      id: '2',
-      name: 'Slack Alerts',
+      id: 'webhook_default',
+      name: 'Slack Webhook',
       type: 'slack',
       enabled: false,
       config: {
-        webhook: '',
-        channel: '#alerts'
-      }
-    }
-  ],
-  templates: [
-    {
-      id: '1',
-      name: 'Trade Alert',
-      subject: 'Trade Alert: {{symbol}} {{action}}',
-      content: 'A {{action}} order for {{quantity}} shares of {{symbol}} has been executed at ${{price}}.',
-      variables: ['action', 'symbol', 'quantity', 'price']
-    },
-    {
-      id: '2',
-      name: 'Error Alert',
-      subject: 'System Error: {{errorType}}',
-      content: 'An error occurred: {{errorMessage}}. Please check the system logs for details.',
-      variables: ['errorType', 'errorMessage']
-    }
-  ],
-  alertRules: [
-    {
-      id: '1',
-      name: 'Trade Executed',
-      event: 'trade_executed',
-      severity: 'low',
-      enabled: true,
-      channels: ['1'],
-      templateId: '1'
-    },
-    {
-      id: '2',
-      name: 'System Error',
-      event: 'system_error',
-      severity: 'critical',
-      enabled: true,
-      channels: ['1', '2'],
-      templateId: '2'
-    }
-  ],
-  rateLimit: {
-    enabled: true,
-    maxPerHour: 100,
-    maxPerDay: 500
-  }
-};
-
-export default function NotificationConfig() {
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(defaultNotificationSettings);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [testResults, setTestResults] = useState<{[key: string]: 'success' | 'error' | null}>({});
-  const [newTemplate, setNewTemplate] = useState<Partial<NotificationTemplate>>({});
-
-  const handleGlobalChange = (field: string, value: any) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      global: {
-        ...prev.global,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleQuietHoursChange = (field: string, value: any) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      global: {
-        ...prev.global,
+        webhookUrl: '',
+        recipients: ['#trading-alerts']
+      },
+      triggers: ['all_errors', 'risk_alerts'],
+      filters: {
+        minLevel: 'error',
+        categories: ['trading', 'risk']
+      },
+      schedule: {
+        enabled: false,
         quietHours: {
-          ...prev.global.quietHours,
-          [field]: value
-        }
+          enabled: false,
+          start: '22:00',
+          end: '08:00',
+          timezone: 'UTC'
+        },
+        cooldown: 15
+      },
+      metrics: {
+        sentToday: 0,
+        successRate: 0,
+        avgResponseTime: 0,
+        lastSent: ''
       }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleChannelToggle = (channelId: string, enabled: boolean) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      channels: prev.channels.map(channel =>
-        channel.id === channelId ? { ...channel, enabled } : channel
-      )
-    }));
-    setHasChanges(true);
-  };
-
-  const handleChannelConfigChange = (channelId: string, field: string, value: any) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      channels: prev.channels.map(channel =>
-        channel.id === channelId 
-          ? { ...channel, config: { ...channel.config, [field]: value } }
-          : channel
-      )
-    }));
-    setHasChanges(true);
-  };
-
-  const handleTemplateEdit = (templateId: string, field: string, value: any) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      templates: prev.templates.map(template =>
-        template.id === templateId ? { ...template, [field]: value } : template
-      )
-    }));
-    setHasChanges(true);
-  };
-
-  const handleAddTemplate = () => {
-    if (newTemplate.name && newTemplate.subject && newTemplate.content) {
-      const template: NotificationTemplate = {
-        id: Date.now().toString(),
-        name: newTemplate.name!,
-        subject: newTemplate.subject!,
-        content: newTemplate.content!,
-        variables: newTemplate.variables || []
-      };
-      
-      setNotificationSettings(prev => ({
-        ...prev,
-        templates: [...prev.templates, template]
-      }));
-      
-      setNewTemplate({});
-      setHasChanges(true);
     }
-  };
+  ]);
 
-  const handleDeleteTemplate = (templateId: string) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      templates: prev.templates.filter(template => template.id !== templateId)
-    }));
-    setHasChanges(true);
-  };
+  const [templates] = useState<NotificationTemplate[]>([
+    {
+      id: 'default',
+      name: 'Default',
+      subject: '[Trading System] {{level}}: {{title}}',
+      body: `Alert Level: {{level}}\nTitle: {{title}}\nMessage: {{message}}\nTimestamp: {{timestamp}}\nSource: {{source}}`,
+      variables: ['level', 'title', 'message', 'timestamp', 'source'],
+      category: 'general'
+    },
+    {
+      id: 'trading_error',
+      name: 'Trading Error',
+      subject: '[Trading Error] {{symbol}} - {{error_type}}',
+      body: `A trading error occurred:\n\nSymbol: {{symbol}}\nError Type: {{error_type}}\nMessage: {{message}}\nOrder ID: {{order_id}}\nTimestamp: {{timestamp}}`,
+      variables: ['symbol', 'error_type', 'message', 'order_id', 'timestamp'],
+      category: 'trading'
+    },
+    {
+      id: 'risk_alert',
+      name: 'Risk Alert',
+      subject: '[Risk Alert] {{alert_type}} - {{risk_level}}',
+      body: `Risk Management Alert:\n\nAlert Type: {{alert_type}}\nRisk Level: {{risk_level}}\nMessage: {{message}}\nCurrent Exposure: {{exposure}}\nRecommendation: {{recommendation}}`,
+      variables: ['alert_type', 'risk_level', 'message', 'exposure', 'recommendation'],
+      category: 'risk'
+    }
+  ]);
 
-  const handleTestChannel = async (channelId: string) => {
-    setTestResults(prev => ({ ...prev, [channelId]: null }));
-    
-    // Simulate test
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Randomly succeed/fail for demo
-    const success = Math.random() > 0.3;
-    setTestResults(prev => ({ ...prev, [channelId]: success ? 'success' : 'error' }));
-  };
+  const [activeChannel, setActiveChannel] = useState<string>('email_default');
+  const [isTesting, setIsTesting] = useState<string | null>(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = async () => {
-    setIsLoading(true);
+  const triggerTypes = [
+    'all_errors',
+    'trading_errors',
+    'risk_alerts',
+    'system_critical',
+    'position_opened',
+    'position_closed',
+    'profit_target_reached',
+    'stop_loss_triggered',
+    'connection_lost',
+    'api_errors'
+  ];
+
+  const logLevels = [
+    { value: 'info', label: 'Info' },
+    { value: 'warning', label: 'Warning' },
+    { value: 'error', label: 'Error' },
+    { value: 'critical', label: 'Critical' }
+  ];
+
+  const categories = [
+    'trading', 'risk', 'system', 'broker', 'strategy', 'ai', 'performance', 'security'
+  ];
+
+  const channelTypes = [
+    { value: 'email', label: 'Email', icon: Mail },
+    { value: 'sms', label: 'SMS', icon: Phone },
+    { value: 'webhook', label: 'Webhook', icon: Settings },
+    { value: 'push', label: 'Push Notification', icon: Bell },
+    { value: 'slack', label: 'Slack', icon: MessageSquare },
+    { value: 'discord', label: 'Discord', icon: MessageSquare },
+    { value: 'telegram', label: 'Telegram', icon: MessageSquare }
+  ];
+
+  useEffect(() => {
+    loadNotificationConfiguration();
+  }, []);
+
+  const loadNotificationConfiguration = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setHasChanges(false);
+      const config = await window.electronAPI?.getNotificationConfig();
+      if (config) {
+        setNotificationSettings(config.settings || notificationSettings);
+        setNotificationChannels(config.channels || notificationChannels);
+      }
     } catch (error) {
-      console.error('Failed to save notification settings:', error);
+      console.error('Failed to load notification configuration:', error);
+    }
+  };
+
+  const saveNotificationConfiguration = async () => {
+    setSaving(true);
+    try {
+      await window.electronAPI?.saveNotificationConfig({
+        settings: notificationSettings,
+        channels: notificationChannels
+      });
+    } catch (error) {
+      console.error('Failed to save notification configuration:', error);
     } finally {
-      setIsLoading(false);
+      setSaving(false);
     }
   };
 
-  const getChannelIcon = (type: string) => {
-    switch (type) {
-      case 'email': return <Mail className="h-4 w-4" />;
-      case 'sms': return <Phone className="h-4 w-4" />;
-      case 'webhook': return <MessageSquare className="h-4 w-4" />;
-      case 'slack': return <MessageSquare className="h-4 w-4" />;
-      case 'telegram': return <MessageSquare className="h-4 w-4" />;
-      case 'discord': return <MessageSquare className="h-4 w-4" />;
-      default: return <Bell className="h-4 w-4" />;
+  const addNotificationChannel = () => {
+    const newChannel: NotificationChannel = {
+      id: `channel_${Date.now()}`,
+      name: 'New Channel',
+      type: 'email',
+      enabled: false,
+      config: {
+        recipients: []
+      },
+      triggers: [],
+      filters: {
+        minLevel: 'warning',
+        categories: []
+      },
+      schedule: {
+        enabled: true,
+        quietHours: {
+          enabled: true,
+          start: '22:00',
+          end: '08:00',
+          timezone: 'UTC'
+        },
+        cooldown: 30
+      },
+      metrics: {
+        sentToday: 0,
+        successRate: 0,
+        avgResponseTime: 0,
+        lastSent: ''
+      }
+    };
+    setNotificationChannels([...notificationChannels, newChannel]);
+    setActiveChannel(newChannel.id);
+  };
+
+  const updateNotificationChannel = (id: string, updates: Partial<NotificationChannel>) => {
+    setNotificationChannels(channels => 
+      channels.map(channel => channel.id === id ? { ...channel, ...updates } : channel)
+    );
+  };
+
+  const deleteNotificationChannel = (id: string) => {
+    setNotificationChannels(channels => channels.filter(channel => channel.id !== id));
+    if (activeChannel === id) {
+      const remaining = notificationChannels.filter(c => c.id !== id);
+      setActiveChannel(remaining.length > 0 ? remaining[0].id : '');
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'low': return 'bg-blue-100 text-blue-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'critical': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const duplicateChannel = (channel: NotificationChannel) => {
+    const duplicated: NotificationChannel = {
+      ...channel,
+      id: `channel_${Date.now()}`,
+      name: `${channel.name} (Copy)`,
+      enabled: false,
+      metrics: {
+        sentToday: 0,
+        successRate: 0,
+        avgResponseTime: 0,
+        lastSent: ''
+      }
+    };
+    setNotificationChannels([...notificationChannels, duplicated]);
+    setActiveChannel(duplicated.id);
+  };
+
+  const testNotification = async (channel: NotificationChannel) => {
+    setIsTesting(channel.id);
+    try {
+      // Simulate notification test
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      updateNotificationChannel(channel.id, {
+        metrics: {
+          ...channel.metrics,
+          sentToday: channel.metrics.sentToday + 1,
+          lastSent: new Date().toISOString(),
+          successRate: Math.min(1, channel.metrics.successRate + 0.05)
+        }
+      });
+    } catch (error) {
+      console.error('Failed to test notification:', error);
+    } finally {
+      setIsTesting(null);
     }
   };
+
+  const getTypeIcon = (type: string) => {
+    const channelType = channelTypes.find(ct => ct.value === type);
+    return channelType ? <channelType.icon className="h-4 w-4" /> : <Bell className="h-4 w-4" />;
+  };
+
+  const getStatusBadge = (enabled: boolean) => {
+    return (
+      <Badge variant={enabled ? 'default' : 'outline'}>
+        {enabled ? 'Active' : 'Inactive'}
+      </Badge>
+    );
+  };
+
+  const activeChannelData = notificationChannels.find(c => c.id === activeChannel);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Bell className="h-6 w-6 text-blue-600" />
-          <h2 className="text-2xl font-bold">Notification Configuration</h2>
-        </div>
-        <Button onClick={handleSave} disabled={!hasChanges || isLoading}>
-          {isLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-          ) : (
-            <Settings className="h-4 w-4 mr-2" />
-          )}
-          Save Changes
-        </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Notification Configuration
+          </CardTitle>
+          <CardDescription>
+            Configure alert channels and notification templates
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={notificationSettings.enabled}
+                  onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, enabled: checked }))}
+                />
+                <Label>Notification System {notificationSettings.enabled ? 'Enabled' : 'Disabled'}</Label>
+              </div>
+              <Badge variant={notificationSettings.globalEnabled ? 'default' : 'outline'}>
+                {notificationSettings.globalEnabled ? 'Global Active' : 'Global Inactive'}
+              </Badge>
+            </div>
+            <Button onClick={saveNotificationConfiguration} disabled={saving}>
+              <Settings className="h-4 w-4 mr-2" />
+              {saving ? 'Saving...' : 'Save Configuration'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Metrics Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active Channels</p>
+                <p className="text-2xl font-bold">{notificationChannels.filter(c => c.enabled).length}</p>
+              </div>
+              <Bell className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Sent Today</p>
+                <p className="text-2xl font-bold">
+                  {notificationChannels.reduce((sum, c) => sum + c.metrics.sentToday, 0)}
+                </p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Success Rate</p>
+                <p className="text-2xl font-bold">
+                  {((notificationChannels.reduce((sum, c) => sum + c.metrics.successRate, 0) / notificationChannels.length) * 100).toFixed(1)}%
+                </p>
+              </div>
+              <Target className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Response</p>
+                <p className="text-2xl font-bold">
+                  {(notificationChannels.reduce((sum, c) => sum + c.metrics.avgResponseTime, 0) / notificationChannels.length).toFixed(1)}s
+                </p>
+              </div>
+              <Clock className="h-8 w-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Tabs defaultValue="channels" className="w-full">
+      {/* Configuration Tabs */}
+      <Tabs defaultValue="channels" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="triggers">Triggers</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="rules">Alert Rules</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="channels" className="space-y-4">
-          {notificationSettings.channels.map((channel) => (
-            <Card key={channel.id}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Channels List */}
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center space-x-2">
-                    {getChannelIcon(channel.type)}
-                    <span>{channel.name}</span>
-                  </CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={channel.enabled ? 'default' : 'secondary'}>
-                      {channel.enabled ? 'Enabled' : 'Disabled'}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTestChannel(channel.id)}
-                    >
-                      <TestTube className="h-4 w-4 mr-2" />
-                      Test
-                    </Button>
+                  <div>
+                    <CardTitle>Notification Channels</CardTitle>
+                    <CardDescription>
+                      Manage your notification delivery methods
+                    </CardDescription>
                   </div>
+                  <Button onClick={addNotificationChannel} size="sm">
+                    Add Channel
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={channel.enabled}
-                    onCheckedChange={(checked) => handleChannelToggle(channel.id, checked)}
-                  />
-                  <Label>Enable this channel</Label>
-                </div>
-
-                {channel.enabled && (
-                  <div className="space-y-4">
-                    {/* Channel-specific configuration */}
-                    {channel.type === 'email' && (
-                      <div className="space-y-2">
-                        <Label>Email Address</Label>
-                        <Input
-                          type="email"
-                          value={channel.config.email || ''}
-                          onChange={(e) => handleChannelConfigChange(channel.id, 'email', e.target.value)}
-                          placeholder="admin@example.com"
-                        />
+                {notificationChannels.map((channel) => (
+                  <div
+                    key={channel.id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      activeChannel === channel.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => setActiveChannel(channel.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {getTypeIcon(channel.type)}
+                        <h3 className="font-medium">{channel.name}</h3>
+                        {getStatusBadge(channel.enabled)}
                       </div>
-                    )}
-
-                    {(channel.type === 'slack' || channel.type === 'discord') && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Webhook URL</Label>
-                          <Input
-                            value={channel.config.webhook || ''}
-                            onChange={(e) => handleChannelConfigChange(channel.id, 'webhook', e.target.value)}
-                            placeholder="https://hooks.slack.com/services/..."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Channel</Label>
-                          <Input
-                            value={channel.config.channel || ''}
-                            onChange={(e) => handleChannelConfigChange(channel.id, 'channel', e.target.value)}
-                            placeholder="#alerts"
-                          />
-                        </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            testNotification(channel);
+                          }}
+                          disabled={isTesting === channel.id || !channel.enabled}
+                        >
+                          <TestTube className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            duplicateChannel(channel);
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotificationChannel(channel.id);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
-                    )}
+                    </div>
 
-                    {channel.type === 'sms' && (
-                      <div className="space-y-2">
-                        <Label>Phone Number</Label>
-                        <Input
-                          value={channel.config.phone || ''}
-                          onChange={(e) => handleChannelConfigChange(channel.id, 'phone', e.target.value)}
-                          placeholder="+1234567890"
-                        />
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Type:</span>
+                        <div className="font-medium capitalize">{channel.type}</div>
                       </div>
-                    )}
-
-                    {channel.type === 'webhook' && (
-                      <div className="space-y-2">
-                        <Label>Webhook URL</Label>
-                        <Input
-                          value={channel.config.url || ''}
-                          onChange={(e) => handleChannelConfigChange(channel.id, 'url', e.target.value)}
-                          placeholder="https://your-webhook-url.com"
-                        />
+                      <div>
+                        <span className="text-muted-foreground">Recipients:</span>
+                        <div className="font-medium">{channel.config.recipients.length}</div>
                       </div>
-                    )}
+                      <div>
+                        <span className="text-muted-foreground">Triggers:</span>
+                        <div className="font-medium">{channel.triggers.length}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Sent Today:</span>
+                        <div className="font-medium">{channel.metrics.sentToday}</div>
+                      </div>
+                    </div>
 
-                    {/* Test results */}
-                    {testResults[channel.id] && (
-                      <Alert variant={testResults[channel.id] === 'success' ? 'default' : 'destructive'}>
-                        {testResults[channel.id] === 'success' ? (
-                          <CheckCircle className="h-4 w-4" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4" />
-                        )}
-                        <AlertDescription>
-                          {testResults[channel.id] === 'success' 
-                            ? 'Test notification sent successfully!' 
-                            : 'Test notification failed. Please check your configuration.'}
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    <div className="mt-2 flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        {channel.filters.minLevel} level
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        Success: {(channel.metrics.successRate * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {notificationChannels.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No notification channels configured</p>
+                    <Button onClick={addNotificationChannel} variant="outline" className="mt-2" size="sm">
+                      Add your first channel
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
-          ))}
+
+            {/* Channel Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Channel Configuration</CardTitle>
+                <CardDescription>
+                  {activeChannelData ? 'Configure channel settings and parameters' : 'Select a channel to configure'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeChannelData ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="channel-name">Channel Name</Label>
+                      <Input
+                        id="channel-name"
+                        value={activeChannelData.name}
+                        onChange={(e) => updateNotificationChannel(activeChannelData.id, { name: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="channel-type">Channel Type</Label>
+                      <Select
+                        value={activeChannelData.type}
+                        onValueChange={(value: any) => updateNotificationChannel(activeChannelData.id, { type: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {channelTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Enable Channel</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Activate this notification channel
+                        </p>
+                      </div>
+                      <Switch
+                        checked={activeChannelData.enabled}
+                        onCheckedChange={(checked) => updateNotificationChannel(activeChannelData.id, { enabled: checked })}
+                      />
+                    </div>
+
+                    <Separator />
+
+                    {/* Type-specific configuration */}
+                    {(activeChannelData.type === 'email' || activeChannelData.type === 'sms') && (
+                      <div>
+                        <Label htmlFor="recipients">Recipients</Label>
+                        <Textarea
+                          id="recipients"
+                          value={activeChannelData.config.recipients.join('\n')}
+                          onChange={(e) => {
+                            const recipients = e.target.value.split('\n').filter(r => r.trim());
+                            updateNotificationChannel(activeChannelData.id, {
+                              config: { ...activeChannelData.config, recipients }
+                            });
+                          }}
+                          placeholder="Enter email addresses or phone numbers (one per line)"
+                          rows={3}
+                        />
+                      </div>
+                    )}
+
+                    {activeChannelData.type === 'slack' || activeChannelData.type === 'discord' || activeChannelData.type === 'telegram' || activeChannelData.type === 'webhook' ? (
+                      <div>
+                        <Label htmlFor="webhook-url">
+                          {activeChannelData.type === 'webhook' ? 'Webhook URL' : 'Channel/Endpoint'}
+                        </Label>
+                        <Input
+                          id="webhook-url"
+                          value={activeChannelData.config.webhookUrl || ''}
+                          onChange={(e) => updateNotificationChannel(activeChannelData.id, {
+                            config: { ...activeChannelData.config, webhookUrl: e.target.value }
+                          })}
+                          placeholder="Enter webhook URL or channel identifier"
+                        />
+                      </div>
+                    )}
+
+                    {activeChannelData.type !== 'webhook' && (
+                      <>
+                        <div>
+                          <Label htmlFor="template">Template</Label>
+                          <Select
+                            value={activeChannelData.config.template || 'default'}
+                            onValueChange={(value) => updateNotificationChannel(activeChannelData.id, {
+                              config: { ...activeChannelData.config, template: value }
+                            })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {templates.map((template) => (
+                                <SelectItem key={template.id} value={template.id}>
+                                  {template.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="api-key">API Key (Optional)</Label>
+                          <Input
+                            id="api-key"
+                            type="password"
+                            value={activeChannelData.config.apiKey || ''}
+                            onChange={(e) => updateNotificationChannel(activeChannelData.id, {
+                              config: { ...activeChannelData.config, apiKey: e.target.value }
+                            })}
+                            placeholder="Enter API key if required"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Filters */}
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Filters</h3>
+                      
+                      <div>
+                        <Label>Minimum Level</Label>
+                        <Select
+                          value={activeChannelData.filters.minLevel}
+                          onValueChange={(value) => updateNotificationChannel(activeChannelData.id, {
+                            filters: { ...activeChannelData.filters, minLevel: value }
+                          })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {logLevels.map((level) => (
+                              <SelectItem key={level.value} value={level.value}>
+                                {level.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="mt-3">
+                        <Label>Categories</Label>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {categories.map((category) => (
+                            <div key={category} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`category-${category}`}
+                                checked={activeChannelData.filters.categories.includes(category)}
+                                onChange={(e) => {
+                                  const categories = activeChannelData.filters.categories;
+                                  const newCategories = e.target.checked
+                                    ? [...categories, category]
+                                    : categories.filter(c => c !== category);
+                                  updateNotificationChannel(activeChannelData.id, {
+                                    filters: { ...activeChannelData.filters, categories: newCategories }
+                                  });
+                                }}
+                                className="rounded"
+                              />
+                              <Label htmlFor={`category-${category}`} className="text-sm capitalize">
+                                {category}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Select a channel to configure its settings</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="triggers" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Triggers</CardTitle>
+              <CardDescription>
+                Configure when notifications should be sent
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activeChannelData && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Active Triggers</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                      {triggerTypes.map((trigger) => (
+                        <div key={trigger} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`trigger-${trigger}`}
+                            checked={activeChannelData.triggers.includes(trigger)}
+                            onChange={(e) => {
+                              const triggers = activeChannelData.triggers;
+                              const newTriggers = e.target.checked
+                                ? [...triggers, trigger]
+                                : triggers.filter(t => t !== trigger);
+                              updateNotificationChannel(activeChannelData.id, { triggers: newTriggers });
+                            }}
+                            className="rounded"
+                          />
+                          <Label htmlFor={`trigger-${trigger}`} className="text-sm">
+                            {trigger.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Schedule Settings</h3>
+                    
+                    <div className="flex items-center justify-between mb-3">
+                      <Label>Quiet Hours</Label>
+                      <Switch
+                        checked={activeChannelData.schedule.quietHours.enabled}
+                        onCheckedChange={(checked) => updateNotificationChannel(activeChannelData.id, {
+                          schedule: {
+                            ...activeChannelData.schedule,
+                            quietHours: {
+                              ...activeChannelData.schedule.quietHours,
+                              enabled: checked
+                            }
+                          }
+                        })}
+                      />
+                    </div>
+
+                    {activeChannelData.schedule.quietHours.enabled && (
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <Label>Start Time</Label>
+                          <Input
+                            type="time"
+                            value={activeChannelData.schedule.quietHours.start}
+                            onChange={(e) => updateNotificationChannel(activeChannelData.id, {
+                              schedule: {
+                                ...activeChannelData.schedule,
+                                quietHours: {
+                                  ...activeChannelData.schedule.quietHours,
+                                  start: e.target.value
+                                }
+                              }
+                            })}
+                          />
+                        </div>
+                        <div>
+                          <Label>End Time</Label>
+                          <Input
+                            type="time"
+                            value={activeChannelData.schedule.quietHours.end}
+                            onChange={(e) => updateNotificationChannel(activeChannelData.id, {
+                              schedule: {
+                                ...activeChannelData.schedule,
+                                quietHours: {
+                                  ...activeChannelData.schedule.quietHours,
+                                  end: e.target.value
+                                }
+                              }
+                            })}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label>Cooldown Period: {activeChannelData.schedule.cooldown} minutes</Label>
+                      <Slider
+                        value={[activeChannelData.schedule.cooldown]}
+                        onValueChange={([value]) => updateNotificationChannel(activeChannelData.id, {
+                          schedule: { ...activeChannelData.schedule, cooldown: value }
+                        })}
+                        min={1}
+                        max={120}
+                        step={5}
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Create New Template</CardTitle>
-              <CardDescription>
-                Create a new notification template with customizable variables
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Notification Templates</CardTitle>
+                  <CardDescription>
+                    Manage notification message templates and formatting
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowTemplateModal(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Template
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Template Name</Label>
-                  <Input
-                    value={newTemplate.name || ''}
-                    onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Template Name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Subject</Label>
-                  <Input
-                    value={newTemplate.subject || ''}
-                    onChange={(e) => setNewTemplate(prev => ({ ...prev, subject: e.target.value }))}
-                    placeholder="Notification Subject"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Content</Label>
-                <Textarea
-                  value={newTemplate.content || ''}
-                  onChange={(e) => setNewTemplate(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Notification content with {{variables}}"
-                  rows={4}
-                />
-              </div>
-              
-              <Button onClick={handleAddTemplate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Template
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Existing Templates</h3>
-            {notificationSettings.templates.map((template) => (
-              <Card key={template.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{template.name}</CardTitle>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteTemplate(template.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Subject</Label>
-                    <Input
-                      value={template.subject}
-                      onChange={(e) => handleTemplateEdit(template.id, 'subject', e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Content</Label>
-                    <Textarea
-                      value={template.content}
-                      onChange={(e) => handleTemplateEdit(template.id, 'content', e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  
-                  {template.variables.length > 0 && (
-                    <div className="space-y-2">
-                      <Label>Variables</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {template.variables.map((variable) => (
-                          <Badge key={variable} variant="outline">
-                            {variable}
-                          </Badge>
-                        ))}
+            <CardContent>
+              <div className="space-y-4">
+                {templates.map((template) => (
+                  <div key={template.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium">{template.name}</h3>
+                      <Badge variant="outline">{template.category}</Badge>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Subject:</span>
+                        <div className="font-mono bg-gray-50 p-2 rounded">{template.subject}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Body:</span>
+                        <div className="font-mono bg-gray-50 p-2 rounded text-xs">{template.body}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Variables:</span>
+                        <div className="flex gap-1 mt-1">
+                          {template.variables.map((variable) => (
+                            <Badge key={variable} variant="secondary" className="text-xs">
+                              {`{{${variable}}}`}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="rules" className="space-y-4">
-          {notificationSettings.alertRules.map((rule) => (
-            <Card key={rule.id}>
+        <TabsContent value="settings" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center space-x-2">
-                    <span>{rule.name}</span>
-                    <Badge className={getSeverityColor(rule.severity)}>
-                      {rule.severity}
-                    </Badge>
-                  </CardTitle>
-                  <Switch
-                    checked={rule.enabled}
-                    onCheckedChange={(checked) => {
-                      setNotificationSettings(prev => ({
-                        ...prev,
-                        alertRules: prev.alertRules.map(r =>
-                          r.id === rule.id ? { ...r, enabled: checked } : r
-                        )
-                      }));
-                      setHasChanges(true);
-                    }}
-                  />
-                </div>
+                <CardTitle>Global Settings</CardTitle>
                 <CardDescription>
-                  Triggers on: {rule.event}
+                  Configure notification system behavior
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Template</Label>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Global Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable/disable all notifications globally
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.globalEnabled}
+                    onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, globalEnabled: checked }))}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="default-level">Default Alert Level</Label>
                   <Select
-                    value={rule.templateId}
-                    onValueChange={(value) => {
-                      setNotificationSettings(prev => ({
-                        ...prev,
-                        alertRules: prev.alertRules.map(r =>
-                          r.id === rule.id ? { ...r, templateId: value } : r
-                        )
-                      }));
-                      setHasChanges(true);
-                    }}
+                    value={notificationSettings.defaultLevel}
+                    onValueChange={(value: any) => setNotificationSettings(prev => ({ ...prev, defaultLevel: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {notificationSettings.templates.map(template => (
-                        <SelectItem key={template.id} value={template.id}>
-                          {template.name}
+                      {logLevels.map((level) => (
+                        <SelectItem key={level.value} value={level.value}>
+                          {level.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Notification Channels</Label>
-                  <div className="space-y-2">
-                    {notificationSettings.channels.map(channel => (
-                      <div key={channel.id} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={rule.channels.includes(channel.id)}
-                          onChange={(e) => {
-                            const updatedChannels = e.target.checked
-                              ? [...rule.channels, channel.id]
-                              : rule.channels.filter(id => id !== channel.id);
-                            
-                            setNotificationSettings(prev => ({
-                              ...prev,
-                              alertRules: prev.alertRules.map(r =>
-                                r.id === rule.id ? { ...r, channels: updatedChannels } : r
-                              )
-                            }));
-                            setHasChanges(true);
-                          }}
-                        />
-                        <Label className="text-sm">{channel.name}</Label>
-                      </div>
-                    ))}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Batch Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Group similar notifications together
+                    </p>
                   </div>
+                  <Switch
+                    checked={notificationSettings.batchNotifications}
+                    onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, batchNotifications: checked }))}
+                  />
+                </div>
+
+                <div>
+                  <Label>Batch Interval: {notificationSettings.batchInterval}s</Label>
+                  <Slider
+                    value={[notificationSettings.batchInterval]}
+                    onValueChange={([value]) => setNotificationSettings(prev => ({ ...prev, batchInterval: value }))}
+                    min={30}
+                    max={300}
+                    step={10}
+                    className="mt-2"
+                  />
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </TabsContent>
 
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Global Settings</CardTitle>
-              <CardDescription>
-                Configure global notification behavior and limits
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={notificationSettings.global.enabled}
-                  onCheckedChange={(checked) => handleGlobalChange('enabled', checked)}
-                />
-                <Label>Enable Notifications</Label>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold flex items-center space-x-2">
-                  <Bell className="h-4 w-4" />
-                  <span>Quiet Hours</span>
-                </h4>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={notificationSettings.global.quietHours.enabled}
-                      onCheckedChange={(checked) => handleQuietHoursChange('enabled', checked)}
-                    />
-                    <Label>Enable Quiet Hours</Label>
-                  </div>
-                  
-                  {notificationSettings.global.quietHours.enabled && (
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Start Time</Label>
-                        <Input
-                          type="time"
-                          value={notificationSettings.global.quietHours.start}
-                          onChange={(e) => handleQuietHoursChange('start', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>End Time</Label>
-                        <Input
-                          type="time"
-                          value={notificationSettings.global.quietHours.end}
-                          onChange={(e) => handleQuietHoursChange('end', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Timezone</Label>
-                        <Select
-                          value={notificationSettings.global.quietHours.timezone}
-                          onValueChange={(value) => handleQuietHoursChange('timezone', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="UTC">UTC</SelectItem>
-                            <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                            <SelectItem value="America/Chicago">Central Time</SelectItem>
-                            <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                            <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Delivery Settings</CardTitle>
+                <CardDescription>
+                  Configure notification delivery and retry behavior
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Retry Attempts</Label>
+                  <Input
+                    type="number"
+                    value={notificationSettings.retryAttempts}
+                    onChange={(e) => setNotificationSettings(prev => ({ ...prev, retryAttempts: Number(e.target.value) }))}
+                  />
                 </div>
-              </div>
 
-              <Separator />
-
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold flex items-center space-x-2">
-                  <Settings className="h-4 w-4" />
-                  <span>Rate Limiting</span>
-                </h4>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={notificationSettings.rateLimit.enabled}
-                      onCheckedChange={(checked) => {
-                        setNotificationSettings(prev => ({
-                          ...prev,
-                          rateLimit: { ...prev.rateLimit, enabled: checked }
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <Label>Enable Rate Limiting</Label>
-                  </div>
-                  
-                  {notificationSettings.rateLimit.enabled && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Max per Hour</Label>
-                        <Input
-                          type="number"
-                          value={notificationSettings.rateLimit.maxPerHour}
-                          onChange={(e) => {
-                            setNotificationSettings(prev => ({
-                              ...prev,
-                              rateLimit: { ...prev.rateLimit, maxPerHour: parseInt(e.target.value) }
-                            }));
-                            setHasChanges(true);
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Max per Day</Label>
-                        <Input
-                          type="number"
-                          value={notificationSettings.rateLimit.maxPerDay}
-                          onChange={(e) => {
-                            setNotificationSettings(prev => ({
-                              ...prev,
-                              rateLimit: { ...prev.rateLimit, maxPerDay: parseInt(e.target.value) }
-                            }));
-                            setHasChanges(true);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                <div>
+                  <Label>Retry Delay: {notificationSettings.retryDelay}s</Label>
+                  <Slider
+                    value={[notificationSettings.retryDelay]}
+                    onValueChange={([value]) => setNotificationSettings(prev => ({ ...prev, retryDelay: value }))}
+                    min={1}
+                    max={60}
+                    step={1}
+                    className="mt-2"
+                  />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Escape HTML</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Escape HTML in notification messages
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.escapeHtml}
+                    onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, escapeHtml: checked }))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Include Stack Trace</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Include stack traces in error notifications
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.includeStackTrace}
+                    onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, includeStackTrace: checked }))}
+                  />
+                </div>
+
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Adjust retry settings carefully to avoid spam notifications while ensuring critical alerts are delivered.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
   );
-}
+};
+
+export default NotificationConfig;

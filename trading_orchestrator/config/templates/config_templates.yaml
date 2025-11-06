@@ -1,0 +1,385 @@
+# Configuration Templates for Trading Orchestrator
+# This file defines template variables and environment-specific configurations
+
+templates:
+  development:
+    description: "Development environment template"
+    variables:
+      environment: "development"
+      debug: true
+      log_level: "DEBUG"
+      api_port: 8000
+      database_url: "sqlite:///./dev_trading.db"
+      max_position_size: 1000.0
+      max_daily_loss: 100.0
+      rate_limit_requests: 1000
+      ai_provider: "openai"
+      enable_metrics: false
+    config:
+      database:
+        echo: true
+        pool_size: 5
+      brokers:
+        enabled: true
+        testnet: true
+        paper_trading: true
+      risk:
+        conservative: true
+        max_leverage: 1.0
+      logging:
+        level: "DEBUG"
+        file: "logs/dev_trading.log"
+
+  staging:
+    description: "Staging environment template"
+    variables:
+      environment: "staging"
+      debug: false
+      log_level: "INFO"
+      api_port: 8000
+      database_url: "postgresql://staging_user:password@staging-db:5432/trading_staging"
+      max_position_size: 5000.0
+      max_daily_loss: 500.0
+      rate_limit_requests: 500
+      ai_provider: "openai"
+      enable_metrics: true
+    config:
+      database:
+        echo: false
+        pool_size: 10
+      brokers:
+        enabled: true
+        testnet: true
+        paper_trading: true
+      risk:
+        moderate: true
+        max_leverage: 1.5
+      logging:
+        level: "INFO"
+        file: "logs/staging_trading.log"
+      monitoring:
+        enabled: true
+        metrics_port: 9090
+
+  production:
+    description: "Production environment template"
+    variables:
+      environment: "production"
+      debug: false
+      log_level: "WARNING"
+      api_port: 8000
+      database_url: "postgresql://prod_user:password@prod-db:5432/trading_production"
+      max_position_size: 100000.0
+      max_daily_loss: 10000.0
+      rate_limit_requests: 100
+      ai_provider: "openai"
+      enable_metrics: true
+      encryption_enabled: true
+    config:
+      database:
+        echo: false
+        pool_size: 20
+        ssl_mode: "require"
+      brokers:
+        enabled: true
+        testnet: false
+        paper_trading: false
+      risk:
+        aggressive: false
+        max_leverage: 2.0
+        circuit_breakers: true
+      logging:
+        level: "WARNING"
+        file: "logs/production_trading.log"
+        rotation: "1 day"
+        retention: "30 days"
+      monitoring:
+        enabled: true
+        metrics_port: 9090
+        prometheus_enabled: true
+      security:
+        encryption: true
+        audit_logging: true
+        access_control: true
+
+  local:
+    description: "Local development template"
+    variables:
+      environment: "local"
+      debug: true
+      log_level: "DEBUG"
+      api_port: 8000
+      database_url: "sqlite:///./local_trading.db"
+      max_position_size: 500.0
+      max_daily_loss: 50.0
+      rate_limit_requests: 2000
+      ai_provider: "local"
+      enable_metrics: false
+    config:
+      database:
+        echo: true
+        pool_size: 3
+      brokers:
+        enabled: false  # Disable for local development
+      risk:
+        very_conservative: true
+        max_leverage: 0.5
+      logging:
+        level: "DEBUG"
+        file: "logs/local_trading.log"
+        console: true
+      ui:
+        theme: "matrix"
+        refresh_rate: 500
+
+  cloud:
+    description: "Cloud deployment template"
+    variables:
+      environment: "cloud"
+      debug: false
+      log_level: "INFO"
+      api_port: 8000
+      database_url: "postgresql://cloud_user:password@cloud-db:5432/trading_cloud"
+      max_position_size: 50000.0
+      max_daily_loss: 5000.0
+      rate_limit_requests: 200
+      ai_provider: "openai"
+      enable_metrics: true
+      cloud_provider: "aws"
+    config:
+      database:
+        echo: false
+        pool_size: 15
+        ssl_mode: "require"
+        connection_timeout: 30
+      brokers:
+        enabled: true
+        testnet: false
+        paper_trading: false
+      risk:
+        balanced: true
+        max_leverage: 1.5
+        circuit_breakers: true
+      logging:
+        level: "INFO"
+        file: "/var/log/trading-orchestrator.log"
+        cloud_logging: true
+        structured_logging: true
+      monitoring:
+        enabled: true
+        metrics_port: 9090
+        cloudwatch_enabled: true
+        alerts_enabled: true
+      performance:
+        caching:
+          enabled: true
+          redis_host: "redis-cluster"
+          redis_port: 6379
+        async:
+          max_workers: 20
+          worker_timeout: 120
+      security:
+        encryption: true
+        audit_logging: true
+        access_control: true
+        ip_whitelist: true
+
+  hft:
+    description: "High-frequency trading template"
+    variables:
+      environment: "hft"
+      debug: false
+      log_level: "ERROR"  # Minimize logging for performance
+      api_port: 8000
+      database_url: "postgresql://hft_user:password@hft-db:5432/trading_hft"
+      max_position_size: 1000000.0
+      max_daily_loss: 50000.0
+      rate_limit_requests: 10000
+      ai_provider: "local"
+      enable_metrics: true
+    config:
+      database:
+        echo: false
+        pool_size: 50
+        ssl_mode: "require"
+        connection_timeout: 5
+        query_timeout: 10
+      brokers:
+        enabled: true
+        testnet: false
+        paper_trading: false
+        hft_mode: true
+        low_latency: true
+        co_location: true
+      risk:
+        real_time: true
+        max_leverage: 3.0
+        circuit_breakers: true
+        max_positions: 1000
+        max_orders_per_second: 100
+      logging:
+        level: "ERROR"
+        file: "logs/hft_trading.log"
+        performance_mode: true
+        minimal_logging: true
+      monitoring:
+        enabled: true
+        metrics_port: 9090
+        real_time_monitoring: true
+        latency_monitoring: true
+      performance:
+        caching:
+          enabled: true
+          redis_host: "redis-cluster"
+          redis_port: 6379
+          cache_ttl: 1
+        async:
+          max_workers: 50
+          worker_timeout: 30
+          queue_size: 10000
+      strategies:
+        hft_strategies:
+          - "market_making"
+          - "arbitrage"
+          - "momentum"
+          - "mean_reversion_fast"
+
+  risk_focused:
+    description: "Risk management focused template"
+    variables:
+      environment: "risk_focused"
+      debug: false
+      log_level: "INFO"
+      api_port: 8000
+      database_url: "postgresql://risk_user:password@risk-db:5432/trading_risk"
+      max_position_size: 10000.0
+      max_daily_loss: 1000.0
+      rate_limit_requests: 50
+      ai_provider: "openai"
+      enable_metrics: true
+    config:
+      database:
+        echo: false
+        pool_size: 10
+        ssl_mode: "require"
+      brokers:
+        enabled: true
+        testnet: true
+        paper_trading: true
+      risk:
+        ultra_conservative: true
+        max_leverage: 0.5
+        circuit_breakers: true
+        max_positions: 10
+        max_orders_per_hour: 10
+        correlation_monitoring: true
+        var_limit: 0.01  # 1% Value at Risk
+        stop_loss: 0.02  # 2% stop loss
+        take_profit: 0.03  # 3% take profit
+        max_concentration: 0.1  # 10% max position concentration
+      logging:
+        level: "INFO"
+        file: "logs/risk_focused_trading.log"
+        detailed_risk_logging: true
+      monitoring:
+        enabled: true
+        metrics_port: 9090
+        risk_monitoring: true
+        alert_thresholds: true
+      strategies:
+        conservative_strategies:
+          - "low_risk_etf_trading"
+          - "dividend_arbitrage"
+          - "put_call_ratio"
+          - "vix_trading"
+      alerts:
+        risk_alerts: true
+        real_time_alerts: true
+        email_alerts: true
+        sms_alerts: false  # Disabled for now
+
+# Common template mixins that can be combined
+mixins:
+  high_security:
+    description: "High security configuration mixin"
+    config:
+      security:
+        encryption: true
+        audit_logging: true
+        access_control: true
+        ip_whitelist: true
+        two_factor_auth: true
+        session_timeout: 1800
+      database:
+        ssl_mode: "require"
+        connection_encryption: true
+      logging:
+        audit_logging: true
+        security_events: true
+
+  high_performance:
+    description: "High performance configuration mixin"
+    config:
+      database:
+        pool_size: 50
+        connection_timeout: 5
+        query_timeout: 10
+      performance:
+        caching:
+          enabled: true
+          redis_host: "redis-cluster"
+          cache_ttl: 60
+        async:
+          max_workers: 100
+          worker_timeout: 30
+          queue_size: 10000
+      monitoring:
+        performance_metrics: true
+        latency_monitoring: true
+
+  basic_risk:
+    description: "Basic risk management mixin"
+    config:
+      risk:
+        circuit_breakers: true
+        max_positions: 50
+        max_orders_per_hour: 100
+        stop_loss: 0.05
+        take_profit: 0.10
+        max_concentration: 0.20
+
+  advanced_risk:
+    description: "Advanced risk management mixin"
+    config:
+      risk:
+        circuit_breakers: true
+        max_positions: 20
+        max_orders_per_hour: 20
+        stop_loss: 0.02
+        take_profit: 0.04
+        max_concentration: 0.10
+        correlation_monitoring: true
+        var_limit: 0.005  # 0.5% VaR
+        stress_testing: true
+        scenario_analysis: true
+
+  basic_monitoring:
+    description: "Basic monitoring mixin"
+    config:
+      monitoring:
+        enabled: true
+        metrics_port: 9090
+        health_checks: true
+        system_metrics: true
+
+  advanced_monitoring:
+    description: "Advanced monitoring mixin"
+    config:
+      monitoring:
+        enabled: true
+        metrics_port: 9090
+        real_time_monitoring: true
+        performance_metrics: true
+        custom_metrics: true
+        alerting: true
+        dashboards: true

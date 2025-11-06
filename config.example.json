@@ -1,335 +1,366 @@
 {
-  "$schema": "https://schema.trading-orchestrator.dev/config/v1",
+  // Day Trading Orchestrator Configuration
+  // Copy this file to 'config.json' and update with your actual settings
+  
   "database": {
-    "path": "./data/trading.db",
-    "backup_enabled": true,
-    "backup_interval_hours": 24,
-    "backup_retention_days": 30,
-    "connection_pool_size": 10,
-    "timeout_seconds": 30,
-    "journal_mode": "WAL",
-    "synchronous": "NORMAL",
-    "cache_size": -64000,
-    "temp_store": "memory"
+    // Database configuration
+    "url": "sqlite:///trading_orchestrator.db",  // SQLite database file
+    "echo": false,                               // Enable SQL logging for debugging
+    "pool_size": 20,                             // Connection pool size
+    "max_overflow": 30                           // Maximum overflow connections
   },
+  
+  "ai": {
+    // AI and Machine Learning Configuration
+    "trading_mode": "PAPER",                     // "PAPER" or "LIVE" - ALWAYS start with PAPER
+    "default_model_tier": "fast",                // Model performance tier: "fast", "balanced", "accurate"
+    "openai_api_key": "YOUR_OPENAI_API_KEY",     // OpenAI API key for GPT models
+    "anthropic_api_key": "YOUR_ANTHROPIC_API_KEY", // Anthropic API key for Claude models
+    "max_tokens_per_request": 4000,              // Maximum tokens per AI request
+    "request_timeout": 30,                       // AI request timeout in seconds
+    "local_models": {
+      "enabled": false,                          // Enable local AI models
+      "model_path": "./models/local",            // Path to local models
+      "preferred_backend": "transformers"        // Backend: "transformers", "ollama", "lm_studio"
+    },
+    "prompt_templates": {
+      "market_analysis": "./ai/prompts/market_analysis.txt",
+      "risk_assessment": "./ai/prompts/risk_assessment.txt",
+      "strategy_selection": "./ai/prompts/strategy_selection.txt"
+    }
+  },
+  
   "brokers": {
-    "enabled": ["alpaca", "binance"],
+    // Broker API Configurations
+    // Only enable brokers you have accounts and API keys for
+    
     "alpaca": {
-      "api_key": "${ALPACA_API_KEY}",
-      "secret_key": "${ALPACA_SECRET_KEY}",
-      "api_url": "https://paper-api.alpaca.markets",
-      "data_url": "https://data.alpaca.markets",
-      "sandbox": true,
-      "rate_limit": {
-        "requests_per_minute": 200,
-        "requests_per_day": 10000
-      },
-      "order_types": ["market", "limit", "stop", "stop_limit"],
-      "supported_assets": ["stocks", "etfs", "crypto"],
-      "websocket_enabled": true,
-      "connection_timeout": 10
+      // Alpaca Trading - US Securities & Crypto
+      "enabled": false,                          // Set to true if using Alpaca
+      "api_key": "YOUR_ALPACA_API_KEY",          // Your Alpaca API key
+      "secret_key": "YOUR_ALPACA_SECRET_KEY",    // Your Alpaca secret key
+      "paper": true,                             // Use paper trading (recommended)
+      "base_url": "https://paper-api.alpaca.markets", // Paper trading URL
+      "rate_limit": 200                          // API rate limit per minute
     },
+    
     "binance": {
-      "api_key": "${BINANCE_API_KEY}",
-      "secret_key": "${BINANCE_SECRET_KEY}",
-      "api_url": "https://api.binance.com",
-      "testnet": true,
-      "rate_limit": {
-        "orders_per_second": 10,
-        "orders_per_day": 100000,
-        "weight_per_minute": 1200
-      },
-      "supported_assets": ["spot", "futures"],
-      "websocket_enabled": true,
-      "connection_timeout": 10
+      // Binance - Crypto Trading
+      "enabled": false,                          // Set to true if using Binance
+      "api_key": "YOUR_BINANCE_API_KEY",         // Your Binance API key
+      "secret_key": "YOUR_BINANCE_SECRET_KEY",   // Your Binance secret key
+      "testnet": true,                           // Use testnet (recommended for testing)
+      "base_url": "https://testnet.binance.vision", // Testnet URL
+      "rate_limit": 1200,                        // API rate limit per minute
+      "time_sync_interval": 60                   // Time synchronization interval in seconds
     },
-    "interactive_brokers": {
-      "host": "${IB_HOST}",
-      "port": ${IB_PORT},
-      "client_id": ${IB_CLIENT_ID},
-      "enabled": false
+    
+    "ibkr": {
+      // Interactive Brokers - Global Markets
+      "enabled": false,                          // Set to true if using IBKR
+      "host": "127.0.0.1",                      // IBKR Gateway host
+      "port": 7497,                             // IBKR Gateway port
+      "client_id": 1,                           // Client ID for IBKR connection
+      "paper": true,                            // Use paper trading account
+      "max_concurrent_requests": 10,            // Maximum concurrent requests
+      "request_timeout": 30                     // Request timeout in seconds
     },
-    "paper_trading": {
-      "enabled": true,
-      "initial_balance": 100000,
-      "commission_per_trade": 0.0,
-      "slippage_model": "fixed",
-      "slippage_bps": 1
+    
+    "degiro": {
+      // DEGIRO - European Broker (Unofficial API)
+      "enabled": false,                         // Set to true if using DEGIRO
+      "username": "YOUR_DEGIRO_USERNAME",       // DEGIRO account username
+      "password": "YOUR_DEGIRO_PASSWORD",       // DEGIRO account password
+      "session": null,                          // Will be auto-generated
+      "mfa": false,                             // Enable if you use 2FA
+      "trading_calendar": "./config/trading_calendar.json" // Trading hours config
+    },
+    
+    "trading212": {
+      // Trading 212 - European Broker
+      "enabled": false,                         // Set to true if using Trading 212
+      "api_key": "YOUR_TRADING212_API_KEY",     // Trading 212 API key
+      "practice": true,                         // Use practice account
+      "base_url": "https://practice.trading212.com", // Practice account URL
+      "rate_limit": 120                         // API rate limit per minute
+    },
+    
+    "xtb": {
+      // XTB - Forex & CFDs
+      "enabled": false,                         // Set to true if using XTB
+      "api_key": "YOUR_XTB_API_KEY",            // XTB API key
+      "secret_key": "YOUR_XTB_SECRET_KEY",      // XTB secret key
+      "demo": true,                             // Use demo account
+      "server": "demo",                         // Server: "demo" or "real"
+      "max_instruments": 1000                   // Maximum instruments to fetch
+    },
+    
+    "trade_republic": {
+      // Trade Republic - German Broker (Unofficial API)
+      "enabled": false,                         // Set to true if using Trade Republic
+      "username": "YOUR_TR_USERNAME",           // Trade Republic username
+      "password": "YOUR_TR_PASSWORD",           // Trade Republic password
+      "pin": "YOUR_TR_PIN",                     // Trade Republic PIN
+      "device_id": null,                        // Will be auto-generated
+      "secure_session": true                    // Use secure session
     }
   },
+  
+  "risk": {
+    // Risk Management Configuration
+    "max_position_size": 10000,                 // Maximum position size in base currency
+    "max_daily_loss": 5000,                     // Maximum daily loss limit
+    "max_open_orders": 100,                     // Maximum open orders
+    "risk_per_trade": 0.02,                     // Risk per trade as percentage (2%)
+    "stop_loss_percentage": 0.05,               // Default stop loss percentage (5%)
+    "take_profit_percentage": 0.10,             // Default take profit percentage (10%)
+    "correlation_limit": 0.7,                   // Maximum correlation between positions
+    
+    "circuit_breakers": {
+      // Circuit Breaker Settings
+      "enabled": true,                          // Enable circuit breakers
+      "daily_loss_limit": 10000,                // Daily loss circuit breaker
+      "consecutive_loss_limit": 3,              // Consecutive losses circuit breaker
+      "drawdown_limit": 0.15,                   // Maximum drawdown percentage (15%)
+      "position_concentration_limit": 0.30,     // Maximum position concentration (30%)
+      "volatility_spike_threshold": 2.0         // Volatility spike threshold
+    },
+    
+    "limits": {
+      // Trading Limits
+      "max_leverage": 2.0,                      // Maximum leverage ratio
+      "min_account_balance": 1000,               // Minimum account balance
+      "max_order_size": 50000,                  // Maximum order size
+      "max_daily_volume": 100000,               // Maximum daily trading volume
+      "allowed_markets": ["US", "EU", "Crypto"], // Allowed markets
+      "restricted_symbols": ["GME", "AMC"]      // Restricted symbols
+    }
+  },
+  
   "strategies": {
-    "enabled": ["moving_average_crossover", "rsi_reversal"],
-    "moving_average_crossover": {
-      "enabled": true,
-      "symbols": ["AAPL", "GOOGL", "MSFT", "TSLA"],
-      "timeframe": "1h",
-      "position_size": 0.1,
-      "short_ma_period": 10,
-      "long_ma_period": 30,
-      "stop_loss": {
-        "percentage": 5.0,
-        "type": "percentage"
-      },
-      "take_profit": {
-        "percentage": 15.0,
-        "type": "percentage"
-      },
-      "max_positions": 5,
-      "rebalance_frequency": "daily",
-      "risk_per_trade": 0.02
+    // Trading Strategy Configuration
+    "enabled_strategies": [
+      "mean_reversion",
+      "trend_following",
+      "pairs_trading"
+    ],
+    
+    "mean_reversion": {
+      // Mean Reversion Strategy Settings
+      "lookback_period": 20,                    // Period for calculating mean
+      "entry_threshold": 2.0,                   // Standard deviations for entry
+      "exit_threshold": 0.5,                    // Standard deviations for exit
+      "min_confidence": 0.75                    // Minimum AI confidence
     },
-    "rsi_reversal": {
-      "enabled": true,
-      "symbols": ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN"],
-      "timeframe": "4h",
-      "position_size": 0.05,
-      "rsi_period": 14,
-      "oversold_threshold": 30,
-      "overbought_threshold": 70,
-      "stop_loss": {
-        "percentage": 3.0,
-        "type": "percentage"
-      },
-      "take_profit": {
-        "percentage": 8.0,
-        "type": "percentage"
-      },
-      "max_positions": 10,
-      "confirm_candles": 2,
-      "risk_per_trade": 0.015
+    
+    "trend_following": {
+      // Trend Following Strategy Settings
+      "fast_ma_period": 10,                     // Fast moving average period
+      "slow_ma_period": 30,                     // Slow moving average period
+      "rsi_period": 14,                         // RSI period
+      "min_trend_strength": 0.6                 // Minimum trend strength
     },
-    "momentum_breakout": {
-      "enabled": false,
-      "symbols": ["AAPL", "GOOGL", "MSFT"],
-      "timeframe": "15m",
-      "position_size": 0.08,
-      "volume_threshold": 1.5,
-      "price_change_threshold": 0.02,
-      "stop_loss": {
-        "percentage": 4.0,
-        "type": "percentage"
-      },
-      "take_profit": {
-        "percentage": 12.0,
-        "type": "percentage"
-      },
-      "max_positions": 3
+    
+    "pairs_trading": {
+      // Pairs Trading Strategy Settings
+      "correlation_threshold": 0.8,             // Minimum correlation for pairs
+      "zscore_entry": 2.0,                      // Z-score for entry
+      "zscore_exit": 0.5,                       // Z-score for exit
+      "min_history_days": 60                    // Minimum history for calculations
+    },
+    
+    "arbitrage": {
+      // Arbitrage Strategy Settings (if supported by brokers)
+      "min_profit_threshold": 0.001,            // Minimum profit percentage
+      "max_execution_time": 30,                 // Maximum execution time in seconds
+      "min_liquidity": 100000                   // Minimum liquidity requirement
+    },
+    
+    "backtesting": {
+      // Backtesting Configuration
+      "start_date": "2023-01-01",               // Backtesting start date
+      "end_date": "2023-12-31",                 // Backtesting end date
+      "initial_capital": 100000,                // Initial capital for backtest
+      "benchmark_symbol": "SPY",                 // Benchmark symbol for comparison
+      "save_results": true,                     // Save backtesting results
+      "results_path": "./backtests/"            // Path to save results
     }
   },
-  "risk_management": {
-    "max_position_size": 0.25,
-    "max_concurrent_positions": 20,
-    "max_daily_loss": 0.05,
-    "max_drawdown": 0.15,
-    "position_sizing_method": "fixed_risk",
-    "correlation_limit": 0.7,
-    "sector_exposure_limit": 0.4,
-    "stop_loss_default": {
-      "percentage": 5.0,
-      "type": "percentage"
-    },
-    "take_profit_default": {
-      "percentage": 10.0,
-      "type": "percentage"
-    },
-    "risk_free_rate": 0.02,
-    "max_leverage": 2.0
-  },
-  "system": {
-    "debug_mode": false,
-    "log_level": "INFO",
-    "log_format": "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
-    "log_file": "./logs/trading.log",
-    "max_log_size_mb": 100,
-    "log_backup_count": 5,
-    "thread_pool_size": 8,
-    "max_memory_mb": 2048,
-    "graceful_shutdown_timeout": 30,
-    "health_check_interval": 60,
-    "performance_monitoring": true,
-    "metrics_retention_hours": 168
-  },
-  "logging": {
-    "version": 1,
-    "disable_existing_loggers": false,
-    "formatters": {
-      "standard": {
-        "format": "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
-      },
-      "detailed": {
-        "format": "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)d - %(funcName)s() - %(message)s"
+  
+  "market_data": {
+    // Market Data Configuration
+    "data_sources": {
+      "primary": "broker",                      // Primary data source
+      "fallback": "yahoo",                      // Fallback data source
+      "rate_limits": {
+        "broker": 120,                          // Broker API limit per minute
+        "yahoo": 2000,                          // Yahoo Finance limit per minute
+        "alphavantage": 500                     // Alpha Vantage limit per minute
       }
     },
+    
+    "symbols": {
+      // Default symbols to track
+      "us_stocks": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],
+      "crypto": ["BTCUSDT", "ETHUSDT", "ADAUSDT"],
+      "forex": ["EURUSD", "GBPUSD", "USDJPY"]
+    },
+    
+    "update_intervals": {
+      // Data update intervals in seconds
+      "real_time": 1,                          // Real-time data interval
+      "minute": 60,                            // 1-minute data interval
+      "hourly": 3600,                          // Hourly data interval
+      "daily": 86400                           // Daily data interval
+    },
+    
+    "storage": {
+      // Data Storage Configuration
+      "database_retention_days": 365,          // Database retention period
+      "cache_size_mb": 1024,                   // Cache size in MB
+      "compression": true,                     // Enable data compression
+      "backup_interval_hours": 24              // Backup interval in hours
+    }
+  },
+  
+  "logging": {
+    // Logging Configuration
+    "level": "INFO",                           // Log level: DEBUG, INFO, WARNING, ERROR
+    "file": "logs/trading_orchestrator.log",   // Main log file
+    "max_file_size": 100,                      // Maximum log file size in MB
+    "backup_count": 5,                         // Number of backup files
+    "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
+    
     "handlers": {
       "console": {
-        "class": "logging.StreamHandler",
-        "level": "INFO",
-        "formatter": "standard",
-        "stream": "ext://sys.stdout"
+        "enabled": true,                       // Enable console logging
+        "level": "INFO"                        // Console log level
       },
       "file": {
-        "class": "logging.handlers.RotatingFileHandler",
-        "level": "DEBUG",
-        "formatter": "detailed",
-        "filename": "./logs/trading.log",
-        "maxBytes": 10485760,
-        "backupCount": 5,
-        "encoding": "utf8"
+        "enabled": true,                       // Enable file logging
+        "level": "DEBUG"                       // File log level
       },
-      "error_file": {
-        "class": "logging.handlers.RotatingFileHandler",
-        "level": "ERROR",
-        "formatter": "detailed",
-        "filename": "./logs/errors.log",
-        "maxBytes": 10485760,
-        "backupCount": 3,
-        "encoding": "utf8"
+      "email": {
+        "enabled": false,                      // Enable email alerts
+        "level": "ERROR",                      // Email alert level
+        "smtp_server": "smtp.gmail.com",       // SMTP server
+        "smtp_port": 587,                      // SMTP port
+        "username": "",                        // Email username
+        "password": "",                        // Email password
+        "recipients": []                       // Alert recipients
       }
     },
-    "loggers": {
-      "trading_orchestrator": {
-        "level": "INFO",
-        "handlers": ["console", "file"],
-        "propagate": false
-      },
-      "database": {
-        "level": "WARNING",
-        "handlers": ["file"],
-        "propagate": false
-      },
-      "brokers": {
-        "level": "INFO",
-        "handlers": ["file"],
-        "propagate": false
-      },
-      "strategies": {
-        "level": "INFO",
-        "handlers": ["file"],
-        "propagate": false
-      }
-    },
-    "root": {
-      "level": "WARNING",
-      "handlers": ["console", "file"]
+    
+    "trading_logs": {
+      // Trading-specific logging
+      "enabled": true,                         // Enable trading logs
+      "file": "logs/trades.log",               // Trading log file
+      "trade_details": true,                   // Log detailed trade information
+      "strategy_performance": true,            // Log strategy performance
+      "risk_events": true                      // Log risk management events
     }
   },
-  "performance": {
-    "enable_profiling": false,
-    "profiling_output": "./profiles",
-    "benchmark_enabled": true,
-    "benchmark_interval_seconds": 300,
-    "memory_profiling": false,
-    "cpu_profiling": false,
-    "optimization_level": "balanced"
-  },
-  "ai": {
-    "enabled": true,
-    "model_path": "./models",
-    "sentiment_analysis": {
-      "enabled": true,
-      "news_sources": ["reuters", "bloomberg", "marketwatch"],
-      "update_frequency_minutes": 15
+  
+  "ui": {
+    // User Interface Configuration
+    "theme": "matrix",                         // Theme: "matrix", "dark", "light"
+    "refresh_rate": 1000,                      // UI refresh rate in milliseconds
+    "terminal_size": {
+      "width": 120,                           // Terminal width
+      "height": 40                            // Terminal height
     },
-    "pattern_recognition": {
-      "enabled": true,
-      "min_confidence": 0.7,
-      "patterns": ["head_shoulders", "double_top", "triangle", "flag"]
+    
+    "dashboard": {
+      // Dashboard Configuration
+      "enable_real_time": true,               // Enable real-time updates
+      "chart_height": 400,                    // Chart height in pixels
+      "auto_refresh": true,                   // Auto-refresh charts
+      "save_layout": true                     // Save dashboard layout
     },
-    "market_regime_detection": {
-      "enabled": true,
-      "lookback_period_days": 30,
-      "regime_types": ["bull", "bear", "sideways", "volatile"]
-    },
-    "risk_scoring": {
-      "enabled": true,
-      "factors": ["volatility", "correlation", "liquidity", "sentiment"],
-      "weightings": {
-        "volatility": 0.3,
-        "correlation": 0.2,
-        "liquidity": 0.2,
-        "sentiment": 0.3
-      }
+    
+    "notifications": {
+      // Notification Settings
+      "enabled": true,                        // Enable notifications
+      "trade_alerts": true,                   // Trade execution alerts
+      "risk_alerts": true,                    // Risk limit alerts
+      "error_alerts": true,                   // Error notifications
+      "sound": true,                          // Sound notifications
+      "sound_file": "./sounds/alert.wav"      // Alert sound file
     }
   },
-  "notifications": {
-    "enabled": true,
-    "email": {
-      "enabled": false,
-      "smtp_server": "${SMTP_SERVER}",
-      "smtp_port": 587,
-      "username": "${EMAIL_USERNAME}",
-      "password": "${EMAIL_PASSWORD}",
-      "from_address": "${NOTIFICATION_EMAIL}",
-      "to_addresses": ["${NOTIFICATION_EMAIL}"],
-      "use_tls": true
-    },
-    "slack": {
-      "enabled": false,
-      "webhook_url": "${SLACK_WEBHOOK}",
-      "channel": "#trading-alerts",
-      "username": "TradingBot"
-    },
-    "events": {
-      "trade_executed": true,
-      "stop_loss_triggered": true,
-      "take_profit_reached": true,
-      "strategy_error": true,
-      "system_error": true,
-      "daily_summary": true,
-      "performance_alert": true
-    }
-  },
-  "backtesting": {
-    "enabled": true,
-    "data_source": "local",
-    "data_path": "./data/historical",
-    "default_timeframe": "1d",
-    "slippage_bps": 1,
-    "commission_bps": 1,
-    "start_date": "2020-01-01",
-    "end_date": "2024-12-19",
-    "initial_capital": 100000,
-    "currency": "USD",
-    "benchmark_symbol": "SPY",
-    "save_trades": true,
-    "save_positions": true,
-    "output_format": "json"
-  },
+  
   "monitoring": {
-    "enabled": true,
+    // System Monitoring Configuration
     "health_checks": {
-      "database_connection": true,
-      "broker_connections": true,
-      "strategy_health": true,
-      "memory_usage": true,
-      "disk_usage": true
+      "enabled": true,                        // Enable health checks
+      "interval": 30,                         // Health check interval in seconds
+      "timeout": 10                           // Health check timeout
     },
-    "alerts": {
-      "memory_threshold_percent": 80,
-      "disk_threshold_percent": 90,
-      "cpu_threshold_percent": 85,
-      "error_rate_threshold": 0.05
-    },
+    
     "metrics": {
-      "collection_interval_seconds": 60,
-      "retention_hours": 720,
-      "export_enabled": true,
-      "export_format": "prometheus"
+      // Performance Metrics
+      "enabled": true,                        // Enable metrics collection
+      "prometheus_port": 8000,               // Prometheus metrics port
+      "collect_interval": 60,                // Metrics collection interval
+      "retention_days": 30                   // Metrics retention period
+    },
+    
+    "alerts": {
+      // System Alerts
+      "enabled": true,                       // Enable system alerts
+      "conditions": {
+        "high_cpu": 80,                      // CPU usage threshold
+        "high_memory": 85,                   // Memory usage threshold
+        "disk_usage": 90                     // Disk usage threshold
+      }
     }
   },
+  
   "security": {
-    "encrypt_secrets": true,
-    "secret_rotation_days": 90,
-    "api_key_rotation_days": 30,
-    "audit_logging": true,
-    "rate_limiting": true,
-    "ip_whitelist": [],
-    "session_timeout_minutes": 60
+    // Security Configuration
+    "encryption": {
+      "enabled": true,                       // Enable data encryption
+      "algorithm": "AES-256",                // Encryption algorithm
+      "key_derivation": "PBKDF2"             // Key derivation method
+    },
+    
+    "authentication": {
+      "api_keys_required": true,             // Require API key authentication
+      "session_timeout": 3600,               // Session timeout in seconds
+      "max_login_attempts": 5,               // Maximum login attempts
+      "lockout_duration": 900                // Account lockout duration
+    },
+    
+    "audit": {
+      "enabled": true,                       // Enable audit logging
+      "log_file": "logs/audit.log",         // Audit log file
+      "track_api_calls": true,               // Track API calls
+      "track_user_actions": true             // Track user actions
+    }
   },
-  "environment": {
-    "name": "production",
-    "debug": false,
-    "testing": false,
-    "staging": false
+  
+  "performance": {
+    // Performance Optimization
+    "database": {
+      "connection_pool_size": 20,            // Database connection pool size
+      "connection_timeout": 30,              // Connection timeout
+      "query_timeout": 60,                   // Query timeout
+      "enable_wal_mode": true                // Enable WAL mode for SQLite
+    },
+    
+    "caching": {
+      "enabled": true,                       // Enable caching
+      "redis_host": "localhost",             // Redis host
+      "redis_port": 6379,                    // Redis port
+      "cache_ttl": 3600,                     // Cache TTL in seconds
+      "max_cache_size": 1024                 // Maximum cache size in MB
+    },
+    
+    "async": {
+      // Async Configuration
+      "max_workers": 10,                     // Maximum worker threads
+      "worker_timeout": 60,                  // Worker timeout
+      "queue_size": 1000                     // Queue size
+    }
   }
 }

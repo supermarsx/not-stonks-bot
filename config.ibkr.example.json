@@ -1,284 +1,235 @@
+# Interactive Brokers Configuration Example
+# Copy this configuration to your main config.json file
+
 {
-  "$schema": "https://schema.trading-orchestrator.dev/broker/interactive-brokers/v1",
   "brokers": {
-    "enabled": ["interactive_brokers"],
-    "interactive_brokers": {
-      "name": "Interactive Brokers",
-      "type": "interactive_brokers",
-      "host": "${IB_HOST}",
-      "port": ${IB_PORT},
-      "client_id": ${IB_CLIENT_ID},
-      "enabled": false,
-      "tws_path": "${IB_TWS_PATH}",
-      "ibgateway_path": "${IB_GATEWAY_PATH}",
-      "rate_limit": {
-        "requests_per_second": 50,
-        "requests_per_minute": 3000,
-        "orders_per_second": 9,
-        "orders_per_minute": 300
-      },
-      "order_types": [
-        "market",
-        "limit",
-        "stop",
-        "stop_limit",
-        "trailing_stop",
-        "bracket_order"
-      ],
-      "time_in_force": [
-        "DAY",
-        "GTC",
-        "IOC",
-        "FOK",
-        "GTD"
-      ],
-      "supported_assets": [
-        "stocks",
-        "etfs",
-        "options",
-        "futures",
-        "forex",
-        "bonds",
-        "cFDs"
-      ],
-      "account": {
-        "account_id": "${IB_ACCOUNT_ID}",
-        "base_currency": "USD",
-        "supported_currencies": [
-          "USD",
-          "EUR",
-          "GBP",
-          "JPY",
-          "CAD",
-          "CHF",
-          "AUD",
-          "HKD",
-          "SGD",
-          "SEK",
-          "NOK",
-          "DKK",
-          "PLN",
-          "CZK",
-          "HUF",
-          "ILS",
-          "ZAR",
-          "MXN"
-        ],
-        "account_type": "INDIVIDUAL",
-        "regulatory_type": "SEC"
-      },
+    "ibkr": {
+      "enabled": true,  // Set to true to enable IBKR integration
+      
       "connection": {
-        "connection_timeout": 10,
-        "read_timeout": 30,
-        "socket_timeout": 0,
-        "max_retries": 3,
-        "retry_delay": 1.0,
-        "auto_reconnect": true,
-        "reconnect_attempts": 5,
-        "reconnect_delay": 5
+        "host": "127.0.0.1",  // IBKR Gateway host
+        "port": 7497,         // IBKR Gateway port
+        "client_id": 1,       // Client ID for TWS connection
+        "timeout": 60,        // Connection timeout in seconds
+        "retry_attempts": 3,  // Number of retry attempts
+        "retry_delay": 5      // Delay between retries in seconds
       },
-      "market_data": {
-        "enabled": true,
-        "subscription_type": "REAL_TIME",
-        "market_data_type": 1,
-        "fields": [
-          "BID",
-          "ASK",
-          "LAST",
-          "OPEN",
-          "HIGH",
-          "LOW",
-          "CLOSE",
-          "VOLUME",
-          "BID_SIZE",
-          "ASK_SIZE",
-          "LAST_SIZE",
-          "MARKET_CAP",
-          "DIVIDEND_YIELD",
-          "PE_RATIO",
-          "EPS"
-        ],
-        "conid_fields": [
-          "CONID",
-          "SYMBOL",
-          "SECID",
-          "SECTYPE",
-          "EXCHANGE",
-          "CURRENCY",
-          "TRADINGCLASS",
-          "STRIKE",
-          "RIGHT",
-          "MULTIPLIER",
-          "BONDVALUEM",
-          "COMBOLEGSDESCRIPTION",
-          "COMBOLEGPRICE",
-          "EV_MULTIPLIER"
-        ]
+      
+      "authentication": {
+        "mode": "tws",        // "tws" or "gateway"
+        "auto_connect": true, // Auto-connect to running TWS
+        "log_level": "info",  // Log level: debug, info, warning, error
+        "server_version": 10  // IBKR API version
       },
-      "contracts": {
-        "stocks": {
-          "enabled": true,
-          "exchanges": [
-            "SMART",
-            "NYSE",
-            "NASDAQ",
-            "ARCA",
-            "BATS",
-            "IEX"
-          ],
-          "sec_types": [
-            "STK"
-          ]
-        },
-        "etfs": {
-          "enabled": true,
-          "exchanges": [
-            "SMART",
-            "NYSE",
-            "NASDAQ",
-            "ARCA"
-          ],
-          "sec_types": [
-            "ETF"
-          ]
-        },
-        "options": {
-          "enabled": false,
-          "exchanges": [
-            "SMART",
-            "CBOE",
-            "PHLX",
-            "ISE",
-            "BOX",
-            "MIAX"
-          ],
-          "sec_types": [
-            "OPT"
-          ],
-          "rights": [
-            "P",
-            "C"
-          ]
-        },
-        "futures": {
-          "enabled": false,
-          "exchanges": [
-            "CME",
-            "ICE",
-            "CBOT",
-            "NYMEX",
-            "EUREX",
-            "LIFFE",
-            "SGX",
-            "HKFE"
-          ],
-          "sec_types": [
-            "FUT"
-          ]
-        },
-        "forex": {
-          "enabled": false,
-          "exchanges": [
-            "IDEALPRO"
-          ],
-          "sec_types": [
-            "CASH"
-          ]
-        },
-        "bonds": {
-          "enabled": false,
-          "exchanges": [
-            "SMART"
-          ],
-          "sec_types": [
-            "BOND",
-            "BILL"
-          ]
-        }
+      
+      "account_settings": {
+        "account_id": "",      // Will be auto-detected if empty
+        "base_currency": "USD",
+        "trading_mode": "paper" // "paper" or "live"
       },
+      
       "order_settings": {
-        "default_quantity": 100,
-        "min_order_size": 1,
-        "max_order_size": 1000000,
-        "lot_size_multiplier": 1,
-        "tick_size": 0.01,
-        "price_market_order": 0,
-        "price_precision": 2,
-        "quantity_precision": 0
+        "default_order_type": "LMT",
+        "default_time_in_force": "DAY",
+        "default_lmqty": 100,   // Default order quantity
+        "transmit": true,
+        "parent_id": 0,         // Parent order ID for OCA/OTO
+        "outside_rth": false,   // Outside regular trading hours
+        "hidden": false,        // Hidden order
+        "discretionary_amount": 0,
+        "good_after_time": "",  // Good After Time format: "YYYYMMdd HH:mm:ss"
+        "fa_profile": "",       // Financial Advisor profile
+        "fa_method": "",        // Financial Advisor method
+        "fa_group": "",         // Financial Advisor group
+        "regular_trading_hours": true,
+        "shares_aware": false,
+        "non_guaranteed": false
       },
-      "commission_schedule": {
+      
+      "market_data": {
+        "real_time_data": true,
+        "subscription": {
+          "delayed": false,    // Use delayed data if real-time not available
+          "fields": [
+            0,   // bidPrice
+            1,   // bidSize
+            2,   // askPrice
+            3,   // askSize
+            4,   // lastPrice
+            5,   // lastSize
+            6,   // volume
+            7,   // close price
+            8,   // bid/ask range
+            9,   // last trade time
+            10,  // option bid/ask
+            11,  // option call/put
+            12,  // option delta
+            13,  // option gamma
+            14,  // option implied vol
+            15,  // option price
+            16,  // option volume
+            17,  // option delta
+            18,  // option price range
+            19,  // option yield
+            20   // 13 week yield
+          ]
+        }
+      },
+      
+      "supported_markets": {
         "stocks": {
-          "min_commission": 1.0,
-          "commission_per_share": 0.005,
-          "commission_currency": "USD"
-        },
-        "etfs": {
-          "min_commission": 1.0,
-          "commission_per_share": 0.005,
-          "commission_currency": "USD"
+          "enabled": true,
+          "exchanges": ["SMART", "ARCA", "BATS", "NYSE", "NASDAQ"],
+          "currency": ["USD", "EUR", "GBP", "CHF", "JPY"],
+          "min_order_size": 1,
+          "max_order_size": 1000000
         },
         "options": {
-          "min_commission": 1.0,
-          "commission_per_contract": 0.65,
-          "commission_currency": "USD"
+          "enabled": true,
+          "exercise_style": "AMERICAN",  // "AMERICAN" or "EUROPEAN"
+          "include_expired": false,
+          "min_order_size": 1,
+          "max_order_size": 1000
         },
         "futures": {
-          "min_commission": 1.0,
-          "commission_per_contract": 2.25,
-          "commission_currency": "USD"
+          "enabled": true,
+          "include_expired": false,
+          "currency": ["USD", "EUR", "GBP", "CHF", "JPY", "CAD"],
+          "min_order_size": 1,
+          "max_order_size": 1000
         },
         "forex": {
-          "min_commission": 2.5,
-          "commission_per_100k": 10.0,
-          "commission_currency": "USD"
-        }
-      },
-      "risk_management": {
-        "enabled": true,
-        "position_limits": {
-          "max_position_size": 10000,
-          "max_position_value": 1000000
-        },
-        "concentration_limits": {
-          "max_symbol_weight": 0.1,
-          "max_sector_weight": 0.25
-        },
-        "margin_requirements": {
-          "initial_margin": 0.25,
-          "maintenance_margin": 0.15
-        }
-      },
-      "features": {
-        "bracketed_orders": true,
-        "complex_orders": true,
-        "one_cancels_other": true,
-        "one_triggers_other": true,
-        "primary_exchanges": true,
-        "smart_routing": true,
-        "extended_hours": true,
-        "pre_post_market": true
-      },
-      "compliance": {
-        "pattern_day_trader": {
           "enabled": true,
-          "min_account_value": 25000,
-          "min_trade_count": 3
+          "pairs": ["EUR.USD", "GBP.USD", "USD.JPY", "USD.CAD", "AUD.USD"],
+          "min_order_size": 1000,
+          "max_order_size": 10000000
         },
-        " PDT protection": true,
-        "wash_sale_detection": true,
-        "restricted_securities": true,
-        "firm_compliance": true
+        "cds": {
+          "enabled": false,
+          "min_order_size": 1,
+          "max_order_size": 1000
+        },
+        "commodities": {
+          "enabled": false,
+          "min_order_size": 1,
+          "max_order_size": 1000
+        }
+      },
+      
+      "order_types": {
+        "market": {
+          "enabled": true,
+          "type_code": "MKT",
+          "description": "Market order executes immediately"
+        },
+        "limit": {
+          "enabled": true,
+          "type_code": "LMT",
+          "description": "Limit order executes at specified price or better"
+        },
+        "stop": {
+          "enabled": true,
+          "type_code": "STP",
+          "description": "Stop order becomes market order when triggered"
+        },
+        "stop_limit": {
+          "enabled": true,
+          "type_code": "STP LMT",
+          "description": "Stop limit order becomes limit order when triggered"
+        },
+        "trailing_stop": {
+          "enabled": true,
+          "type_code": "TRAIL",
+          "description": "Trailing stop order"
+        },
+        "trailing_stop_limit": {
+          "enabled": true,
+          "type_code": "TRAIL LIMIT",
+          "description": "Trailing stop limit order"
+        },
+        "bracket": {
+          "enabled": true,
+          "type_code": "BRACKET",
+          "description": "Bracket order with parent and child orders"
+        }
+      },
+      
+      "time_in_force": {
+        "DAY": {
+          "enabled": true,
+          "description": "Good for Day"
+        },
+        "GTC": {
+          "enabled": true,
+          "description": "Good Till Cancelled"
+        },
+        "IOC": {
+          "enabled": true,
+          "description": "Immediate Or Cancel"
+        },
+        "FOK": {
+          "enabled": true,
+          "description": "Fill Or Kill"
+        },
+        "GTD": {
+          "enabled": true,
+          "description": "Good Till Date"
+        }
+      },
+      
+      "risk_management": {
+        "position_size_limits": {
+          "enabled": true,
+          "max_position_percentage": 10.0, // Max % of account value
+          "max_sector_exposure": 20.0      // Max % exposure to single sector
+        },
+        "correlation_limits": {
+          "enabled": true,
+          "max_correlation": 0.7          // Maximum correlation between positions
+        },
+        "volatility_limits": {
+          "enabled": true,
+          "max_daily_volatility": 0.05    // Max daily volatility (5%)
+        }
+      },
+      
+      "compliance": {
+        "us_pdt_rule": true,        // Pattern Day Trader rule
+        "wash_sale_rule": true,     // Wash sale rule
+        "qualified_purchaser": false, // QP status
+        "option_trading_permit": true,
+        "future_trading_permit": false,
+        "forex_trading_permit": true
+      },
+      
+      "features": {
+        "real_time_data": true,
+        "historical_data": true,
+        "market_scanner": true,
+        "news_feed": false,
+        "fundamental_data": false,
+        "technical_indicators": false,
+        "account_management": true,
+        "portfolio_management": true
+      },
+      
+      "performance": {
+        "market_data_cache_size": 1000, // Number of symbols to cache
+        "historical_data_cache": true,
+        "enable_real_time_fills": true,
+        "concurrent_requests": 10,
+        "request_timeout": 30
+      },
+      
+      "logging": {
+        "enabled": true,
+        "level": "info",           // debug, info, warning, error
+        "file_path": "logs/ibkr.log",
+        "max_file_size": 100,      // MB
+        "backup_count": 5,
+        "log_requests": false,
+        "log_responses": false
       }
     }
-  },
-  "database": {
-    "path": "./data/ib_trading.db",
-    "backup_enabled": true,
-    "backup_interval_hours": 6,
-    "backup_retention_days": 30
-  },
-  "system": {
-    "log_level": "INFO",
-    "debug_mode": false
   }
 }

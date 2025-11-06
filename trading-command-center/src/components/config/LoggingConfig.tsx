@@ -16,809 +16,1005 @@ import {
   FileText, 
   Database, 
   Cloud, 
-  AlertCircle, 
-  Settings, 
-  Activity, 
-  Search, 
-  Download, 
-  Trash2, 
-  Filter 
+  AlertCircle,
+  Settings,
+  Activity,
+  Search,
+  Download,
+  Trash2,
+  Filter,
+  Eye,
+  Clock,
+  HardDrive,
+  Wifi
 } from 'lucide-react';
 
-export interface LogFile {
+interface LogDestination {
   id: string;
   name: string;
-  size: number;
-  lastModified: Date;
-  level: 'debug' | 'info' | 'warn' | 'error';
-  path: string;
-}
-
-export interface LoggingSettings {
-  global: {
-    enabled: boolean;
-    level: 'debug' | 'info' | 'warn' | 'error';
-    format: 'json' | 'text' | 'xml';
-    timestamp: boolean;
-  };
-  file: {
-    enabled: boolean;
-    path: string;
+  type: 'console' | 'file' | 'database' | 'remote' | 'elasticsearch';
+  enabled: boolean;
+  config: {
+    path?: string;
+    format: 'json' | 'text' | 'csv';
     maxSize: number;
     maxFiles: number;
-    rotation: 'size' | 'time' | 'never';
     compression: boolean;
-  };
-  database: {
-    enabled: boolean;
-    connection: string;
-    table: string;
-    batchSize: number;
-  };
-  cloud: {
-    enabled: boolean;
-    provider: 'aws' | 'gcp' | 'azure';
-    bucket: string;
-    region: string;
-    accessKey: string;
-    retentionDays: number;
+    endpoint?: string;
+    apiKey?: string;
   };
   filters: {
-    enabled: boolean;
+    minLevel: string;
+    categories: string[];
     excludePatterns: string[];
-    includePatterns: string[];
-    sensitiveData: boolean;
   };
-  retention: {
-    enabled: boolean;
-    autoDelete: boolean;
-    maxAge: number;
-    maxSize: number;
+  performance: {
+    logCount: number;
+    totalSize: number;
+    lastWrite: string;
+    errorCount: number;
   };
 }
 
-const defaultLoggingSettings: LoggingSettings = {
-  global: {
+interface LogSettings {
+  enabled: boolean;
+  level: 'debug' | 'info' | 'warning' | 'error' | 'critical';
+  format: 'json' | 'text' | 'pretty';
+  timestamp: boolean;
+  colorize: boolean;
+  bufferSize: number;
+  flushInterval: number;
+  enableMetrics: boolean;
+  performanceLogging: boolean;
+  structuredLogging: boolean;
+}
+
+interface LogMetrics {
+  totalLogs: number;
+  logRate: number; // logs per second
+  storageUsed: number;
+  storageLimit: number;
+  errorsToday: number;
+  avgLogSize: number;
+  retentionDays: number;
+}
+
+const LoggingConfig: React.FC = () => {
+  const [logSettings, setLogSettings] = useState<LogSettings>({
     enabled: true,
     level: 'info',
     format: 'json',
-    timestamp: true
-  },
-  file: {
-    enabled: true,
-    path: './logs',
-    maxSize: 100,
-    maxFiles: 10,
-    rotation: 'size',
-    compression: true
-  },
-  database: {
-    enabled: false,
-    connection: '',
-    table: 'logs',
-    batchSize: 100
-  },
-  cloud: {
-    enabled: false,
-    provider: 'aws',
-    bucket: '',
-    region: 'us-east-1',
-    accessKey: '',
-    retentionDays: 30
-  },
-  filters: {
-    enabled: true,
-    excludePatterns: ['*.tmp', '*.log.bak'],
-    includePatterns: ['*.log', '*.txt'],
-    sensitiveData: true
-  },
-  retention: {
-    enabled: true,
-    autoDelete: true,
-    maxAge: 30,
-    maxSize: 1000
-  }
-};
-
-const sampleLogFiles: LogFile[] = [
-  {
-    id: '1',
-    name: 'application.log',
-    size: 1024 * 1024 * 5, // 5MB
-    lastModified: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    level: 'info',
-    path: './logs/application.log'
-  },
-  {
-    id: '2',
-    name: 'error.log',
-    size: 1024 * 1024 * 2, // 2MB
-    lastModified: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-    level: 'error',
-    path: './logs/error.log'
-  },
-  {
-    id: '3',
-    name: 'debug.log',
-    size: 1024 * 1024 * 10, // 10MB
-    lastModified: new Date(Date.now() - 1000 * 60 * 10), // 10 minutes ago
-    level: 'debug',
-    path: './logs/debug.log'
-  }
-];
-
-export default function LoggingConfig() {
-  const [loggingSettings, setLoggingSettings] = useState<LoggingSettings>(defaultLoggingSettings);
-  const [logFiles, setLogFiles] = useState<LogFile[]>(sampleLogFiles);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [selectedLog, setSelectedLog] = useState<LogFile | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterLevel, setFilterLevel] = useState<string>('all');
-  const [logViewer, setLogViewer] = useState<string>('');
-  const [diskUsage, setDiskUsage] = useState({
-    used: 45.2,
-    total: 100,
-    percentage: 45.2
+    timestamp: true,
+    colorize: false,
+    bufferSize: 1000,
+    flushInterval: 5,
+    enableMetrics: true,
+    performanceLogging: true,
+    structuredLogging: true
   });
+
+  const [logDestinations, setLogDestinations] = useState<LogDestination[]>([
+    {
+      id: 'console_default',
+      name: 'Console Output',
+      type: 'console',
+      enabled: true,
+      config: {
+        format: 'text',
+        maxSize: 0,
+        maxFiles: 0,
+        compression: false
+      },
+      filters: {
+        minLevel: 'info',
+        categories: ['trading', 'risk', 'system'],
+        excludePatterns: []
+      },
+      performance: {
+        logCount: 1247,
+        totalSize: 0,
+        lastWrite: new Date().toISOString(),
+        errorCount: 0
+      }
+    },
+    {
+      id: 'file_default',
+      name: 'Application Logs',
+      type: 'file',
+      enabled: true,
+      config: {
+        path: './logs/app.log',
+        format: 'json',
+        maxSize: 100, // MB
+        maxFiles: 30,
+        compression: true
+      },
+      filters: {
+        minLevel: 'debug',
+        categories: ['all'],
+        excludePatterns: []
+      },
+      performance: {
+        logCount: 8934,
+        totalSize: 45.6, // MB
+        lastWrite: new Date().toISOString(),
+        errorCount: 12
+      }
+    },
+    {
+      id: 'database_default',
+      name: 'Database Storage',
+      type: 'database',
+      enabled: false,
+      config: {
+        format: 'json',
+        maxSize: 0,
+        maxFiles: 0,
+        compression: false
+      },
+      filters: {
+        minLevel: 'info',
+        categories: ['trading', 'risk'],
+        excludePatterns: []
+      },
+      performance: {
+        logCount: 0,
+        totalSize: 0,
+        lastWrite: '',
+        errorCount: 0
+      }
+    }
+  ]);
+
+  const [logMetrics, setLogMetrics] = useState<LogMetrics>({
+    totalLogs: 15632,
+    logRate: 2.3,
+    storageUsed: 234.7, // MB
+    storageLimit: 1000, // MB
+    errorsToday: 24,
+    avgLogSize: 1.2, // KB
+    retentionDays: 30
+  });
+
+  const [activeDestination, setActiveDestination] = useState<string>('console_default');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [logFilter, setLogFilter] = useState('all');
+  const [saving, setSaving] = useState(false);
+
+  const logLevels = [
+    { value: 'debug', label: 'Debug', description: 'Detailed debugging information' },
+    { value: 'info', label: 'Info', description: 'General information messages' },
+    { value: 'warning', label: 'Warning', description: 'Warning messages' },
+    { value: 'error', label: 'Error', description: 'Error messages' },
+    { value: 'critical', label: 'Critical', description: 'Critical system errors' }
+  ];
+
+  const logCategories = [
+    'trading', 'risk', 'strategy', 'broker', 'ai', 'system', 'performance', 'security', 'database', 'network'
+  ];
 
   useEffect(() => {
-    if (selectedLog) {
-      // Simulate loading log content
-      const sampleContent = [
-        `${new Date().toISOString()} [INFO] Application started successfully`,
-        `${new Date(Date.now() - 1000).toISOString()} [DEBUG] Loading configuration from file`,
-        `${new Date(Date.now() - 2000).toISOString()} [WARN] API response time is high: 2500ms`,
-        `${new Date(Date.now() - 3000).toISOString()} [ERROR] Database connection failed, retrying in 5 seconds`,
-        `${new Date(Date.now() - 4000).toISOString()} [INFO] Database connection restored`
-      ].join('\n');
-      setLogViewer(sampleContent);
-    }
-  }, [selectedLog]);
+    loadLoggingConfiguration();
+  }, []);
 
-  const handleGlobalChange = (field: string, value: any) => {
-    setLoggingSettings(prev => ({
-      ...prev,
-      global: {
-        ...prev.global,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleFileChange = (field: string, value: any) => {
-    setLoggingSettings(prev => ({
-      ...prev,
-      file: {
-        ...prev.file,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleDatabaseChange = (field: string, value: any) => {
-    setLoggingSettings(prev => ({
-      ...prev,
-      database: {
-        ...prev.database,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleCloudChange = (field: string, value: any) => {
-    setLoggingSettings(prev => ({
-      ...prev,
-      cloud: {
-        ...prev.cloud,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleFiltersChange = (field: string, value: any) => {
-    setLoggingSettings(prev => ({
-      ...prev,
-      filters: {
-        ...prev.filters,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleRetentionChange = (field: string, value: any) => {
-    setLoggingSettings(prev => ({
-      ...prev,
-      retention: {
-        ...prev.retention,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
-  };
-
-  const handleSave = async () => {
-    setIsLoading(true);
+  const loadLoggingConfiguration = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setHasChanges(false);
+      const config = await window.electronAPI?.getLoggingConfig();
+      if (config) {
+        setLogSettings(config.settings || logSettings);
+        setLogDestinations(config.destinations || logDestinations);
+        setLogMetrics(config.metrics || logMetrics);
+      }
     } catch (error) {
-      console.error('Failed to save logging settings:', error);
+      console.error('Failed to load logging configuration:', error);
+    }
+  };
+
+  const saveLoggingConfiguration = async () => {
+    setSaving(true);
+    try {
+      await window.electronAPI?.saveLoggingConfig({
+        settings: logSettings,
+        destinations: logDestinations,
+        metrics: logMetrics
+      });
+    } catch (error) {
+      console.error('Failed to save logging configuration:', error);
     } finally {
-      setIsLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleDownloadLog = (logFile: LogFile) => {
-    // Simulate download
-    const element = document.createElement('a');
-    const file = new Blob([logViewer], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = logFile.name;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+  const addLogDestination = () => {
+    const newDestination: LogDestination = {
+      id: `dest_${Date.now()}`,
+      name: 'New Destination',
+      type: 'file',
+      enabled: false,
+      config: {
+        format: 'json',
+        maxSize: 50,
+        maxFiles: 10,
+        compression: false
+      },
+      filters: {
+        minLevel: 'info',
+        categories: ['all'],
+        excludePatterns: []
+      },
+      performance: {
+        logCount: 0,
+        totalSize: 0,
+        lastWrite: '',
+        errorCount: 0
+      }
+    };
+    setLogDestinations([...logDestinations, newDestination]);
+    setActiveDestination(newDestination.id);
   };
 
-  const handleDeleteLog = (logFile: LogFile) => {
-    setLogFiles(prev => prev.filter(file => file.id !== logFile.id));
-    if (selectedLog?.id === logFile.id) {
-      setSelectedLog(null);
-      setLogViewer('');
-    }
-  };
-
-  const handleSearch = () => {
-    if (!selectedLog) return;
-    
-    // Simulate search in log content
-    const matches = logViewer.split('\n').filter(line => 
-      line.toLowerCase().includes(searchQuery.toLowerCase())
+  const updateLogDestination = (id: string, updates: Partial<LogDestination>) => {
+    setLogDestinations(destinations => 
+      destinations.map(dest => dest.id === id ? { ...dest, ...updates } : dest)
     );
-    
-    if (matches.length > 0) {
-      setLogViewer(matches.join('\n'));
+  };
+
+  const deleteLogDestination = (id: string) => {
+    setLogDestinations(destinations => destinations.filter(dest => dest.id !== id));
+    if (activeDestination === id) {
+      const remaining = logDestinations.filter(d => d.id !== id);
+      setActiveDestination(remaining.length > 0 ? remaining[0].id : '');
     }
   };
 
-  const filteredLogFiles = logFiles.filter(file => {
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         file.path.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLevel = filterLevel === 'all' || file.level === filterLevel;
-    return matchesSearch && matchesLevel;
-  });
+  const clearLogs = async (destinationId: string) => {
+    try {
+      await window.electronAPI?.clearLogs(destinationId);
+      const destination = logDestinations.find(d => d.id === destinationId);
+      if (destination) {
+        updateLogDestination(destinationId, {
+          performance: {
+            ...destination.performance,
+            logCount: 0,
+            totalSize: 0,
+            lastWrite: new Date().toISOString(),
+            errorCount: 0
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to clear logs:', error);
+    }
+  };
 
-  const getLogLevelColor = (level: string) => {
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'console':
+        return <Settings className="h-4 w-4" />;
+      case 'file':
+        return <FileText className="h-4 w-4" />;
+      case 'database':
+        return <Database className="h-4 w-4" />;
+      case 'remote':
+        return <Cloud className="h-4 w-4" />;
+      case 'elasticsearch':
+        return <Search className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const getLevelColor = (level: string) => {
     switch (level) {
-      case 'debug': return 'bg-gray-100 text-gray-800';
-      case 'info': return 'bg-blue-100 text-blue-800';
-      case 'warn': return 'bg-yellow-100 text-yellow-800';
-      case 'error': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'debug':
+        return 'text-gray-600';
+      case 'info':
+        return 'text-blue-600';
+      case 'warning':
+        return 'text-yellow-600';
+      case 'error':
+        return 'text-red-600';
+      case 'critical':
+        return 'text-red-800';
+      default:
+        return 'text-gray-600';
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  const activeDestinationData = logDestinations.find(d => d.id === activeDestination);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <FileText className="h-6 w-6 text-blue-600" />
-          <h2 className="text-2xl font-bold">Logging Configuration</h2>
-        </div>
-        <Button onClick={handleSave} disabled={!hasChanges || isLoading}>
-          {isLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-          ) : (
-            <Settings className="h-4 w-4 mr-2" />
-          )}
-          Save Changes
-        </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Logging & Monitoring Configuration
+          </CardTitle>
+          <CardDescription>
+            Configure log levels, destinations, and monitoring settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={logSettings.enabled}
+                  onCheckedChange={(checked) => setLogSettings(prev => ({ ...prev, enabled: checked }))}
+                />
+                <Label>Logging System {logSettings.enabled ? 'Enabled' : 'Disabled'}</Label>
+              </div>
+              <Badge variant="outline">
+                {logSettings.level.toUpperCase()} Level
+              </Badge>
+            </div>
+            <Button onClick={saveLoggingConfiguration} disabled={saving}>
+              <Settings className="h-4 w-4 mr-2" />
+              {saving ? 'Saving...' : 'Save Configuration'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Metrics Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Logs</p>
+                <p className="text-2xl font-bold">{logMetrics.totalLogs.toLocaleString()}</p>
+              </div>
+              <Activity className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Log Rate</p>
+                <p className="text-2xl font-bold">{logMetrics.logRate}/s</p>
+              </div>
+              <Clock className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Storage Used</p>
+                <p className="text-2xl font-bold">{logMetrics.storageUsed.toFixed(1)}MB</p>
+                <Progress value={(logMetrics.storageUsed / logMetrics.storageLimit) * 100} className="mt-1 h-1" />
+              </div>
+              <HardDrive className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Errors Today</p>
+                <p className="text-2xl font-bold text-red-600">{logMetrics.errorsToday}</p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Disk Usage Alert */}
-      {diskUsage.percentage > 80 && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Disk usage is at {diskUsage.percentage}%. Consider cleaning up old log files or increasing disk space.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Database className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Log Files</p>
-                <p className="text-2xl font-bold">{logFiles.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Active Logs</p>
-                <p className="text-2xl font-bold">
-                  {logFiles.filter(f => Date.now() - f.lastModified.getTime() < 24 * 60 * 60 * 1000).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Cloud className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Disk Usage</p>
-                <div className="flex items-center space-x-2">
-                  <Progress value={diskUsage.percentage} className="flex-1" />
-                  <span className="text-sm font-medium">{diskUsage.percentage}%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="viewer" className="w-full">
+      {/* Configuration Tabs */}
+      <Tabs defaultValue="destinations" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="viewer">Log Viewer</TabsTrigger>
-          <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="storage">Storage</TabsTrigger>
+          <TabsTrigger value="destinations">Destinations</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="filters">Filters</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="viewer" className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">
-            <div className="col-span-1 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Search & Filter</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Search</Label>
-                    <div className="flex space-x-2">
-                      <Input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search logs..."
-                      />
-                      <Button variant="outline" size="icon" onClick={handleSearch}>
-                        <Search className="h-4 w-4" />
-                      </Button>
-                    </div>
+        <TabsContent value="destinations" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Destinations List */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Log Destinations</CardTitle>
+                    <CardDescription>
+                      Configure where logs are stored and sent
+                    </CardDescription>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Log Level</Label>
-                    <Select value={filterLevel} onValueChange={setFilterLevel}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Levels</SelectItem>
-                        <SelectItem value="debug">Debug</SelectItem>
-                        <SelectItem value="info">Info</SelectItem>
-                        <SelectItem value="warn">Warning</SelectItem>
-                        <SelectItem value="error">Error</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <Label>Log Files</Label>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {filteredLogFiles.map((file) => (
-                        <div
-                          key={file.id}
-                          className={`p-3 border rounded cursor-pointer transition-colors ${
-                            selectedLog?.id === file.id ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'
-                          }`}
-                          onClick={() => setSelectedLog(file)}
+                  <Button onClick={addLogDestination} size="sm">
+                    Add Destination
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {logDestinations.map((destination) => (
+                  <div
+                    key={destination.id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      activeDestination === destination.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => setActiveDestination(destination.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {getTypeIcon(destination.type)}
+                        <h3 className="font-medium">{destination.name}</h3>
+                        <Badge variant={destination.enabled ? 'default' : 'outline'}>
+                          {destination.enabled ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearLogs(destination.id);
+                          }}
                         >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-sm">{file.name}</span>
-                            <Badge className={getLogLevelColor(file.level)} variant="secondary">
-                              {file.level}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {formatFileSize(file.size)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {file.lastModified.toLocaleString()}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="col-span-3">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center space-x-2">
-                      <FileText className="h-5 w-5" />
-                      <span>
-                        {selectedLog ? selectedLog.name : 'Select a log file'}
-                      </span>
-                    </CardTitle>
-                    {selectedLog && (
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleDownloadLog(selectedLog)}>
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
+                          <Trash2 className="h-3 w-3" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDeleteLog(selectedLog)}>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteLogDestination(destination.id);
+                          }}
+                        >
+                          <Download className="h-3 w-3" />
                         </Button>
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Type:</span>
+                        <div className="font-medium capitalize">{destination.type}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Log Count:</span>
+                        <div className="font-medium">{destination.performance.logCount}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Size:</span>
+                        <div className="font-medium">{destination.performance.totalSize.toFixed(1)}MB</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Errors:</span>
+                        <div className="font-medium">{destination.performance.errorCount}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Last write: {destination.performance.lastWrite ? new Date(destination.performance.lastWrite).toLocaleString() : 'Never'}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Destination Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Destination Configuration</CardTitle>
+                <CardDescription>
+                  {activeDestinationData ? 'Configure destination settings and parameters' : 'Select a destination to configure'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeDestinationData ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="destination-name">Name</Label>
+                      <Input
+                        id="destination-name"
+                        value={activeDestinationData.name}
+                        onChange={(e) => updateLogDestination(activeDestinationData.id, { name: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="destination-type">Type</Label>
+                      <Select
+                        value={activeDestinationData.type}
+                        onValueChange={(value: any) => updateLogDestination(activeDestinationData.id, { type: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="console">Console Output</SelectItem>
+                          <SelectItem value="file">File</SelectItem>
+                          <SelectItem value="database">Database</SelectItem>
+                          <SelectItem value="remote">Remote Server</SelectItem>
+                          <SelectItem value="elasticsearch">Elasticsearch</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Enable Destination</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Send logs to this destination
+                        </p>
+                      </div>
+                      <Switch
+                        checked={activeDestinationData.enabled}
+                        onCheckedChange={(checked) => updateLogDestination(activeDestinationData.id, { enabled: checked })}
+                      />
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <Label>Log Format</Label>
+                      <Select
+                        value={activeDestinationData.config.format}
+                        onValueChange={(value: any) => updateLogDestination(activeDestinationData.id, {
+                          config: { ...activeDestinationData.config, format: value }
+                        })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="json">JSON</SelectItem>
+                          <SelectItem value="text">Plain Text</SelectItem>
+                          <SelectItem value="csv">CSV</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(activeDestinationData.type === 'file' || activeDestinationData.type === 'remote') && (
+                      <>
+                        <div>
+                          <Label htmlFor="file-path">File Path</Label>
+                          <Input
+                            id="file-path"
+                            value={activeDestinationData.config.path || ''}
+                            onChange={(e) => updateLogDestination(activeDestinationData.id, {
+                              config: { ...activeDestinationData.config, path: e.target.value }
+                            })}
+                            placeholder="./logs/app.log"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Max Size (MB)</Label>
+                            <Input
+                              type="number"
+                              value={activeDestinationData.config.maxSize}
+                              onChange={(e) => updateLogDestination(activeDestinationData.id, {
+                                config: { ...activeDestinationData.config, maxSize: Number(e.target.value) }
+                              })}
+                            />
+                          </div>
+                          <div>
+                            <Label>Max Files</Label>
+                            <Input
+                              type="number"
+                              value={activeDestinationData.config.maxFiles}
+                              onChange={(e) => updateLogDestination(activeDestinationData.id, {
+                                config: { ...activeDestinationData.config, maxFiles: Number(e.target.value) }
+                              })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Label>Compression</Label>
+                          <Switch
+                            checked={activeDestinationData.config.compression}
+                            onCheckedChange={(checked) => updateLogDestination(activeDestinationData.id, {
+                              config: { ...activeDestinationData.config, compression: checked }
+                            })}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {(activeDestinationData.type === 'remote' || activeDestinationData.type === 'elasticsearch') && (
+                      <>
+                        <Separator />
+                        <div>
+                          <Label htmlFor="endpoint">Endpoint URL</Label>
+                          <Input
+                            id="endpoint"
+                            value={activeDestinationData.config.endpoint || ''}
+                            onChange={(e) => updateLogDestination(activeDestinationData.id, {
+                              config: { ...activeDestinationData.config, endpoint: e.target.value }
+                            })}
+                            placeholder="https://api.example.com/logs"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="api-key">API Key</Label>
+                          <Input
+                            id="api-key"
+                            type="password"
+                            value={activeDestinationData.config.apiKey || ''}
+                            onChange={(e) => updateLogDestination(activeDestinationData.id, {
+                              config: { ...activeDestinationData.config, apiKey: e.target.value }
+                            })}
+                            placeholder="Enter API key"
+                          />
+                        </div>
+                      </>
                     )}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {selectedLog ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Level:</span>
-                          <Badge className={getLogLevelColor(selectedLog.level)} variant="secondary" ml-2>
-                            {selectedLog.level}
-                          </Badge>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Size:</span>
-                          <span className="ml-2">{formatFileSize(selectedLog.size)}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Modified:</span>
-                          <span className="ml-2">{selectedLog.lastModified.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      
-                      <Separator />
-                      
-                      <div className="bg-black text-green-400 p-4 rounded font-mono text-sm max-h-96 overflow-y-auto">
-                        <pre className="whitespace-pre-wrap">{logViewer}</pre>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted-foreground py-8">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Select a log file from the list to view its contents</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Select a destination to configure its settings</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="configuration" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Global Settings</CardTitle>
-              <CardDescription>
-                Configure basic logging behavior
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={loggingSettings.global.enabled}
-                  onCheckedChange={(checked) => handleGlobalChange('enabled', checked)}
-                />
-                <Label>Enable Logging</Label>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Log Level</Label>
+        <TabsContent value="settings" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Global Settings</CardTitle>
+                <CardDescription>
+                  Configure global logging behavior
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="log-level">Minimum Log Level</Label>
                   <Select
-                    value={loggingSettings.global.level}
-                    onValueChange={(value) => handleGlobalChange('level', value)}
+                    value={logSettings.level}
+                    onValueChange={(value: any) => setLogSettings(prev => ({ ...prev, level: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="debug">Debug</SelectItem>
-                      <SelectItem value="info">Info</SelectItem>
-                      <SelectItem value="warn">Warning</SelectItem>
-                      <SelectItem value="error">Error</SelectItem>
+                      {logLevels.map((level) => (
+                        <SelectItem key={level.value} value={level.value}>
+                          {level.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {logLevels.find(l => l.value === logSettings.level)?.description}
+                  </p>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label>Format</Label>
+
+                <div>
+                  <Label htmlFor="log-format">Log Format</Label>
                   <Select
-                    value={loggingSettings.global.format}
-                    onValueChange={(value) => handleGlobalChange('format', value)}
+                    value={logSettings.format}
+                    onValueChange={(value: any) => setLogSettings(prev => ({ ...prev, format: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="json">JSON</SelectItem>
-                      <SelectItem value="text">Text</SelectItem>
-                      <SelectItem value="xml">XML</SelectItem>
+                      <SelectItem value="text">Plain Text</SelectItem>
+                      <SelectItem value="pretty">Pretty Print</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                
-                <div className="flex items-center space-x-2 pt-6">
-                  <Switch
-                    checked={loggingSettings.global.timestamp}
-                    onCheckedChange={(checked) => handleGlobalChange('timestamp', checked)}
-                  />
-                  <Label>Include Timestamp</Label>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="storage" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>File Storage</CardTitle>
-              <CardDescription>
-                Configure local file logging
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={loggingSettings.file.enabled}
-                  onCheckedChange={(checked) => handleFileChange('enabled', checked)}
-                />
-                <Label>Enable File Logging</Label>
-              </div>
-
-              {loggingSettings.file.enabled && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Log Directory</Label>
-                    <Input
-                      value={loggingSettings.file.path}
-                      onChange={(e) => handleFileChange('path', e.target.value)}
-                      placeholder="./logs"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Max File Size (MB)</Label>
-                      <Input
-                        type="number"
-                        value={loggingSettings.file.maxSize}
-                        onChange={(e) => handleFileChange('maxSize', parseInt(e.target.value))}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Max Files</Label>
-                      <Input
-                        type="number"
-                        value={loggingSettings.file.maxFiles}
-                        onChange={(e) => handleFileChange('maxFiles', parseInt(e.target.value))}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Rotation</Label>
-                      <Select
-                        value={loggingSettings.file.rotation}
-                        onValueChange={(value) => handleFileChange('rotation', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="size">By Size</SelectItem>
-                          <SelectItem value="time">By Time</SelectItem>
-                          <SelectItem value="never">Never</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Show Timestamps</Label>
                     <Switch
-                      checked={loggingSettings.file.compression}
-                      onCheckedChange={(checked) => handleFileChange('compression', checked)}
-                    />
-                    <Label>Compress Old Files</Label>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Database Storage</CardTitle>
-              <CardDescription>
-                Store logs in a database for querying and analysis
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={loggingSettings.database.enabled}
-                  onCheckedChange={(checked) => handleDatabaseChange('enabled', checked)}
-                />
-                <Label>Enable Database Logging</Label>
-              </div>
-
-              {loggingSettings.database.enabled && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Connection String</Label>
-                    <Input
-                      value={loggingSettings.database.connection}
-                      onChange={(e) => handleDatabaseChange('connection', e.target.value)}
-                      placeholder="postgresql://user:pass@localhost/dbname"
+                      checked={logSettings.timestamp}
+                      onCheckedChange={(checked) => setLogSettings(prev => ({ ...prev, timestamp: checked }))}
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Table Name</Label>
-                      <Input
-                        value={loggingSettings.database.table}
-                        onChange={(e) => handleDatabaseChange('table', e.target.value)}
-                        placeholder="logs"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Batch Size</Label>
-                      <Input
-                        type="number"
-                        value={loggingSettings.database.batchSize}
-                        onChange={(e) => handleDatabaseChange('batchSize', parseInt(e.target.value))}
-                      />
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Colorize Output</Label>
+                    <Switch
+                      checked={logSettings.colorize}
+                      onCheckedChange={(checked) => setLogSettings(prev => ({ ...prev, colorize: checked }))}
+                    />
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                <Separator />
+
+                <div>
+                  <Label>Buffer Size: {logSettings.bufferSize}</Label>
+                  <Slider
+                    value={[logSettings.bufferSize]}
+                    onValueChange={([value]) => setLogSettings(prev => ({ ...prev, bufferSize: value }))}
+                    min={100}
+                    max={10000}
+                    step={100}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label>Flush Interval: {logSettings.flushInterval}s</Label>
+                  <Slider
+                    value={[logSettings.flushInterval]}
+                    onValueChange={([value]) => setLogSettings(prev => ({ ...prev, flushInterval: value }))}
+                    min={1}
+                    max={60}
+                    step={1}
+                    className="mt-2"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Advanced Features</CardTitle>
+                <CardDescription>
+                  Enable additional logging capabilities
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Metrics Logging</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Log system performance metrics
+                    </p>
+                  </div>
+                  <Switch
+                    checked={logSettings.enableMetrics}
+                    onCheckedChange={(checked) => setLogSettings(prev => ({ ...prev, enableMetrics: checked }))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Performance Logging</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Log function execution times
+                    </p>
+                  </div>
+                  <Switch
+                    checked={logSettings.performanceLogging}
+                    onCheckedChange={(checked) => setLogSettings(prev => ({ ...prev, performanceLogging: checked }))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Structured Logging</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Use structured data in logs
+                    </p>
+                  </div>
+                  <Switch
+                    checked={logSettings.structuredLogging}
+                    onCheckedChange={(checked) => setLogSettings(prev => ({ ...prev, structuredLogging: checked }))}
+                  />
+                </div>
+
+                <Separator />
+
+                <div>
+                  <Label htmlFor="retention-days">Retention Period (days)</Label>
+                  <Input
+                    id="retention-days"
+                    type="number"
+                    value={logMetrics.retentionDays}
+                    onChange={(e) => setLogMetrics(prev => ({ ...prev, retentionDays: Number(e.target.value) }))}
+                  />
+                </div>
+
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Longer retention periods will increase storage requirements but provide more historical data.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="filters" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Content Filters</CardTitle>
+              <CardTitle>Log Filters</CardTitle>
               <CardDescription>
-                Configure log filtering and data protection
+                Configure what logs are captured and processed
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={loggingSettings.filters.enabled}
-                  onCheckedChange={(checked) => handleFiltersChange('enabled', checked)}
-                />
-                <Label>Enable Filters</Label>
-              </div>
-
-              {loggingSettings.filters.enabled && (
+              {activeDestinationData && (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Exclude Patterns</Label>
+                  <div>
+                    <Label htmlFor="min-level">Minimum Log Level</Label>
+                    <Select
+                      value={activeDestinationData.filters.minLevel}
+                      onValueChange={(value) => updateLogDestination(activeDestinationData.id, {
+                        filters: { ...activeDestinationData.filters, minLevel: value }
+                      })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {logLevels.map((level) => (
+                          <SelectItem key={level.value} value={level.value}>
+                            {level.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Log Categories</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                      {logCategories.map((category) => (
+                        <div key={category} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`category-${category}`}
+                            checked={activeDestinationData.filters.categories.includes(category) || activeDestinationData.filters.categories.includes('all')}
+                            onChange={(e) => {
+                              const categories = activeDestinationData.filters.categories;
+                              const newCategories = e.target.checked
+                                ? [...categories.filter(c => c !== 'all'), category]
+                                : categories.filter(c => c !== category && c !== 'all');
+                              updateLogDestination(activeDestinationData.id, {
+                                filters: { ...activeDestinationData.filters, categories: newCategories }
+                              });
+                            }}
+                            className="rounded"
+                          />
+                          <Label htmlFor={`category-${category}`} className="text-sm capitalize">
+                            {category}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="exclude-patterns">Exclude Patterns</Label>
                     <Textarea
-                      value={loggingSettings.filters.excludePatterns.join('\n')}
-                      onChange={(e) => handleFiltersChange('excludePatterns', e.target.value.split('\n'))}
-                      placeholder="*.tmp&#10;*.log.bak&#10;/secret/"
+                      id="exclude-patterns"
+                      value={activeDestinationData.filters.excludePatterns.join('\n')}
+                      onChange={(e) => {
+                        const patterns = e.target.value.split('\n').filter(p => p.trim());
+                        updateLogDestination(activeDestinationData.id, {
+                          filters: { ...activeDestinationData.filters, excludePatterns: patterns }
+                        });
+                      }}
+                      placeholder="Enter patterns to exclude (one per line)"
                       rows={3}
                     />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Include Patterns</Label>
-                    <Textarea
-                      value={loggingSettings.filters.includePatterns.join('\n')}
-                      onChange={(e) => handleFiltersChange('includePatterns', e.target.value.split('\n'))}
-                      placeholder="*.log&#10;*.txt&#10;/logs/"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={loggingSettings.filters.sensitiveData}
-                      onCheckedChange={(checked) => handleFiltersChange('sensitiveData', checked)}
-                    />
-                    <Label>Filter Sensitive Data</Label>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Retention Policy</CardTitle>
-              <CardDescription>
-                Configure automatic log cleanup and archival
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={loggingSettings.retention.enabled}
-                  onCheckedChange={(checked) => handleRetentionChange('enabled', checked)}
-                />
-                <Label>Enable Retention Policy</Label>
-              </div>
-
-              {loggingSettings.retention.enabled && (
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={loggingSettings.retention.autoDelete}
-                      onCheckedChange={(checked) => handleRetentionChange('autoDelete', checked)}
-                    />
-                    <Label>Auto Delete Old Logs</Label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Max Age (days)</Label>
-                      <Input
-                        type="number"
-                        value={loggingSettings.retention.maxAge}
-                        onChange={(e) => handleRetentionChange('maxAge', parseInt(e.target.value))}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Max Total Size (MB)</Label>
-                      <Input
-                        type="number"
-                        value={loggingSettings.retention.maxSize}
-                        onChange={(e) => handleRetentionChange('maxSize', parseInt(e.target.value))}
-                      />
-                    </div>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Real-time Logs</CardTitle>
+                <CardDescription>
+                  Live log stream and search
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Search logs..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <Select value={logFilter} onValueChange={setLogFilter}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Levels</SelectItem>
+                        {logLevels.map((level) => (
+                          <SelectItem key={level.value} value={level.value}>
+                            {level.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="icon">
+                      <Filter className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto">
+                    <div className="space-y-1">
+                      <div className="text-gray-400">[2024-01-15 10:30:15] INFO [trading] Position opened: AAPL</div>
+                      <div className="text-blue-400">[2024-01-15 10:30:20] DEBUG [strategy] Calculating momentum indicators</div>
+                      <div className="text-yellow-400">[2024-01-15 10:30:25] WARNING [broker] High latency detected: 250ms</div>
+                      <div className="text-gray-400">[2024-01-15 10:30:30] INFO [risk] Risk check passed</div>
+                      <div className="text-green-400">[2024-01-15 10:30:35] INFO [trading] Order executed successfully</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Log Analytics</CardTitle>
+                <CardDescription>
+                  Log statistics and insights
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 border rounded">
+                    <div className="text-sm text-muted-foreground">Avg Log Size</div>
+                    <div className="text-2xl font-bold">{logMetrics.avgLogSize}KB</div>
+                  </div>
+                  <div className="p-3 border rounded">
+                    <div className="text-sm text-muted-foreground">Retention</div>
+                    <div className="text-2xl font-bold">{logMetrics.retentionDays}d</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Storage Usage</span>
+                    <span>{((logMetrics.storageUsed / logMetrics.storageLimit) * 100).toFixed(1)}%</span>
+                  </div>
+                  <Progress value={(logMetrics.storageUsed / logMetrics.storageLimit) * 100} className="h-2" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Log Rate</span>
+                    <span>{logMetrics.logRate} logs/sec</span>
+                  </div>
+                  <Progress value={(logMetrics.logRate / 10) * 100} className="h-2" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Error Rate</span>
+                    <span>{((logMetrics.errorsToday / logMetrics.totalLogs) * 100).toFixed(2)}%</span>
+                  </div>
+                  <Progress value={(logMetrics.errorsToday / logMetrics.totalLogs) * 100} className="h-2" />
+                </div>
+
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    All systems are logging normally with no critical issues detected.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
-}
+};
+
+export default LoggingConfig;

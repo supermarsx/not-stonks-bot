@@ -1,848 +1,577 @@
-"""Configuration Validator
-
-Comprehensive configuration validation and testing system for the trading orchestrator.
-Validates all configuration files, detects common issues, and provides detailed
-feedback for configuration problems.
-
-Features:
-- Multi-format configuration support (JSON, YAML, environment variables)
-- Comprehensive validation rules for all components
-- Connection testing for external services
-- Performance impact assessment
-- Security validation
-- Best practice recommendations
-- Detailed error reporting and suggestions
-
-Author: Trading System Development Team
-Version: 1.0.0
-Date: 2024-12-19
+#!/usr/bin/env python3
+"""
+Day Trading Orchestrator - Configuration Validator
+Validates configuration files and detects common issues
 """
 
-import asyncio
-import json
-import logging
-import os
 import sys
-import yaml
-from datetime import datetime, timedelta
-from decimal import Decimal
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Union
-from dataclasses import dataclass, field
-from enum import Enum
+import json
+import os
 import re
-import urllib.parse
-
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent))
-
-try:
-    from trading_orchestrator.config import TradingConfig, BrokerConfig, StrategyConfig
-except ImportError:
-    print("Warning: Trading configuration modules not available. Running in standalone validation mode.")
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-class ValidationSeverity(Enum):
-    """Validation issue severity levels"""
-    ERROR = "error"
-    WARNING = "warning"
-    INFO = "info"
-    SUGGESTION = "suggestion"
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass
 
 @dataclass
-class ValidationIssue:
-    """Validation issue structure"""
-    severity: ValidationSeverity
-    category: str
+class ValidationError:
+    """Configuration validation error"""
+    section: str
+    field: str
     message: str
-    field_path: str
-    suggestion: Optional[str] = None
-    code: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    severity: str  # "error", "warning", "info"
 
 @dataclass
 class ValidationResult:
-    """Validation result structure"""
-    config_file: str
+    """Validation result container"""
     is_valid: bool
-    issues: List[ValidationIssue] = field(default_factory=list)
-    warnings: int = 0
-    errors: int = 0
-    suggestions: int = 0
-    validated_at: datetime = field(default_factory=datetime.utcnow)
-    
-    def add_issue(self, issue: ValidationIssue):
-        """Add validation issue"""
-        self.issues.append(issue)
-        
-        if issue.severity == ValidationSeverity.ERROR:
-            self.errors += 1
-            self.is_valid = False
-        elif issue.severity == ValidationSeverity.WARNING:
-            self.warnings += 1
-        elif issue.severity == ValidationSeverity.SUGGESTION:
-            self.suggestions += 1
-    
-    def get_issues_by_severity(self, severity: ValidationSeverity) -> List[ValidationIssue]:
-        """Get issues by severity"""
-        return [issue for issue in self.issues if issue.severity == severity]
-    
-    def get_issues_by_category(self, category: str) -> List[ValidationIssue]:
-        """Get issues by category"""
-        return [issue for issue in self.issues if issue.category == category]
+    errors: List[ValidationError]
+    warnings: List[ValidationError]
+    infos: List[ValidationError]
 
-class ConfigValidator:
-    """Main configuration validator"""
+class ConfigurationValidator:
+    """Validates Day Trading Orchestrator configuration files"""
     
-    def __init__(self, strict_mode: bool = False):
-        self.strict_mode = strict_mode
-        self.validation_results: List[ValidationResult] = []
-        self.connection_tests_enabled = True
-        self.performance_tests_enabled = True
+    def __init__(self, config_path: str = "config.json"):
+        self.config_path = Path(config_path)
+        self.config = {}
+        self.result = ValidationResult(
+            is_valid=True,
+            errors=[],
+            warnings=[],
+            infos=[]
+        )
+    
+    def validate(self) -> ValidationResult:
+        """Run comprehensive configuration validation"""
+        print(f"🔍 Validating configuration: {self.config_path}")
         
-    async def validate_config_file(self, config_path: Union[str, Path]) -> ValidationResult:
-        """Validate a configuration file"""
-        config_path = Path(config_path)
-        result = ValidationResult(config_file=str(config_path))
+        # Load configuration file
+        if not self.load_config():
+            return self.result
         
+        # Run validation checks
+        self.check_file_structure()
+        self.check_database_config()
+        self.check_broker_configs()
+        self.check_ai_config()
+        self.check_risk_config()
+        self.check_logging_config()
+        self.check_ui_config()
+        self.check_security_config()
+        
+        # Generate summary
+        self.generate_summary()
+        
+        return self.result
+    
+    def load_config(self) -> bool:
+        """Load configuration file"""
         try:
-            if not config_path.exists():
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="file_access",
-                    message=f"Configuration file not found: {config_path}",
-                    field_path="file",
-                    code="FILE_NOT_FOUND"
-                ))
-                return result
+            if not self.config_path.exists():
+                self.add_error("global", "config_file", "Configuration file not found", "error")
+                return False
             
-            # Load configuration
-            config_data = await self._load_config_file(config_path)
-            if not config_data:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="file_parsing",
-                    message="Failed to parse configuration file",
-                    field_path="parsing",
-                    code="PARSING_FAILED"
-                ))
-                return result
+            with open(self.config_path, 'r') as f:
+                self.config = json.load(f)
             
-            # Validate configuration structure
-            await self._validate_config_structure(config_data, result)
+            self.add_info("global", "config_file", "Configuration file loaded successfully", "info")
+            return True
             
-            # Validate database configuration
-            await self._validate_database_config(config_data.get('database', {}), result)
-            
-            # Validate broker configurations
-            await self._validate_broker_config(config_data.get('brokers', {}), result)
-            
-            # Validate strategy configurations
-            await self._validate_strategy_config(config_data.get('strategies', {}), result)
-            
-            # Validate risk management
-            await self._validate_risk_management(config_data.get('risk_management', {}), result)
-            
-            # Validate system settings
-            await self._validate_system_settings(config_data.get('system', {}), result)
-            
-            # Validate security settings
-            await self._validate_security_settings(config_data, result)
-            
-            # Test connections if enabled
-            if self.connection_tests_enabled:
-                await self._test_connections(config_data, result)
-            
-            # Performance validation
-            if self.performance_tests_enabled:
-                await self._validate_performance_config(config_data, result)
-            
+        except json.JSONDecodeError as e:
+            self.add_error("global", "json_syntax", f"Invalid JSON syntax: {e}", "error")
+            return False
         except Exception as e:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.ERROR,
-                category="validation",
-                message=f"Validation error: {str(e)}",
-                field_path="validation",
-                code="VALIDATION_ERROR",
-                details={"exception": str(e)}
-            ))
-        
-        self.validation_results.append(result)
-        return result
+            self.add_error("global", "file_load", f"Failed to load configuration: {e}", "error")
+            return False
     
-    async def _load_config_file(self, config_path: Path) -> Optional[Dict[str, Any]]:
-        """Load configuration file based on extension"""
-        try:
-            with open(config_path, 'r') as f:
-                content = f.read()
-            
-            if config_path.suffix.lower() in ['.yaml', '.yml']:
-                return yaml.safe_load(content)
-            elif config_path.suffix.lower() == '.json':
-                return json.loads(content)
-            else:
-                # Try to detect format
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    try:
-                        return yaml.safe_load(content)
-                    except yaml.YAMLError:
-                        return None
-        except Exception as e:
-            logger.error(f"Error loading config file {config_path}: {e}")
-            return None
-    
-    async def _validate_config_structure(self, config_data: Dict[str, Any], result: ValidationResult):
-        """Validate basic configuration structure"""
-        required_sections = ['database', 'brokers', 'strategies']
+    def check_file_structure(self):
+        """Check configuration file structure"""
+        required_sections = ["database", "brokers", "risk"]
         
         for section in required_sections:
-            if section not in config_data:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="structure",
-                    message=f"Missing required configuration section: {section}",
-                    field_path=section,
-                    code="MISSING_SECTION"
-                ))
-        
-        # Check for unknown sections
-        known_sections = required_sections + ['system', 'risk_management', 'logging', 'performance']
-        for section in config_data.keys():
-            if section not in known_sections:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="structure",
-                    message=f"Unknown configuration section: {section}",
-                    field_path=section,
-                    code="UNKNOWN_SECTION"
-                ))
-    
-    async def _validate_database_config(self, db_config: Dict[str, Any], result: ValidationResult):
-        """Validate database configuration"""
-        # Required fields
-        if 'path' not in db_config:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.ERROR,
-                category="database",
-                message="Database path is required",
-                field_path="database.path",
-                code="MISSING_PATH"
-            ))
-        
-        # Database path validation
-        if 'path' in db_config:
-            db_path = db_config['path']
-            if isinstance(db_path, str):
-                # Check if path is writable
-                db_dir = Path(db_path).parent
-                if not db_dir.exists():
-                    result.add_issue(ValidationIssue(
-                        severity=ValidationSeverity.WARNING,
-                        category="database",
-                        message=f"Database directory does not exist: {db_dir}",
-                        field_path="database.path",
-                        code="DIR_NOT_EXISTS",
-                        suggestion="Create the directory or use a different path"
-                    ))
-        
-        # Connection pool settings
-        if 'connection_pool_size' in db_config:
-            pool_size = db_config['connection_pool_size']
-            if not isinstance(pool_size, int) or pool_size < 1:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="database",
-                    message="Connection pool size must be a positive integer",
-                    field_path="database.connection_pool_size",
-                    code="INVALID_POOL_SIZE"
-                ))
-            elif pool_size > 100:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="database",
-                    message=f"High connection pool size ({pool_size}) may impact performance",
-                    field_path="database.connection_pool_size",
-                    code="HIGH_POOL_SIZE",
-                    suggestion="Consider reducing pool size for better resource management"
-                ))
-        
-        # Timeout settings
-        if 'timeout' in db_config:
-            timeout = db_config['timeout']
-            if not isinstance(timeout, (int, float)) or timeout <= 0:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="database",
-                    message="Database timeout must be a positive number",
-                    field_path="database.timeout",
-                    code="INVALID_TIMEOUT"
-                ))
-        
-        # Backup settings
-        if 'backup_enabled' in db_config and db_config['backup_enabled']:
-            if 'backup_interval' not in db_config:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="database",
-                    message="Backup enabled but no backup interval specified",
-                    field_path="database.backup_interval",
-                    code="MISSING_BACKUP_INTERVAL"
-                ))
-    
-    async def _validate_broker_config(self, broker_config: Dict[str, Any], result: ValidationResult):
-        """Validate broker configurations"""
-        # Check if brokers are configured
-        if not broker_config or 'enabled' not in broker_config:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.WARNING,
-                category="broker",
-                message="No broker configurations found",
-                field_path="brokers.enabled",
-                code="NO_BROKERS"
-            ))
-            return
-        
-        enabled_brokers = broker_config.get('enabled', [])
-        
-        if not enabled_brokers:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.WARNING,
-                category="broker",
-                message="No brokers enabled for trading",
-                field_path="brokers.enabled",
-                code="NO_ENABLED_BROKERS"
-            ))
-        
-        # Validate each enabled broker
-        for broker_name in enabled_brokers:
-            broker_specific_config = broker_config.get(broker_name, {})
-            await self._validate_individual_broker(broker_name, broker_specific_config, result)
-    
-    async def _validate_individual_broker(self, broker_name: str, broker_config: Dict[str, Any], result: ValidationResult):
-        """Validate individual broker configuration"""
-        # Common validation for all brokers
-        if not broker_config:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.ERROR,
-                category="broker",
-                message=f"No configuration found for broker: {broker_name}",
-                field_path=f"brokers.{broker_name}",
-                code="BROKER_NO_CONFIG"
-            ))
-            return
-        
-        # API credentials validation
-        required_fields = self._get_broker_required_fields(broker_name)
-        for field in required_fields:
-            if field not in broker_config:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="broker",
-                    message=f"Missing required field for {broker_name}: {field}",
-                    field_path=f"brokers.{broker_name}.{field}",
-                    code="MISSING_BROKER_FIELD"
-                ))
-        
-        # API endpoint validation
-        if 'api_url' in broker_config:
-            url = broker_config['api_url']
-            if not self._is_valid_url(url):
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="broker",
-                    message=f"Invalid API URL for {broker_name}: {url}",
-                    field_path=f"brokers.{broker_name}.api_url",
-                    code="INVALID_API_URL"
-                ))
-        
-        # Rate limiting
-        if 'rate_limit' in broker_config:
-            rate_limit = broker_config['rate_limit']
-            if not isinstance(rate_limit, dict):
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="broker",
-                    message=f"Rate limit must be a dictionary for {broker_name}",
-                    field_path=f"brokers.{broker_name}.rate_limit",
-                    code="INVALID_RATE_LIMIT_FORMAT"
-                ))
-        
-        # Sandbox/testnet validation
-        if 'sandbox' in broker_config and broker_config['sandbox']:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.INFO,
-                category="broker",
-                message=f"Broker {broker_name} is configured for sandbox/testnet mode",
-                field_path=f"brokers.{broker_name}.sandbox",
-                code="SANDBOX_MODE"
-            ))
-    
-    def _get_broker_required_fields(self, broker_name: str) -> List[str]:
-        """Get required fields for specific broker type"""
-        broker_fields = {
-            'alpaca': ['api_key', 'secret_key', 'api_url'],
-            'binance': ['api_key', 'secret_key'],
-            'interactive_brokers': ['host', 'port', 'client_id'],
-            'paper_trading': [],
-            'mock': []
-        }
-        return broker_fields.get(broker_name.lower(), [])
-    
-    def _is_valid_url(self, url: str) -> bool:
-        """Check if URL is valid"""
-        try:
-            result = urllib.parse.urlparse(url)
-            return all([result.scheme, result.netloc])
-        except Exception:
-            return False
-    
-    async def _validate_strategy_config(self, strategy_config: Dict[str, Any], result: ValidationResult):
-        """Validate strategy configurations"""
-        if not strategy_config or 'enabled' not in strategy_config:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.WARNING,
-                category="strategy",
-                message="No strategy configurations found",
-                field_path="strategies.enabled",
-                code="NO_STRATEGIES"
-            ))
-            return
-        
-        enabled_strategies = strategy_config.get('enabled', [])
-        
-        if not enabled_strategies:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.WARNING,
-                category="strategy",
-                message="No trading strategies enabled",
-                field_path="strategies.enabled",
-                code="NO_ENABLED_STRATEGIES"
-            ))
-        
-        # Validate each enabled strategy
-        for strategy_name in enabled_strategies:
-            strategy_specific_config = strategy_config.get(strategy_name, {})
-            await self._validate_individual_strategy(strategy_name, strategy_specific_config, result)
-    
-    async def _validate_individual_strategy(self, strategy_name: str, strategy_config: Dict[str, Any], result: ValidationResult):
-        """Validate individual strategy configuration"""
-        if not strategy_config:
-            result.add_issue(ValidationIssue(
-                severity=ValidationSeverity.ERROR,
-                category="strategy",
-                message=f"No configuration found for strategy: {strategy_name}",
-                field_path=f"strategies.{strategy_name}",
-                code="STRATEGY_NO_CONFIG"
-            ))
-            return
-        
-        # Common strategy parameters
-        if 'position_size' in strategy_config:
-            position_size = strategy_config['position_size']
-            if not isinstance(position_size, (int, float)) or position_size <= 0:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="strategy",
-                    message=f"Position size must be positive for {strategy_name}",
-                    field_path=f"strategies.{strategy_name}.position_size",
-                    code="INVALID_POSITION_SIZE"
-                ))
-        
-        # Stop loss validation
-        if 'stop_loss' in strategy_config:
-            stop_loss = strategy_config['stop_loss']
-            if isinstance(stop_loss, dict):
-                if 'percentage' in stop_loss:
-                    percentage = stop_loss['percentage']
-                    if not isinstance(percentage, (int, float)) or percentage <= 0 or percentage > 50:
-                        result.add_issue(ValidationIssue(
-                            severity=ValidationSeverity.ERROR,
-                            category="strategy",
-                            message=f"Stop loss percentage must be between 0 and 50 for {strategy_name}",
-                            field_path=f"strategies.{strategy_name}.stop_loss.percentage",
-                            code="INVALID_STOP_LOSS_PERCENTAGE"
-                        ))
-        
-        # Take profit validation
-        if 'take_profit' in strategy_config:
-            take_profit = strategy_config['take_profit']
-            if isinstance(take_profit, dict):
-                if 'percentage' in take_profit:
-                    percentage = take_profit['percentage']
-                    if not isinstance(percentage, (int, float)) or percentage <= 0:
-                        result.add_issue(ValidationIssue(
-                            severity=ValidationSeverity.ERROR,
-                            category="strategy",
-                            message=f"Take profit percentage must be positive for {strategy_name}",
-                            field_path=f"strategies.{strategy_name}.take_profit.percentage",
-                            code="INVALID_TAKE_PROFIT_PERCENTAGE"
-                        ))
-        
-        # Timeframe validation
-        if 'timeframe' in strategy_config:
-            timeframe = strategy_config['timeframe']
-            valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1M']
-            if timeframe not in valid_timeframes:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="strategy",
-                    message=f"Unknown timeframe for {strategy_name}: {timeframe}",
-                    field_path=f"strategies.{strategy_name}.timeframe",
-                    code="UNKNOWN_TIMEFRAME",
-                    suggestion=f"Valid timeframes: {', '.join(valid_timeframes)}"
-                ))
-    
-    async def _validate_risk_management(self, risk_config: Dict[str, Any], result: ValidationResult):
-        """Validate risk management configuration"""
-        # Maximum position size
-        if 'max_position_size' in risk_config:
-            max_size = risk_config['max_position_size']
-            if not isinstance(max_size, (int, float)) or max_size <= 0:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="risk",
-                    message="Maximum position size must be positive",
-                    field_path="risk_management.max_position_size",
-                    code="INVALID_MAX_POSITION_SIZE"
-                ))
-        
-        # Maximum drawdown
-        if 'max_drawdown' in risk_config:
-            max_drawdown = risk_config['max_drawdown']
-            if not isinstance(max_drawdown, (int, float)) or max_drawdown <= 0 or max_drawdown > 100:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="risk",
-                    message="Maximum drawdown must be between 0 and 100",
-                    field_path="risk_management.max_drawdown",
-                    code="INVALID_MAX_DRAWDOWN"
-                ))
-        
-        # Daily loss limit
-        if 'daily_loss_limit' in risk_config:
-            daily_loss = risk_config['daily_loss_limit']
-            if not isinstance(daily_loss, (int, float)) or daily_loss < 0:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    category="risk",
-                    message="Daily loss limit must be non-negative",
-                    field_path="risk_management.daily_loss_limit",
-                    code="INVALID_DAILY_LOSS_LIMIT"
-                ))
-        
-        # Maximum concurrent positions
-        if 'max_concurrent_positions' in risk_config:
-            max_positions = risk_config['max_concurrent_positions']
-            if not isinstance(max_positions, int) or max_positions < 1:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="risk",
-                    message="Maximum concurrent positions should be a positive integer",
-                    field_path="risk_management.max_concurrent_positions",
-                    code="INVALID_MAX_POSITIONS"
-                ))
-    
-    async def _validate_system_settings(self, system_config: Dict[str, Any], result: ValidationResult):
-        """Validate system configuration"""
-        # Log level
-        if 'log_level' in system_config:
-            log_level = system_config['log_level']
-            valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-            if log_level not in valid_levels:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="system",
-                    message=f"Invalid log level: {log_level}",
-                    field_path="system.log_level",
-                    code="INVALID_LOG_LEVEL",
-                    suggestion=f"Valid levels: {', '.join(valid_levels)}"
-                ))
-        
-        # Thread pool size
-        if 'thread_pool_size' in system_config:
-            pool_size = system_config['thread_pool_size']
-            if not isinstance(pool_size, int) or pool_size < 1 or pool_size > 100:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="system",
-                    message="Thread pool size should be between 1 and 100",
-                    field_path="system.thread_pool_size",
-                    code="INVALID_THREAD_POOL_SIZE"
-                ))
-        
-        # Max memory usage
-        if 'max_memory_mb' in system_config:
-            max_memory = system_config['max_memory_mb']
-            if not isinstance(max_memory, (int, float)) or max_memory <= 0:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="system",
-                    message="Max memory must be positive",
-                    field_path="system.max_memory_mb",
-                    code="INVALID_MAX_MEMORY"
-                ))
-    
-    async def _validate_security_settings(self, config_data: Dict[str, Any], result: ValidationResult):
-        """Validate security configuration"""
-        # Check for hardcoded secrets in configuration
-        config_str = json.dumps(config_data)
-        
-        # Check for common secret patterns
-        secret_patterns = [
-            r'api[_-]?key["\']?\s*[:=]\s*["\']([^"\']{20,})["\']',  # API keys
-            r'secret[_-]?key["\']?\s*[:=]\s*["\']([^"\']{20,})["\']',  # Secret keys
-            r'password["\']?\s*[:=]\s*["\'][^"\']{8,}["\']'  # Passwords
-        ]
-        
-        for pattern in secret_patterns:
-            matches = re.finditer(pattern, config_str, re.IGNORECASE)
-            for match in matches:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="security",
-                    message="Potential hardcoded secret detected in configuration",
-                    field_path="security",
-                    code="HARDCODED_SECRET",
-                    suggestion="Use environment variables or secure secret management"
-                ))
-        
-        # Check for proper file permissions
-        # This would require file system access to check actual permissions
-    
-    async def _test_connections(self, config_data: Dict[str, Any], result: ValidationResult):
-        """Test connections to external services"""
-        # This would require actual network calls to test connections
-        # For now, we'll just add informational messages
-        
-        if 'brokers' in config_data:
-            enabled_brokers = config_data['brokers'].get('enabled', [])
-            for broker_name in enabled_brokers:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.INFO,
-                    category="connection",
-                    message=f"Connection test for {broker_name} would be performed here",
-                    field_path=f"brokers.{broker_name}",
-                    code="CONNECTION_TEST_PENDING"
-                ))
-    
-    async def _validate_performance_config(self, config_data: Dict[str, Any], result: ValidationResult):
-        """Validate performance-related configuration"""
-        # Check for performance bottlenecks
-        
-        # High connection pool size
-        if 'database' in config_data:
-            db_config = config_data['database']
-            if 'connection_pool_size' in db_config and db_config['connection_pool_size'] > 50:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="performance",
-                    message="High database connection pool size may impact performance",
-                    field_path="database.connection_pool_size",
-                    code="HIGH_POOL_SIZE"
-                ))
-        
-        # Many enabled strategies
-        if 'strategies' in config_data:
-            enabled_strategies = config_data['strategies'].get('enabled', [])
-            if len(enabled_strategies) > 10:
-                result.add_issue(ValidationIssue(
-                    severity=ValidationSeverity.WARNING,
-                    category="performance",
-                    message=f"Large number of enabled strategies ({len(enabled_strategies)}) may impact performance",
-                    field_path="strategies.enabled",
-                    code="MANY_STRATEGIES"
-                ))
-    
-    def generate_report(self, results: List[ValidationResult]) -> str:
-        """Generate comprehensive validation report"""
-        report = []
-        report.append("=" * 60)
-        report.append("    CONFIGURATION VALIDATION REPORT")
-        report.append("=" * 60)
-        report.append(f"Generated: {datetime.utcnow().isoformat()}")
-        report.append(f"Files validated: {len(results)}")
-        
-        total_errors = sum(r.errors for r in results)
-        total_warnings = sum(r.warnings for r in results)
-        total_suggestions = sum(r.suggestions for r in results)
-        
-        report.append("\n--- SUMMARY ---")
-        report.append(f"Errors: {total_errors}")
-        report.append(f"Warnings: {total_warnings}")
-        report.append(f"Suggestions: {total_suggestions}")
-        
-        if total_errors == 0:
-            report.append("\n✅ All configuration files are valid!")
-        else:
-            report.append(f"\n❌ Found {total_errors} critical issues that must be fixed.")
-        
-        # Detailed results for each file
-        for result in results:
-            report.append(f"\n--- {result.config_file} ---")
-            
-            if result.is_valid:
-                report.append("✅ Valid configuration")
+            if section not in self.config:
+                self.add_error("global", f"missing_{section}", f"Required section '{section}' not found", "error")
             else:
-                report.append("❌ Invalid configuration")
-            
-            # Group issues by severity
-            for severity in [ValidationSeverity.ERROR, ValidationSeverity.WARNING, ValidationSeverity.SUGGESTION, ValidationSeverity.INFO]:
-                issues = result.get_issues_by_severity(severity)
-                if issues:
-                    severity_title = severity.value.upper()
-                    report.append(f"\n{severity_title}S:")
-                    
-                    for issue in issues:
-                        report.append(f"  • {issue.message}")
-                        if issue.suggestion:
-                            report.append(f"    💡 {issue.suggestion}")
-                        if issue.field_path:
-                            report.append(f"    📍 Field: {issue.field_path}")
+                self.add_info("global", f"section_{section}", f"Section '{section}' found", "info")
         
-        # Overall recommendations
-        report.append("\n--- RECOMMENDATIONS ---")
-        
-        if total_errors > 0:
-            report.append("1. Fix all ERROR-level issues before deploying to production")
-        
-        if total_warnings > 0:
-            report.append("2. Review and address WARNING-level issues for better stability")
-        
-        report.append("3. Consider implementing the suggested improvements")
-        report.append("4. Test configuration changes in a development environment first")
-        report.append("5. Keep configuration files secure and avoid hardcoding secrets")
-        
-        return "\n".join(report)
-
-class ConfigValidatorCLI:
-    """Command-line interface for configuration validation"""
+        # Check for deprecated sections
+        deprecated_sections = ["old_config", "legacy_settings"]
+        for section in deprecated_sections:
+            if section in self.config:
+                self.add_warning("global", f"deprecated_{section}", f"Section '{section}' is deprecated", "warning")
     
-    def __init__(self):
-        self.validator = ConfigValidator()
-    
-    async def validate_file(self, config_path: str, output_file: Optional[str] = None) -> bool:
-        """Validate a single configuration file"""
-        print(f"Validating configuration file: {config_path}")
+    def check_database_config(self):
+        """Validate database configuration"""
+        db_config = self.config.get("database", {})
         
-        result = await self.validator.validate_config_file(config_path)
-        
-        # Print immediate results
-        if result.is_valid:
-            print("✅ Configuration is valid!")
+        # Check required fields
+        if "url" not in db_config:
+            self.add_error("database", "url", "Database URL not specified", "error")
         else:
-            print("❌ Configuration has issues:")
+            url = db_config["url"]
+            
+            # Validate URL format
+            if not url.startswith(("sqlite:", "postgresql:", "mysql:")):
+                self.add_error("database", "url_format", 
+                             f"Invalid database URL format: {url}", "error")
+            else:
+                self.add_info("database", "url_format", "Database URL format is valid", "info")
+            
+            # Check SQLite specific settings
+            if url.startswith("sqlite:"):
+                # Check if database file path is writable
+                db_path = url.replace("sqlite:///", "")
+                if db_path:
+                    db_file = Path(db_path)
+                    if db_file.parent.exists() and not os.access(db_file.parent, os.W_OK):
+                        self.add_warning("database", "writable", 
+                                       f"Database directory not writable: {db_file.parent}", "warning")
         
-        if result.errors > 0:
-            print(f"   - {result.errors} errors")
-        if result.warnings > 0:
-            print(f"   - {result.warnings} warnings")
-        if result.suggestions > 0:
-            print(f"   - {result.suggestions} suggestions")
+        # Check optional settings
+        if "echo" in db_config and not isinstance(db_config["echo"], bool):
+            self.add_error("database", "echo_type", "Database 'echo' must be boolean", "error")
         
-        # Generate and display report
-        report = self.validator.generate_report([result])
-        print("\n" + report)
-        
-        # Save report if requested
-        if output_file:
-            with open(output_file, 'w') as f:
-                f.write(report)
-            print(f"\nReport saved to: {output_file}")
-        
-        return result.is_valid
+        if "pool_size" in db_config:
+            pool_size = db_config["pool_size"]
+            if not isinstance(pool_size, int) or pool_size < 1:
+                self.add_error("database", "pool_size", "Database pool_size must be positive integer", "error")
+            elif pool_size > 100:
+                self.add_warning("database", "pool_size_large", 
+                               f"Large pool_size ({pool_size}) may impact performance", "warning")
     
-    async def validate_directory(self, config_dir: str, output_file: Optional[str] = None) -> bool:
-        """Validate all configuration files in a directory"""
-        config_dir = Path(config_dir)
+    def check_broker_configs(self):
+        """Validate broker configurations"""
+        brokers_config = self.config.get("brokers", {})
         
-        if not config_dir.exists() or not config_dir.is_dir():
-            print(f"Error: Directory not found: {config_dir}")
-            return False
+        if not brokers_config:
+            self.add_warning("brokers", "empty", "No brokers configured", "warning")
+            return
         
-        print(f"Validating configuration files in: {config_dir}")
+        supported_brokers = ["alpaca", "binance", "ibkr", "trading212", "degiro", "xtb", "trade_republic"]
         
-        # Find all config files
-        config_extensions = ['.json', '.yaml', '.yml']
-        config_files = []
+        for broker_name, broker_config in brokers_config.items():
+            self.validate_single_broker(broker_name, broker_config, supported_brokers)
+    
+    def validate_single_broker(self, name: str, config: Dict[str, Any], supported_brokers: List[str]):
+        """Validate individual broker configuration"""
+        # Check if broker is supported
+        if name.lower() not in supported_brokers:
+            self.add_warning("brokers", f"unsupported_{name}", 
+                           f"Broker '{name}' not in supported list", "warning")
         
-        for ext in config_extensions:
-            config_files.extend(config_dir.glob(f'*{ext}'))
-            config_files.extend(config_dir.glob(f'config*{ext}'))
+        # Check if enabled
+        if not config.get("enabled", False):
+            self.add_info("brokers", f"disabled_{name}", f"Broker '{name}' is disabled", "info")
+            return
         
-        if not config_files:
-            print("No configuration files found.")
-            return True
+        self.add_info("brokers", f"enabled_{name}", f"Broker '{name}' is enabled", "info")
         
-        print(f"Found {len(config_files)} configuration files.")
+        # Validate common broker fields
+        if name.lower() in ["alpaca", "binance"]:
+            self.validate_api_key_broker(name, config)
+        elif name.lower() == "ibkr":
+            self.validate_ibkr_broker(name, config)
+    
+    def validate_api_key_broker(self, name: str, config: Dict[str, Any]):
+        """Validate broker with API key authentication"""
+        api_key = config.get("api_key")
+        secret_key = config.get("secret_key")
         
-        # Validate each file
-        results = []
-        for config_file in config_files:
-            print(f"\nValidating: {config_file.name}")
-            result = await self.validator.validate_config_file(config_file)
-            results.append(result)
+        # Check API key presence
+        if not api_key:
+            self.add_error("brokers", f"{name}_api_key", 
+                         f"{name} API key not configured", "error")
+        elif api_key in ["YOUR_ALPACA_API_KEY", "YOUR_BINANCE_API_KEY"]:
+            self.add_warning("brokers", f"{name}_api_key_placeholder", 
+                           f"{name} API key is placeholder value", "warning")
+        else:
+            self.validate_api_key_format(name, api_key, "api_key")
         
-        # Generate and display combined report
-        report = self.validator.generate_report(results)
-        print("\n" + "="*60)
-        print(report)
+        # Check secret key
+        if not secret_key:
+            self.add_error("brokers", f"{name}_secret_key", 
+                         f"{name} secret key not configured", "error")
+        elif secret_key in ["YOUR_ALPACA_SECRET_KEY", "YOUR_BINANCE_SECRET_KEY"]:
+            self.add_warning("brokers", f"{name}_secret_key_placeholder", 
+                           f"{name} secret key is placeholder value", "warning")
+        else:
+            self.validate_api_key_format(name, secret_key, "secret_key")
         
-        # Save report if requested
-        if output_file:
-            with open(output_file, 'w') as f:
-                f.write(report)
-            print(f"\nReport saved to: {output_file}")
+        # Check environment setting
+        if name.lower() == "alpaca":
+            paper_setting = config.get("paper")
+            if paper_setting is None:
+                self.add_warning("brokers", f"{name}_paper_mode", 
+                               f"{name} paper mode not explicitly set", "warning")
+            elif not isinstance(paper_setting, bool):
+                self.add_error("brokers", f"{name}_paper_type", 
+                             f"{name} paper setting must be boolean", "error")
         
-        # Return overall success
-        all_valid = all(r.is_valid for r in results)
-        return all_valid
+        elif name.lower() == "binance":
+            testnet_setting = config.get("testnet")
+            if testnet_setting is None:
+                self.add_warning("brokers", f"{name}_testnet_mode", 
+                               f"{name} testnet mode not explicitly set", "warning")
+            elif not isinstance(testnet_setting, bool):
+                self.add_error("brokers", f"{name}_testnet_type", 
+                             f"{name} testnet setting must be boolean", "error")
+    
+    def validate_api_key_format(self, broker: str, api_key: str, key_type: str):
+        """Validate API key format"""
+        if not isinstance(api_key, str):
+            self.add_error("brokers", f"{broker}_{key_type}_type", 
+                         f"{broker} {key_type} must be string", "error")
+            return
+        
+        # Broker-specific validation
+        if broker.lower() == "alpaca":
+            # Alpaca API keys are typically alphanumeric
+            if not re.match(r'^[A-Za-z0-9]+$', api_key):
+                self.add_warning("brokers", f"{broker}_{key_type}_format", 
+                               f"{broker} {key_type} may have invalid format", "warning")
+        
+        elif broker.lower() == "binance":
+            # Binance API keys are 64 characters
+            if len(api_key) != 64:
+                self.add_warning("brokers", f"{broker}_{key_type}_length", 
+                               f"{broker} {key_type} should be 64 characters", "warning")
+    
+    def validate_ibkr_broker(self, name: str, config: Dict[str, Any]):
+        """Validate Interactive Brokers configuration"""
+        required_fields = ["host", "port"]
+        
+        for field in required_fields:
+            if field not in config:
+                self.add_error("brokers", f"{name}_{field}", 
+                             f"{name} {field} not configured", "error")
+        
+        # Validate host
+        if "host" in config:
+            host = config["host"]
+            if not isinstance(host, str) or not host:
+                self.add_error("brokers", f"{name}_host_type", 
+                             f"{name} host must be non-empty string", "error")
+        
+        # Validate port
+        if "port" in config:
+            port = config["port"]
+            if not isinstance(port, int) or port < 1 or port > 65535:
+                self.add_error("brokers", f"{name}_port_invalid", 
+                             f"{name} port must be between 1 and 65535", "error")
+    
+    def check_ai_config(self):
+        """Validate AI configuration"""
+        ai_config = self.config.get("ai", {})
+        
+        if not ai_config:
+            self.add_info("ai", "empty", "AI configuration not present", "info")
+            return
+        
+        # Check trading mode
+        trading_mode = ai_config.get("trading_mode", "PAPER")
+        valid_modes = ["PAPER", "LIVE", "DEMO"]
+        
+        if trading_mode not in valid_modes:
+            self.add_error("ai", "trading_mode", 
+                         f"Invalid trading mode: {trading_mode}. Valid modes: {valid_modes}", "error")
+        else:
+            if trading_mode == "LIVE":
+                self.add_warning("ai", "live_mode", 
+                               "LIVE trading mode enabled - be careful with real money!", "warning")
+            self.add_info("ai", "trading_mode", f"Trading mode set to {trading_mode}", "info")
+        
+        # Check API keys
+        openai_key = ai_config.get("openai_api_key")
+        if openai_key:
+            if openai_key == "YOUR_OPENAI_API_KEY":
+                self.add_warning("ai", "openai_key_placeholder", 
+                               "OpenAI API key is placeholder value", "warning")
+            elif not openai_key.startswith("sk-"):
+                self.add_warning("ai", "openai_key_format", 
+                               "OpenAI API key should start with 'sk-'", "warning")
+        
+        anthropic_key = ai_config.get("anthropic_api_key")
+        if anthropic_key:
+            if anthropic_key == "YOUR_ANTHROPIC_API_KEY":
+                self.add_warning("ai", "anthropic_key_placeholder", 
+                               "Anthropic API key is placeholder value", "warning")
+        
+        # Check local models configuration
+        local_models = ai_config.get("local_models", {})
+        if local_models.get("enabled", False):
+            if not local_models.get("model_path"):
+                self.add_warning("ai", "local_model_path", 
+                               "Local models enabled but model path not specified", "warning")
+    
+    def check_risk_config(self):
+        """Validate risk management configuration"""
+        risk_config = self.config.get("risk", {})
+        
+        if not risk_config:
+            self.add_error("risk", "empty", "Risk management configuration missing", "error")
+            return
+        
+        # Check required risk parameters
+        required_params = ["max_position_size", "max_daily_loss"]
+        
+        for param in required_params:
+            if param not in risk_config:
+                self.add_error("risk", f"missing_{param}", 
+                             f"Required risk parameter '{param}' not configured", "error")
+            else:
+                value = risk_config[param]
+                if not isinstance(value, (int, float)) or value <= 0:
+                    self.add_error("risk", f"invalid_{param}", 
+                                 f"Risk parameter '{param}' must be positive number", "error")
+        
+        # Validate risk parameters
+        if "max_position_size" in risk_config:
+            max_pos = risk_config["max_position_size"]
+            if max_pos > 1000000:  # $1M
+                self.add_warning("risk", "max_position_large", 
+                               f"Large maximum position size: ${max_pos:,}", "warning")
+            elif max_pos < 100:  # $100
+                self.add_warning("risk", "max_position_small", 
+                               f"Small maximum position size: ${max_pos}", "warning")
+        
+        if "max_daily_loss" in risk_config:
+            max_loss = risk_config["max_daily_loss"]
+            if max_loss > 50000:  # $50K
+                self.add_warning("risk", "max_daily_loss_large", 
+                               f"Large daily loss limit: ${max_loss:,}", "warning")
+        
+        # Check circuit breakers
+        circuit_breakers = risk_config.get("circuit_breakers", {})
+        if circuit_breakers.get("enabled", False):
+            required_cb_params = ["daily_loss_limit", "consecutive_loss_limit"]
+            for param in required_cb_params:
+                if param not in circuit_breakers:
+                    self.add_warning("risk", f"missing_cb_{param}", 
+                                   f"Circuit breaker parameter '{param}' not configured", "warning")
+    
+    def check_logging_config(self):
+        """Validate logging configuration"""
+        logging_config = self.config.get("logging", {})
+        
+        if not logging_config:
+            self.add_info("logging", "empty", "Logging configuration not present", "info")
+            return
+        
+        # Check log level
+        log_level = logging_config.get("level", "INFO").upper()
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        
+        if log_level not in valid_levels:
+            self.add_error("logging", "log_level", 
+                         f"Invalid log level: {log_level}. Valid levels: {valid_levels}", "error")
+        else:
+            self.add_info("logging", "log_level", f"Log level set to {log_level}", "info")
+        
+        # Check log file
+        log_file = logging_config.get("file")
+        if log_file:
+            log_path = Path(log_file)
+            log_dir = log_path.parent
+            
+            if not log_dir.exists():
+                self.add_warning("logging", "log_dir_missing", 
+                               f"Log directory does not exist: {log_dir}", "warning")
+            elif not os.access(log_dir, os.W_OK):
+                self.add_error("logging", "log_dir_not_writable", 
+                             f"Log directory not writable: {log_dir}", "error")
+        
+        # Check log file size limits
+        if "max_file_size" in logging_config:
+            max_size = logging_config["max_file_size"]
+            if not isinstance(max_size, (int, float)) or max_size <= 0:
+                self.add_error("logging", "max_file_size_invalid", 
+                             "Log file size must be positive number", "error")
+    
+    def check_ui_config(self):
+        """Validate UI configuration"""
+        ui_config = self.config.get("ui", {})
+        
+        if not ui_config:
+            self.add_info("ui", "empty", "UI configuration not present", "info")
+            return
+        
+        # Check theme
+        theme = ui_config.get("theme", "matrix")
+        valid_themes = ["matrix", "dark", "light"]
+        
+        if theme not in valid_themes:
+            self.add_warning("ui", "theme", 
+                           f"Unknown theme: {theme}. Valid themes: {valid_themes}", "warning")
+        
+        # Check terminal size
+        terminal_size = ui_config.get("terminal_size", {})
+        if "width" in terminal_size:
+            width = terminal_size["width"]
+            if not isinstance(width, int) or width < 80:
+                self.add_warning("ui", "width_small", 
+                               f"Terminal width {width} may be too small (minimum 80)", "warning")
+        
+        if "height" in terminal_size:
+            height = terminal_size["height"]
+            if not isinstance(height, int) or height < 24:
+                self.add_warning("ui", "height_small", 
+                               f"Terminal height {height} may be too small (minimum 24)", "warning")
+    
+    def check_security_config(self):
+        """Validate security configuration"""
+        security_config = self.config.get("security", {})
+        
+        if not security_config:
+            self.add_info("security", "empty", "Security configuration not present", "info")
+            return
+        
+        # Check encryption settings
+        encryption = security_config.get("encryption", {})
+        if encryption.get("enabled", False):
+            algorithm = encryption.get("algorithm", "AES-256")
+            valid_algorithms = ["AES-256", "AES-128", "ChaCha20"]
+            
+            if algorithm not in valid_algorithms:
+                self.add_warning("security", "encryption_algorithm", 
+                               f"Unknown encryption algorithm: {algorithm}", "warning")
+        
+        # Check authentication settings
+        auth = security_config.get("authentication", {})
+        if auth.get("api_keys_required", False):
+            self.add_info("security", "api_keys_required", "API key authentication required", "info")
+        
+        if "session_timeout" in auth:
+            timeout = auth["session_timeout"]
+            if not isinstance(timeout, int) or timeout < 300:  # 5 minutes
+                self.add_warning("security", "session_timeout_low", 
+                               f"Session timeout {timeout}s may be too low (minimum 300s)", "warning")
+    
+    def add_error(self, section: str, field: str, message: str, severity: str = "error"):
+        """Add validation error"""
+        error = ValidationError(section, field, message, severity)
+        
+        if severity == "error":
+            self.result.errors.append(error)
+            self.result.is_valid = False
+        elif severity == "warning":
+            self.result.warnings.append(error)
+        else:
+            self.result.infos.append(error)
+    
+    def add_warning(self, section: str, field: str, message: str, severity: str = "warning"):
+        """Add validation warning"""
+        self.add_error(section, field, message, severity)
+    
+    def add_info(self, section: str, field: str, message: str, severity: str = "info"):
+        """Add validation info"""
+        self.add_error(section, field, message, severity)
+    
+    def generate_summary(self):
+        """Generate validation summary"""
+        print(f"\n{'='*60}")
+        print("📋 VALIDATION SUMMARY")
+        print(f"{'='*60}")
+        
+        if self.result.is_valid and not self.result.warnings:
+            print("✅ Configuration is valid!")
+        elif self.result.is_valid:
+            print("⚠️  Configuration is valid with warnings")
+        else:
+            print("❌ Configuration has errors")
+        
+        print(f"\n📊 Results:")
+        print(f"  Errors: {len(self.result.errors)}")
+        print(f"  Warnings: {len(self.result.warnings)}")
+        print(f"  Info: {len(self.result.infos)}")
+        
+        # Print errors
+        if self.result.errors:
+            print(f"\n❌ ERRORS ({len(self.result.errors)}):")
+            for error in self.result.errors:
+                print(f"  • {error.section}.{error.field}: {error.message}")
+        
+        # Print warnings
+        if self.result.warnings:
+            print(f"\n⚠️  WARNINGS ({len(self.result.warnings)}):")
+            for warning in self.result.warnings:
+                print(f"  • {warning.section}.{warning.field}: {warning.message}")
+        
+        # Print infos
+        if self.result.infos and len(self.result.infos) <= 10:
+            print(f"\nℹ️  INFO ({len(self.result.infos)}):")
+            for info in self.result.infos:
+                print(f"  • {info.section}.{info.field}: {info.message}")
+        elif len(self.result.infos) > 10:
+            print(f"\nℹ️  INFO ({len(self.result.infos)} items - showing first 5):")
+            for info in self.result.infos[:5]:
+                print(f"  • {info.section}.{info.field}: {info.message}")
+        
+        # Recommendations
+        if not self.result.is_valid:
+            print(f"\n💡 RECOMMENDATIONS:")
+            print("  1. Fix all errors before running the application")
+            print("  2. Review warnings and apply if appropriate")
+            print("  3. Use config.example.json as a reference")
+            print("  4. Test configuration with --create-config first")
+    
+    def save_report(self, filename: str = None):
+        """Save validation report to file"""
+        if not filename:
+            timestamp = Path(self.config_path).stem
+            filename = f"validation_report_{timestamp}.json"
+        
+        report = {
+            "config_file": str(self.config_path),
+            "is_valid": self.result.is_valid,
+            "summary": {
+                "errors": len(self.result.errors),
+                "warnings": len(self.result.warnings),
+                "infos": len(self.result.infos)
+            },
+            "errors": [self.error_to_dict(error) for error in self.result.errors],
+            "warnings": [self.error_to_dict(error) for error in self.result.warnings],
+            "infos": [self.error_to_dict(error) for error in self.result.infos]
+        }
+        
+        try:
+            with open(filename, 'w') as f:
+                json.dump(report, f, indent=2)
+            print(f"\n📄 Validation report saved to: {filename}")
+        except Exception as e:
+            print(f"\n❌ Failed to save validation report: {e}")
+    
+    def error_to_dict(self, error: ValidationError) -> Dict[str, str]:
+        """Convert error to dictionary"""
+        return {
+            "section": error.section,
+            "field": error.field,
+            "message": error.message,
+            "severity": error.severity
+        }
 
-async def main():
-    """Main function"""
+def main():
+    """Main validation runner"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='Configuration Validator for Trading System')
-    parser.add_argument('config_path', help='Path to configuration file or directory')
-    parser.add_argument('--output', '-o', help='Output file for validation report')
-    parser.add_argument('--strict', action='store_true', help='Enable strict validation mode')
-    parser.add_argument('--no-connections', action='store_true', help='Disable connection testing')
-    parser.add_argument('--no-performance', action='store_true', help='Disable performance validation')
+    parser = argparse.ArgumentParser(description="Day Trading Orchestrator Configuration Validator")
+    parser.add_argument("--config", default="config.json", help="Configuration file path")
+    parser.add_argument("--output", help="Output file for validation report")
+    parser.add_argument("--errors-only", action="store_true", help="Show only errors")
+    parser.add_argument("--warnings-only", action="store_true", help="show only warnings")
     
     args = parser.parse_args()
     
-    # Initialize validator
-    validator_cli = ConfigValidatorCLI()
-    validator_cli.validator.strict_mode = args.strict
-    validator_cli.validator.connection_tests_enabled = not args.no_connections
-    validator_cli.validator.performance_tests_enabled = not args.no_performance
+    # Validate configuration
+    validator = ConfigurationValidator(args.config)
+    result = validator.validate()
     
-    try:
-        # Determine if path is file or directory
-        config_path = Path(args.config_path)
-        
-        if config_path.is_file():
-            success = await validator_cli.validate_file(args.config_path, args.output)
-        elif config_path.is_dir():
-            success = await validator_cli.validate_directory(args.config_path, args.output)
-        else:
-            print(f"Error: Path does not exist: {args.config_path}")
-            return 1
-        
-        return 0 if success else 1
+    # Save report if requested
+    if args.output:
+        validator.save_report(args.output)
     
-    except KeyboardInterrupt:
-        print("\nValidation interrupted by user.")
-        return 1
-    except Exception as e:
-        print(f"Validation error: {e}")
-        logger.error(f"Validation error: {e}", exc_info=True)
-        return 1
-
-if __name__ == '__main__':
-    exit_code = asyncio.run(main())
+    # Exit with appropriate code
+    exit_code = 0 if result.is_valid else 1
     sys.exit(exit_code)
+
+if __name__ == "__main__":
+    main()

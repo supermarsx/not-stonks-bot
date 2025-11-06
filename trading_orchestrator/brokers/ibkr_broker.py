@@ -290,3 +290,421 @@ class IBKRBroker(BaseBroker):
                 logger.error(f"Connection failed: {e}")
                 self.is_connected = False
                 return False
+                
+    async def disconnect(self) -> bool:
+        """Disconnect from TWS/Gateway"""
+        async with self._connection_lock:
+            try:
+                if self.client.isConnected():
+                    self.client.disconnect()
+                    
+                if self.api_thread and self.api_thread.is_alive():
+                    self.api_thread.join(timeout=5)
+                    
+                self.is_connected = False
+                logger.info("Disconnected from IBKR")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Disconnection error: {e}")
+                return False
+                
+    async def is_connection_alive(self) -> bool:
+        """Check if connection is still alive"""
+        return self.client.isConnected() and self.wrapper.connected
+        
+    async def get_account(self) -> AccountInfo:
+        """Get account information"""
+        if not self.account:
+            raise ValueError("No account specified")
+            
+        try:
+            # Create event for async waiting
+            event = asyncio.Event()
+            self.wrapper.data_events[self.account] = event
+            
+            # Request account updates
+            self.client.reqAccountUpdates(True, self.account)
+            
+            # Wait for data with timeout
+            try:
+                await asyncio.wait_for(event.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("Account data request timed out")
+                
+            # Stop updates
+            self.client.reqAccountUpdates(False, self.account)
+            
+            # Extract account data
+            account_data = self.wrapper.account_values.get(self.account, {})
+            
+            net_liquidation = float(account_data.get('NetLiquidation', {}).get('value', 0))
+            available_funds = float(account_data.get('AvailableFunds', {}).get('value', 0))
+            buying_power = float(account_data.get('BuyingPower', {}).get('value', 0))
+            currency = account_data.get('NetLiquidation', {}).get('currency', 'USD')
+            
+            return AccountInfo(
+                account_id=self.account,
+                broker_name=self.broker_name,
+                currency=currency,
+                balance=net_liquidation,
+                available_balance=available_funds,
+                equity=net_liquidation,
+                buying_power=buying_power,
+                margin_used=0.0,
+                margin_available=available_funds,
+                is_pattern_day_trader=False,
+                metadata={'account_values': account_data}
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to get account: {e}")
+            raise
+            
+    async def get_positions(self) -> List[PositionInfo]:
+        """Get all open positions"""
+        if not self.account:
+            raise ValueError("No account specified")
+            
+        try:
+            # Create event
+            event = asyncio.Event()
+            self.wrapper.data_events[self.account] = event
+            
+            # Clear previous positions
+            self.wrapper.positions.clear()
+            
+            # Request account updates (includes positions)
+            self.client.reqAccountUpdates(True, self.account)
+            
+            # Wait for data
+            try:
+                await asyncio.wait_for(event.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("Position data request timed out")
+                
+            # Stop updates
+            self.client.reqAccountUpdates(False, self.account)
+            
+            # Convert to PositionInfo objects
+            positions = []
+            for pos_data in self.wrapper.positions.values():
+                contract = pos_data['contract']
+                quantity = pos_data['position']
+                
+                positions.append(PositionInfo(
+                    symbol=contract.symbol,
+                    broker_name=self.broker_name,
+                    side='long' if quantity > 0 else 'short',
+                    quantity=abs(quantity),
+                    avg_entry_price=pos_data['average_cost'],
+                    current_price=pos_data['market_price'],
+                    market_value=pos_data['market_value'],
+                    unrealized_pnl=pos_data['unrealized_pnl'],
+                    unrealized_pnl_percent=(pos_data['unrealized_pnl'] / (pos_data['average_cost'] * abs(quantity)) * 100) if pos_data['average_cost'] * quantity != 0 else 0,
+                    cost_basis=pos_data['average_cost'] * abs(quantity),
+                    metadata={
+                        'contract_type': contract.secType,
+                        'exchange': contract.exchange,
+                        'realized_pnl': pos_data['realized_pnl']
+                    }
+                ))
+                
+            return positions
+            
+        except Exception as e:
+            logger.error(f"Failed to get positions: {e}")
+            raise
+            
+    async def get_position(self, symbol: str) -> Optional[PositionInfo]:
+        """Get position for specific symbol"""
+        positions = await self.get_positions()
+        for pos in positions:
+            if pos.symbol == symbol:
+                return pos
+        return None
+        
+    async def place_order(
+        self,
+        symbol: str,
+        side: str,
+        order_type: str,
+        quantity: float,
+        limit_price: Optional[float] = None,
+        stop_price: Optional[float] = None,
+        time_in_force: str = "day",
+        extended_hours: bool = False,
+        **kwargs
+    ) -> OrderInfo:
+        """Place a new order"""
+        try:
+            # Create contract
+            contract = Contract()
+            contract.symbol = symbol
+            contract.secType = kwargs.get('sec_type', 'STK')
+            contract.exchange = kwargs.get('exchange', 'SMART')
+            contract.currency = kwargs.get('currency', 'USD')
+            
+            # Create order
+            order = Order()
+            order.action = 'BUY' if side.lower() == 'buy' else 'SELL'
+            order.totalQuantity = quantity
+            
+            # Set order type
+            order_type_lower = order_type.lower()
+            if order_type_lower == 'market':
+                order.orderType = 'MKT'
+            elif order_type_lower == 'limit':
+                order.orderType = 'LMT'
+                order.lmtPrice = limit_price if limit_price else 0
+            elif order_type_lower == 'stop':
+                order.orderType = 'STP'
+                order.auxPrice = stop_price if stop_price else 0
+            elif order_type_lower in ['stop_limit', 'stoplimit']:
+                order.orderType = 'STP LMT'
+                order.lmtPrice = limit_price if limit_price else 0
+                order.auxPrice = stop_price if stop_price else 0
+            else:
+                order.orderType = 'MKT'
+                
+            # Set time in force
+            tif_map = {'day': 'DAY', 'gtc': 'GTC', 'ioc': 'IOC', 'fok': 'FOK'}
+            order.tif = tif_map.get(time_in_force.lower(), 'DAY')
+            
+            # Get order ID
+            order_id = self.wrapper.next_order_id
+            self.wrapper.next_order_id += 1
+            
+            # Place order
+            self.client.placeOrder(order_id, contract, order)
+            
+            # Wait a bit for order confirmation
+            await asyncio.sleep(0.5)
+            
+            logger.info(f"Order placed: {order_id} - {side} {quantity} {symbol}")
+            
+            return OrderInfo(
+                order_id=str(order_id),
+                broker_name=self.broker_name,
+                symbol=symbol,
+                order_type=order_type,
+                side=side.lower(),
+                quantity=quantity,
+                filled_quantity=0.0,
+                status='pending',
+                limit_price=limit_price,
+                stop_price=stop_price,
+                avg_fill_price=None,
+                time_in_force=time_in_force,
+                extended_hours=extended_hours,
+                submitted_at=datetime.utcnow(),
+                metadata={'contract_type': contract.secType, 'exchange': contract.exchange}
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to place order: {e}")
+            raise
+            
+    async def cancel_order(self, order_id: str) -> bool:
+        """Cancel an existing order"""
+        try:
+            self.client.cancelOrder(int(order_id), "")
+            logger.info(f"Order cancellation requested: {order_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to cancel order {order_id}: {e}")
+            return False
+            
+    async def get_orders(self, status: Optional[str] = None) -> List[OrderInfo]:
+        """Get orders with optional status filter"""
+        try:
+            # Clear previous data
+            self.wrapper.open_orders.clear()
+            self.wrapper.order_status.clear()
+            
+            # Request all open orders
+            self.client.reqAllOpenOrders()
+            
+            # Wait for data
+            await asyncio.sleep(2.0)
+            
+            # Convert to OrderInfo objects
+            orders = []
+            for order_id, order_data in self.wrapper.open_orders.items():
+                contract = order_data['contract']
+                order = order_data['order']
+                status_data = self.wrapper.order_status.get(order_id, {})
+                
+                # Map IBKR status
+                ibkr_status = status_data.get('status', 'Unknown').lower()
+                status_map = {
+                    'presubmitted': 'pending',
+                    'pendingsubmit': 'pending',
+                    'submitted': 'open',
+                    'filled': 'filled',
+                    'cancelled': 'cancelled',
+                    'pendingcancel': 'pending_cancel',
+                    'inactive': 'rejected'
+                }
+                order_status = status_map.get(ibkr_status, 'open')
+                
+                # Skip if status filter doesn't match
+                if status and order_status != status.lower():
+                    continue
+                    
+                orders.append(OrderInfo(
+                    order_id=str(order_id),
+                    broker_name=self.broker_name,
+                    symbol=contract.symbol,
+                    order_type=order.orderType.lower(),
+                    side='buy' if order.action == 'BUY' else 'sell',
+                    quantity=order.totalQuantity,
+                    filled_quantity=status_data.get('filled', 0),
+                    status=order_status,
+                    limit_price=order.lmtPrice if order.lmtPrice else None,
+                    stop_price=order.auxPrice if order.auxPrice else None,
+                    avg_fill_price=status_data.get('avg_fill_price') if status_data.get('avg_fill_price', 0) > 0 else None,
+                    time_in_force=order.tif.lower(),
+                    extended_hours=False,
+                    submitted_at=order_data['timestamp'],
+                    metadata={'contract_type': contract.secType, 'exchange': contract.exchange}
+                ))
+                
+            return orders
+            
+        except Exception as e:
+            logger.error(f"Failed to get orders: {e}")
+            return []
+            
+    async def get_order(self, order_id: str) -> Optional[OrderInfo]:
+        """Get specific order details"""
+        orders = await self.get_orders()
+        for order in orders:
+            if order.order_id == order_id:
+                return order
+        return None
+        
+    async def get_market_data(
+        self,
+        symbol: str,
+        timeframe: str = "1d",
+        start: Optional[datetime] = None,
+        end: Optional[datetime] = None,
+        limit: int = 100
+    ) -> List[MarketDataPoint]:
+        """Get historical market data (OHLCV)"""
+        try:
+            # Rate limiting check
+            current_time = time.time()
+            if current_time - self.last_historical_request < self.historical_min_interval:
+                wait_time = self.historical_min_interval - (current_time - self.last_historical_request)
+                logger.info(f"Rate limiting: waiting {wait_time:.1f}s")
+                await asyncio.sleep(wait_time)
+                
+            # Create contract
+            contract = Contract()
+            contract.symbol = symbol
+            contract.secType = 'STK'
+            contract.exchange = 'SMART'
+            contract.currency = 'USD'
+            
+            # Get request ID
+            req_id = self._get_next_req_id()
+            
+            # Create event
+            event = asyncio.Event()
+            self.wrapper.data_events[req_id] = event
+            
+            # Clear previous data
+            self.wrapper.historical_data[req_id] = []
+            
+            # Map timeframe to IBKR bar size
+            timeframe_map = {
+                '1m': '1 min', '5m': '5 mins', '15m': '15 mins', '30m': '30 mins',
+                '1h': '1 hour', '1d': '1 day', '1w': '1 week', '1M': '1 month'
+            }
+            bar_size = timeframe_map.get(timeframe, '1 day')
+            
+            # Determine duration
+            end_datetime = end.strftime('%Y%m%d %H:%M:%S') if end else ''
+            duration = '1 D'  # Default
+            
+            # Request historical data
+            self.client.reqHistoricalData(
+                req_id, contract, end_datetime, duration,
+                bar_size, 'TRADES', 1, 1, False, []
+            )
+            
+            # Update rate limiting
+            self.last_historical_request = time.time()
+            
+            # Wait for data
+            try:
+                await asyncio.wait_for(event.wait(), timeout=10.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"Historical data request timed out for {symbol}")
+                
+            # Convert to MarketDataPoint objects
+            bars = self.wrapper.historical_data.get(req_id, [])
+            market_data = []
+            
+            for bar in bars:
+                market_data.append(MarketDataPoint(
+                    symbol=symbol,
+                    broker_name=self.broker_name,
+                    timestamp=datetime.strptime(bar['timestamp'], '%Y%m%d  %H:%M:%S') if ' ' in bar['timestamp'] else datetime.strptime(bar['timestamp'], '%Y%m%d'),
+                    open=bar['open'],
+                    high=bar['high'],
+                    low=bar['low'],
+                    close=bar['close'],
+                    volume=bar['volume'],
+                    timeframe=timeframe,
+                    metadata={'wap': bar['wap'], 'count': bar['count']}
+                ))
+                
+            return market_data[:limit]
+            
+        except Exception as e:
+            logger.error(f"Failed to get market data for {symbol}: {e}")
+            return []
+            
+    async def get_quote(self, symbol: str) -> Dict[str, Any]:
+        """Get real-time quote for symbol"""
+        try:
+            # Create contract
+            contract = Contract()
+            contract.symbol = symbol
+            contract.secType = 'STK'
+            contract.exchange = 'SMART'
+            contract.currency = 'USD'
+            
+            # Get request ID
+            req_id = self._get_next_req_id()
+            
+            # Request market data
+            self.client.reqMktData(req_id, contract, '', False, False, [])
+            
+            # Wait for data
+            await asyncio.sleep(2.0)
+            
+            # Cancel subscription
+            self.client.cancelMktData(req_id)
+            
+            # Get data
+            data = self.wrapper.market_data.get(req_id, {})
+            
+            return {
+                'symbol': symbol,
+                'bid': data.get('bid', 0),
+                'ask': data.get('ask', 0),
+                'last': data.get('last', 0),
+                'high': data.get('high', 0),
+                'low': data.get('low', 0),
+                'close': data.get('close', 0),
+                'volume': data.get('volume', 0),
+                'timestamp': data.get('timestamp', datetime.utcnow()).isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get quote for {symbol}: {e}")
+            return {}

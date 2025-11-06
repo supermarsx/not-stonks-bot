@@ -8,7 +8,7 @@ import asyncio
 from pathlib import Path
 from typing import List, Optional
 from sqlalchemy import text, MetaData, Table
-from sqlalchemy.ext.async import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection
 from config.database import engine
 
 class MigrationManager:

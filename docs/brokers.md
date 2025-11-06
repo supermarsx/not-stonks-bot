@@ -1,14 +1,94 @@
 # Broker Integration Guide
 
-## Overview
+This guide provides detailed information on integrating and configuring different brokers with the Day Trading Orchestrator system.
 
-This guide covers integration with supported brokers and trading platforms.
+## Table of Contents
 
-## Supported Brokers
+- [Supported Brokers Overview](#supported-brokers-overview)
+- [Alpaca Trading Integration](#alpaca-trading-integration)
+- [Binance Integration](#binance-integration)
+- [Interactive Brokers Integration](#interactive-brokers-integration)
+- [Trading 212 Integration](#trading-212-integration)
+- [DEGIRO Integration](#degiro-integration)
+- [XTB Integration](#xtb-integration)
+- [Trade Republic Integration](#trade-republic-integration)
+- [Multi-Broker Configuration](#multi-broker-configuration)
+- [Broker Selection Guide](#broker-selection-guide)
+- [Best Practices](#best-practices)
+- [Troubleshooting](#troubleshooting)
 
-### 1. Alpaca Markets
+## Supported Brokers Overview
 
-#### Configuration
+| Broker | Markets | Minimum | Commission | API Quality | Risk Level |
+|--------|---------|---------|------------|-------------|------------|
+| **Alpaca** | US Stocks, Crypto | $0 | $0 | Excellent | Low |
+| **Binance** | Crypto | Varies | 0.1% | Excellent | Medium |
+| **Interactive Brokers** | Global | $10 | $0.005 | Good | Low |
+| **Trading 212** | EU Stocks | £1 | £0 | Good | Low |
+| **DEGIRO** | EU Stocks | €1 | Varies | Limited | Medium |
+| **XTB** | Forex, CFDs | $1 | Spread | Good | High |
+| **Trade Republic** | German Stocks | €1 | €0 | Limited | Medium |
+
+## Alpaca Trading Integration
+
+### Overview
+
+Alpaca offers commission-free trading for US stocks and cryptocurrencies with excellent API support. Perfect for beginners and experienced traders.
+
+### Account Setup
+
+1. **Create Alpaca Account:**
+   - Visit [alpaca.markets](https://alpaca.markets)
+   - Complete account registration
+   - Verify identity (KYC process)
+   - Fund account (minimum $0 for cash account)
+
+2. **Enable Paper Trading:**
+   - Automatically created with account
+   - $100,000 virtual money
+   - Real market data
+   - Same API as live trading
+
+### API Key Generation
+
+1. **Log into Dashboard:**
+   - Go to [dashboard.alpaca.markets](https://dashboard.alpaca.markets)
+   - Navigate to "API Keys" section
+
+2. **Create API Key:**
+   - Click "Generate API Key"
+   - Copy API Key ID and Secret Key
+   - **Important:** Save Secret Key immediately (won't be shown again)
+
+3. **API Permissions:**
+   ```
+   ✅ Trading (Required)
+   ✅ Data (Required)
+   ✅ Account (Required)
+   ❌ Transfer (Optional)
+   ❌ Clearing (Not recommended)
+   ```
+
+### Configuration
+
+#### Basic Configuration
+
+```json
+{
+  "brokers": {
+    "alpaca": {
+      "enabled": true,
+      "api_key": "YOUR_ACTUAL_ALPACA_API_KEY",
+      "secret_key": "YOUR_ACTUAL_ALPACA_SECRET_KEY",
+      "paper": true,
+      "base_url": "https://paper-api.alpaca.markets"
+    }
+  }
+}
+```
+
+#### Advanced Configuration
+
 ```json
 {
   "brokers": {
@@ -16,55 +96,164 @@ This guide covers integration with supported brokers and trading platforms.
       "enabled": true,
       "api_key": "YOUR_API_KEY",
       "secret_key": "YOUR_SECRET_KEY",
+      "paper": true,
       "base_url": "https://paper-api.alpaca.markets",
-      "account_id": "YOUR_ACCOUNT_ID",
-      "webhook_url": "https://your-domain.com/webhook/alpaca"
+      
+      "rate_limits": {
+        "requests_per_minute": 200,
+        "burst_limit": 50,
+        "cool_down_seconds": 1
+      },
+      
+      "trading_settings": {
+        "default_order_type": "market",
+        "default_time_in_force": "day",
+        "fractional_shares": true,
+        "min_order_size": 1.0,
+        "max_order_size": 1000000.0
+      },
+      
+      "market_data": {
+        "real_time_streaming": true,
+        "subscription": {
+          "stocks": true,
+          "crypto": true,
+          "forex": false
+        },
+        "data_feed": "iex"
+      },
+      
+      "order_types": {
+        "market": {"enabled": true},
+        "limit": {"enabled": true},
+        "stop": {"enabled": true},
+        "stop_limit": {"enabled": true}
+      },
+      
+      "features": {
+        "short_selling": true,
+        "margin_trading": false,
+        "after_hours_trading": false,
+        "pre_market_trading": false
+      }
     }
   }
 }
 ```
 
-#### Features
-- Real-time market data
-- Paper trading support
-- RESTful and WebSocket APIs
-- Webhook notifications
-- Comprehensive order types
+### Testing Alpaca Integration
 
-#### Setup Steps
-1. Create Alpaca account
-2. Generate API keys
-3. Configure webhook endpoints
-4. Test connection with sample orders
-
-#### API Usage Example
-```python
-from brokers.alpaca_client import AlpacaClient
-
-client = AlpacaClient(
-    api_key='your_key',
-    secret_key='your_secret',
-    base_url='https://paper-api.alpaca.markets'
-)
+```bash
+# Test connection
+> test alpaca connection
 
 # Get account info
-account = client.get_account()
-print(f"Cash: {account.cash}")
-print(f"Portfolio Value: {account.portfolio_value}")
+> alpaca account
 
-# Place order
-order = client.place_order(
-    symbol='AAPL',
-    qty=10,
-    side='buy',
-    type='market',
-    time_in_force='day'
-)
+# Get positions
+> alpaca positions
+
+# Test order placement
+> alpaca order buy AAPL 1 market --paper
 ```
 
-### 2. Binance
+### Supported Markets
 
-#### Configuration
+#### US Stocks
+- **Exchanges:** NYSE, NASDAQ, AMEX
+- **Tickers:** All listed US stocks
+- **Trading Hours:** 9:30 AM - 4:00 PM ET
+- **Extended Hours:** Pre-market (4:00 AM - 9:30 AM), After-hours (4:00 PM - 8:00 PM)
+
+#### Cryptocurrencies
+- **Major Pairs:** BTC, ETH, LTC, BCH, USDT
+- **Trading Hours:** 24/7
+- **Settlement:** Instant
+
+### Best Practices for Alpaca
+
+1. **Use Paper Trading:** Always test strategies in paper mode first
+2. **Fractional Shares:** Take advantage of fractional share trading for better diversification
+3. **Extended Hours:** Be aware of extended trading sessions have different liquidity
+4. **Market Orders:** Use limit orders for better price control
+5. **Real-time Data:** Consider upgrading to premium data feeds
+
+## Binance Integration
+
+### Overview
+
+Binance is the world's largest cryptocurrency exchange with advanced trading features and excellent API support.
+
+### Account Setup
+
+1. **Create Binance Account:**
+   - Visit [binance.com](https://binance.com)
+   - Complete registration
+   - Enable 2FA (mandatory)
+   - Verify identity (varies by region)
+
+2. **Security Best Practices:**
+   - Enable email verification
+   - Use strong, unique password
+   - Enable withdrawal whitelist
+   - Use API restrictions
+
+### API Key Setup
+
+1. **Access API Management:**
+   - Log into Binance account
+   - Go to Account > API Management
+   - Click "Create API"
+
+2. **Configure API Key:**
+   ```
+   API Name: TradingOrchestrator
+   Permissions:
+   ✅ Read Info (Required)
+   ✅ Enable Spot & Margin Trading (for spot trading)
+   ✅ Enable Futures (for futures trading)
+   ❌ Enable Withdrawals (Not recommended)
+   ```
+
+3. **IP Restrictions:**
+   - Add your IP address for enhanced security
+   - Use VPS IP if trading from cloud
+
+### Testnet Setup (Recommended)
+
+Binance provides a comprehensive testnet for development:
+
+1. **Testnet Account:**
+   - Visit [testnet.binance.vision](https://testnet.binance.vision)
+   - Create test account
+   - Get testnet API keys
+
+2. **Testnet Benefits:**
+   - Identical API to mainnet
+   - Virtual balance (10 BTC, 100 ETH)
+   - Real-time market data
+   - No real funds at risk
+
+### Configuration
+
+#### Basic Configuration
+
+```json
+{
+  "brokers": {
+    "binance": {
+      "enabled": true,
+      "api_key": "YOUR_BINANCE_API_KEY",
+      "secret_key": "YOUR_BINANCE_SECRET_KEY",
+      "testnet": true,
+      "base_url": "https://testnet.binance.vision"
+    }
+  }
+}
+```
+
+#### Advanced Configuration
+
 ```json
 {
   "brokers": {
@@ -72,425 +261,643 @@ order = client.place_order(
       "enabled": true,
       "api_key": "YOUR_API_KEY",
       "secret_key": "YOUR_SECRET_KEY",
-      "base_url": "https://testnet.binance.vision",
-      "sandbox_mode": true,
-      "recv_window": 5000
+      "testnet": true,
+      
+      "endpoints": {
+        "base_url": "https://testnet.binance.vision",
+        "websocket": "wss://testnet.binance.vision/ws"
+      },
+      
+      "rate_limits": {
+        "requests_per_minute": 1200,
+        "orders_per_second": 10,
+        "weight_per_minute": 6000
+      },
+      
+      "trading_settings": {
+        "default_order_type": "limit",
+        "default_time_in_force": "GTC",
+        "min_notional": 10.0,
+        "max_notional": 900000.0
+      },
+      
+      "symbols": {
+        "spot_trading": {
+          "enabled": true,
+          "base_assets": ["BTC", "ETH", "BNB", "ADA", "DOT"],
+          "quote_assets": ["USDT", "BUSD", "USDC"]
+        }
+      },
+      
+      "order_types": {
+        "limit": {"enabled": true},
+        "market": {"enabled": true},
+        "stop_loss": {"enabled": true},
+        "take_profit": {"enabled": true},
+        "oco": {"enabled": true}
+      },
+      
+      "market_data": {
+        "streaming": {
+          "enabled": true,
+          "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"],
+          "intervals": ["1m", "5m", "15m", "1h"]
+        }
+      }
     }
   }
 }
 ```
 
-#### Features
-- Cryptocurrency trading
-- Spot and futures markets
-- Real-time WebSocket data
-- Advanced order types
-- Testnet support
+### Testing Binance Integration
 
-#### Setup Steps
-1. Create Binance account
-2. Enable API trading
-3. Generate API keys
-4. Configure IP restrictions
-5. Test on testnet first
-
-#### API Usage Example
-```python
-from brokers.binance_client import BinanceClient
-
-client = BinanceClient(
-    api_key='your_key',
-    secret_key='your_secret',
-    base_url='https://testnet.binance.vision'
-)
+```bash
+# Test connection
+> test binance connection
 
 # Get account info
-account_info = client.get_account()
-balances = account_info['balances']
+> binance account
 
-# Place order
-order = client.create_order(
-    symbol='BTCUSDT',
-    side='BUY',
-    type='MARKET',
-    quantity=0.001
-)
+# Get balance
+> binance balance
+
+# Test order placement
+> binance order buy BTCUSDT 0.01 limit 45000 --testnet
 ```
 
-### 3. Interactive Brokers
+### Binance-Specific Features
 
-#### Configuration
+#### Spot Trading
+- **Market Pairs:** 300+ trading pairs
+- **Order Types:** Market, Limit, Stop Loss, Take Profit, OCO
+- **Trading Fees:** 0.1% (maker) / 0.1% (taker)
+
+#### Futures Trading
+- **Contracts:** USDT-M and COIN-M futures
+- **Leverage:** Up to 125x (varies by pair)
+- **Risk Management:** Position and account liquidation
+
+#### Advanced Order Types
+- **OCO (One-Cancels-Other):** Conditional orders
+- **Post Only:** Maker-only orders
+- **Time in Force:** GTC, IOC, FOK
+- **Iceberg Orders:** Large orders broken into smaller pieces
+
+### Security Best Practices
+
+1. **API Restrictions:**
+   - Disable withdrawals for trading bots
+   - Set IP whitelist restrictions
+   - Use separate API keys for different purposes
+
+2. **Rate Limiting:**
+   - Respect Binance rate limits
+   - Implement exponential backoff
+   - Monitor request weights
+
+3. **Market Hours:**
+   - Crypto markets are 24/7
+   - Plan for volatility spikes
+   - Use stop-losses extensively
+
+## Interactive Brokers Integration
+
+### Overview
+
+Interactive Brokers provides access to global markets with professional-grade tools and competitive pricing.
+
+### Account Setup
+
+1. **Create IBKR Account:**
+   - Visit [interactivebrokers.com](https://interactivebrokers.com)
+   - Choose account type (Individual, Advisor, Corporate)
+   - Complete application process
+   - Minimum funding varies by account type
+
+2. **Download TWS:**
+   - Download Trader Workstation (TWS)
+   - Install and configure
+   - Enable API access in TWS settings
+
+### TWS Configuration
+
+1. **API Settings:**
+   - Open TWS
+   - Go to Edit > Global Configuration
+   - Navigate to API > Settings
+   - Configure settings:
+
+```yaml
+API Settings:
+  Enable ActiveX and Socket Clients: ✅
+  Socket Port: 7497
+  Bond Retail Order Entry: ✅
+  Allow connections from local host only: ✅
+  Create API message log file: ✅
+```
+
+2. **Account Settings:**
+   - Ensure paper trading account is active
+   - Note account ID for configuration
+   - Configure base currency
+
+### Configuration
+
 ```json
 {
   "brokers": {
-    "interactive_brokers": {
+    "ibkr": {
       "enabled": true,
       "host": "127.0.0.1",
       "port": 7497,
       "client_id": 1,
-      "account_id": "YOUR_ACCOUNT_ID",
-      "currency": "USD"
+      "paper": true,
+      "account_id": "",
+      "base_currency": "USD"
     }
   }
 }
 ```
 
-#### Features
-- Global market access
-- Advanced order management
-- Real-time data feeds
-- Options and futures trading
-- Professional-grade tools
+#### Advanced Configuration
 
-#### Setup Steps
-1. Install Trader Workstation (TWS)
-2. Enable API access in TWS
-3. Configure API port and settings
-4. Set up firewall rules
-5. Test connection
-
-#### API Usage Example
-```python
-from brokers.ib_client import IBClient
-
-client = IBClient(
-    host='127.0.0.1',
-    port=7497,
-    client_id=1
-)
-
-# Connect
-client.connect()
-
-# Get positions
-positions = client.get_positions()
-
-# Place order
-contract = Contract()
-contract.symbol = 'AAPL'
-contract.exchange = 'SMART'
-contract.currency = 'USD'
-
-order = Order()
-order.action = 'BUY'
-order.totalQuantity = 10
-order.orderType = 'MKT'
-
-client.place_order(contract, order)
+```json
+{
+  "brokers": {
+    "ibkr": {
+      "enabled": true,
+      "connection": {
+        "host": "127.0.0.1",
+        "port": 7497,
+        "client_id": 1,
+        "timeout": 60,
+        "retry_attempts": 3
+      },
+      
+      "order_settings": {
+        "default_order_type": "LMT",
+        "default_time_in_force": "DAY",
+        "default_lmqty": 100,
+        "transmit": true
+      },
+      
+      "supported_markets": {
+        "stocks": {
+          "enabled": true,
+          "exchanges": ["SMART", "ARCA", "BATS", "NYSE", "NASDAQ"]
+        },
+        "options": {"enabled": true},
+        "futures": {"enabled": true},
+        "forex": {"enabled": true}
+      },
+      
+      "order_types": {
+        "market": {"enabled": true},
+        "limit": {"enabled": true},
+        "stop": {"enabled": true},
+        "stop_limit": {"enabled": true},
+        "bracket": {"enabled": true}
+      }
+    }
+  }
+}
 ```
 
-### 4. Trading 212
+### Testing IBKR Integration
 
-#### Configuration
+```bash
+# Check TWS connection
+> test ibkr connection
+
+# Get managed accounts
+> ibkr accounts
+
+# Test order placement
+> ibkr order buy AAPL 1 market --testnet
+```
+
+### IBKR-Specific Features
+
+#### Order Types
+- **Market:** Immediate execution
+- **Limit:** Specified price or better
+- **Stop:** Becomes market when triggered
+- **Stop Limit:** Becomes limit when triggered
+- **Bracket:** Parent order with stop and limit children
+- **Trailing:** Dynamic stop based on price movement
+
+#### Market Data
+- **Real-time:** Market data subscriptions required
+- **Historical:** 1-minute to daily bars available
+- **Tick Data:** Level 1 and Level 2 data
+- **Options:** Greeks and theoretical values
+
+## Trading 212 Integration
+
+### Overview
+
+Trading 212 offers commission-free trading for European stocks with a user-friendly platform.
+
+### Account Setup
+
+1. **Create Account:**
+   - Visit [trading212.com](https://trading212.com)
+   - Complete registration
+   - Verify identity
+   - Fund account
+
+2. **API Access:**
+   - Contact customer support for API access
+   - Provide business use case
+   - Complete additional verification
+
+### Configuration
+
 ```json
 {
   "brokers": {
     "trading212": {
       "enabled": true,
-      "api_token": "YOUR_API_TOKEN",
-      "base_url": "https://live.trading212.com/api/v0",
-      "account_id": "YOUR_ACCOUNT_ID"
+      "api_key": "YOUR_TRADING212_API_KEY",
+      "practice": true,
+      "base_url": "https://practice.trading212.com",
+      "rate_limit": 120
     }
   }
 }
 ```
 
-#### Features
-- Fractional shares
-- Commission-free trading
-- ISA and SIPP accounts
-- Wide instrument range
-- Mobile-first platform
+### Supported Markets
+- **UK Stocks:** LSE listed securities
+- **EU Stocks:** Major European exchanges
+- **ETFs:** Diversification through ETFs
+- **Indices:** Track major market indices
 
-#### Setup Steps
-1. Create Trading 212 account
-2. Apply for API access
-3. Generate API token
-4. Configure account permissions
-5. Test API connectivity
+## DEGIRO Integration (Unofficial)
 
-#### API Usage Example
-```python
-from brokers.trading212_client import Trading212Client
+### Overview
 
-client = Trading212Client(
-    api_token='your_token',
-    base_url='https://live.trading212.com/api/v0'
-)
+DEGIRO provides access to European markets but doesn't offer official API support. Integration is through unofficial methods.
 
-# Get account info
-account = client.get_account()
+### ⚠️ Warning
+This integration uses unofficial methods and may violate DEGIRO's Terms of Service. Use at your own risk.
 
-# Get positions
-positions = client.get_positions()
+### Account Setup
 
-# Place order
-order = client.create_order(
-    symbol='AAPL',
-    quantity=0.5,
-    side='buy',
-    order_type='market'
-)
-```
+1. **Create DEGIRO Account:**
+   - Visit [degiro.nl](https://degiro.nl)
+   - Complete registration
+   - Verify identity
+   - Fund account
 
-### 5. DEGIRO
+2. **Security Setup:**
+   - Enable 2FA
+   - Use strong password
+   - Monitor account regularly
 
-#### Configuration
+### Configuration
+
 ```json
 {
   "brokers": {
     "degiro": {
-      "enabled": true,
-      "username": "YOUR_USERNAME",
-      "password": "YOUR_PASSWORD",
-      "base_url": "https://trader.degiro.nl",
-      "product_browser_url": "https://producttrader.degiro.nl"
+      "enabled": false,
+      "username": "YOUR_DEGIRO_USERNAME",
+      "password": "YOUR_DEGIRO_PASSWORD",
+      "mfa": false,
+      "session": null,
+      "use_proxy": false,
+      "proxy_url": ""
     }
   }
 }
 ```
 
-#### Features
-- European markets access
-- Low-cost trading
-- Wide product range
-- Multiple account types
-- Strong research tools
+### Risk Considerations
 
-#### Setup Steps
-1. Create DEGIRO account
-2. Verify account details
-3. Enable API access
-4. Configure security settings
-5. Test login credentials
+1. **Account Risk:** Unofficial access could result in account suspension
+2. **Compliance:** May violate regulatory requirements
+3. **Security:** Credentials stored locally
+4. **Support:** No official support available
 
-#### API Usage Example
-```python
-from brokers.degiro_client import DegiroClient
+## XTB Integration
 
-client = DegiroClient(
-    username='your_username',
-    password='your_password',
-    base_url='https://trader.degiro.nl'
-)
+### Overview
 
-# Login
-client.login()
+XTB specializes in Forex and CFDs with competitive spreads and advanced trading tools.
 
-# Get account info
-account_info = client.get_account()
+### Account Setup
 
-# Get portfolio
-portfolio = client.get_portfolio()
+1. **Create XTB Account:**
+   - Visit [xtb.com](https://xtb.com)
+   - Choose account type (Standard, Pro)
+   - Complete verification
+   - Fund account
 
-# Place order
-order = client.create_order(
-    symbol='AAPL',
-    quantity=10,
-    side='buy',
-    order_type='market'
-)
-```
+2. **Demo Account:**
+   - Practice trading with virtual money
+   - Real market data
+   - Same interface as live account
 
-### 6. XTB
+### Configuration
 
-#### Configuration
 ```json
 {
   "brokers": {
     "xtb": {
       "enabled": true,
-      "api_login": "YOUR_LOGIN",
-      "api_password": "YOUR_PASSWORD",
+      "api_key": "YOUR_XTB_API_KEY",
+      "secret_key": "YOUR_XTB_SECRET_KEY",
+      "demo": true,
       "server": "demo",
-      "app_name": "YourAppName"
+      "max_instruments": 1000
     }
   }
 }
 ```
 
-#### Features
-- FX and CFD trading
-- Advanced charting
-- Social trading features
-- Multiple account types
-- Educational resources
+### Trading Features
+- **Forex:** 50+ currency pairs
+- **CFDs:** Indices, commodities, cryptocurrencies
+- **Spreads:** Competitive spreads starting from 0.1 pips
+- **Leverage:** Up to 500:1 (regulatory dependent)
 
-#### Setup Steps
-1. Create XTB account
-2. Choose demo or live trading
-3. Generate API credentials
-4. Configure app registration
-5. Test connection
+## Trade Republic Integration (Unofficial)
 
-#### API Usage Example
-```python
-from brokers.xtb_client import XTBClient
+### Overview
 
-client = XTBClient(
-    api_login='your_login',
-    api_password='your_password',
-    server='demo'
-)
+Trade Republic offers commission-free German stocks but uses unofficial API access methods.
 
-# Login
-client.login()
+### ⚠️ Risk Warning
+This integration is unofficial and carries significant risks.
 
-# Get account info
-account_info = client.get_account()
+### Configuration
 
-# Get trading instruments
-instruments = client.get_instruments()
-
-# Place order
-trade = client.create_trade(
-    action='buy',
-    symbol='AAPL',
-    volume=0.1,
-    type='market'
-)
-```
-
-### 7. Trade Republic
-
-#### Configuration
 ```json
 {
   "brokers": {
     "trade_republic": {
-      "enabled": true,
-      "username": "YOUR_USERNAME",
-      "password": "YOUR_PASSWORD",
-      "base_url": "https://app.traderepublic.com"
+      "enabled": false,
+      "username": "YOUR_TR_USERNAME",
+      "password": "YOUR_TR_PASSWORD",
+      "pin": "YOUR_TR_PIN",
+      "device_id": null,
+      "secure_session": true
     }
   }
 }
 ```
 
-#### Features
-- German broker
-- Cost-effective trading
-- ETF savings plans
-- Mobile trading app
+## Multi-Broker Configuration
+
+### Setting Up Multiple Brokers
+
+```json
+{
+  "brokers": {
+    "alpaca": {
+      "enabled": true,
+      "api_key": "YOUR_ALPACA_API_KEY",
+      "secret_key": "YOUR_ALPACA_SECRET_KEY",
+      "paper": true,
+      "markets": ["US_STOCKS", "CRYPTO"]
+    },
+    
+    "binance": {
+      "enabled": true,
+      "api_key": "YOUR_BINANCE_API_KEY",
+      "secret_key": "YOUR_BINANCE_SECRET_KEY",
+      "testnet": true,
+      "markets": ["CRYPTO"]
+    },
+    
+    "ibkr": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 7497,
+      "paper": true,
+      "markets": ["GLOBAL_STOCKS", "OPTIONS", "FUTURES"]
+    }
+  },
+  
+  "broker_routing": {
+    "default_broker": "alpaca",
+    "crypto_broker": "binance",
+    "forex_broker": "ibkr",
+    "fallback_broker": "alpaca"
+  }
+}
+```
+
+### Broker Selection Strategy
+
+```json
+{
+  "broker_selection": {
+    "alphabetical": {
+      "alpaca": {
+        "markets": ["US_STOCKS", "CRYPTO"],
+        "priority": 1,
+        "commission_free": true
+      },
+      "binance": {
+        "markets": ["CRYPTO"],
+        "priority": 2,
+        "liquidity": "high"
+      },
+      "ibkr": {
+        "markets": ["GLOBAL_STOCKS", "OPTIONS"],
+        "priority": 3,
+        "institutional_features": true
+      }
+    },
+    
+    "by_market": {
+      "US_STOCKS": "alpaca",
+      "CRYPTO": "binance",
+      "OPTIONS": "ibkr",
+      "FUTURES": "ibkr",
+      "FOREX": "ibkr"
+    },
+    
+    "by_cost": {
+      "commission_free": ["alpaca", "trading212"],
+      "low_cost": ["ibkr", "xtb"],
+      "avoid_high_cost": ["degiro"]
+    }
+  }
+}
+```
+
+## Broker Selection Guide
+
+### For Beginners
+
+**Recommended:** Alpaca + Binance (Testnet)
+
+**Reasons:**
+- No commissions (Alpaca)
+- Easy to use APIs
+- Good documentation
+- Paper trading available
+- Educational resources
+
+### For Crypto Traders
+
+**Recommended:** Binance + Alpaca
+
+**Reasons:**
+- Largest crypto exchange
+- Advanced order types
+- Deep liquidity
+- US stock access (Alpaca)
+
+### For Global Markets
+
+**Recommended:** Interactive Brokers
+
+**Reasons:**
+- Global market access
+- Professional tools
+- Competitive pricing
 - Advanced order types
 
-#### Setup Steps
-1. Create Trade Republic account
-2. Verify identity
-3. Enable API access
-4. Configure 2FA
-5. Test connection
+### For European Traders
 
-#### API Usage Example
-```python
-from brokers.trade_republic_client import TradeRepublicClient
+**Recommended:** Trading 212 + Interactive Brokers
 
-client = TradeRepublicClient(
-    username='your_username',
-    password='your_password',
-    base_url='https://app.traderepublic.com'
-)
+**Reasons:**
+- Commission-free EU stocks (Trading 212)
+- Professional features (IBKR)
+- Currency hedging options
 
-# Login
-client.login()
+### For Options Traders
 
-# Get account info
-account_info = client.get_account()
+**Recommended:** Interactive Brokers
 
-# Get portfolio
-portfolio = client.get_portfolio()
-
-# Place order
-order = client.create_order(
-    symbol='AAPL',
-    quantity=5,
-    side='buy',
-    order_type='limit',
-    price=150.00
-)
-```
+**Reasons:**
+- Comprehensive options platform
+- Complex strategies supported
+- Greeks calculation
+- Options chains
 
 ## Best Practices
 
 ### Security
-- Store API keys securely
-- Use environment variables
-- Enable IP whitelisting
-- Rotate credentials regularly
-- Monitor API usage
+
+1. **API Key Management:**
+   - Store in environment variables
+   - Never commit to version control
+   - Regular key rotation
+   - Least privilege principle
+
+2. **Environment Isolation:**
+   - Separate paper/live credentials
+   - Use different accounts
+   - Regular security audits
 
 ### Error Handling
-- Implement retry logic
-- Handle rate limits
-- Log all API calls
-- Set up alerts for failures
-- Have backup brokers
 
-### Performance
-- Use connection pooling
-- Implement caching
-- Batch API calls
-- Monitor latency
-- Optimize order routing
+1. **Connection Management:**
+   - Implement retry logic
+   - Exponential backoff
+   - Circuit breaker patterns
+   - Graceful degradation
+
+2. **Rate Limiting:**
+   - Respect broker rate limits
+   - Implement rate limiters
+   - Monitor usage patterns
+   - Queue management
 
 ### Testing
-- Use paper trading first
-- Test all order types
-- Verify data accuracy
-- Test error scenarios
-- Monitor for drift
 
-## Multi-Broker Setup
+1. **Paper Trading:**
+   - Always test in paper mode first
+   - Validate order execution
+   - Check position management
+   - Verify risk controls
 
-### Configuration
-```json
-{
-  "brokers": {
-    "primary": "alpaca",
-    "fallback": [
-      "interactive_brokers",
-      "trading212"
-    ],
-    "routing_rules": {
-      "equities": "alpaca",
-      "crypto": "binance",
-      "options": "interactive_brokers"
-    }
-  }
-}
-```
-
-### Usage
-```python
-from brokers.broker_manager import BrokerManager
-
-# Initialize broker manager
-broker_manager = BrokerManager(config)
-
-# Route to appropriate broker
-broker = broker_manager.get_broker('alpaca')
-
-# Use broker
-account = broker.get_account()
-order = broker.place_order(order_params)
-```
+2. **Integration Testing:**
+   - Test each broker separately
+   - Verify data accuracy
+   - Check latency
+   - Monitor resource usage
 
 ## Troubleshooting
 
 ### Common Issues
-- Authentication failures
-- Connection timeouts
-- Rate limit exceeded
-- Invalid order parameters
-- Insufficient funds
 
-### Debug Tools
-- API test endpoints
-- Connection diagnostics
-- Order status tracking
-- Balance verification
-- Log analysis
+#### Connection Timeouts
 
----
+```bash
+# Check broker status
+> status brokers
 
-*For additional support, see docs/troubleshooting.md*
+# Test connection
+> test broker alpaca
+
+# Restart connection
+> restart broker alpaca
+
+# Check logs
+> logs broker alpaca --level error
+```
+
+#### Authentication Errors
+
+```bash
+# Verify API keys
+> validate config
+
+# Test API key
+> test alpaca api_key
+
+# Check permissions
+> alpaca permissions
+```
+
+#### Order Rejection
+
+```bash
+# Check order status
+> order status --id ORDER_ID
+
+# View rejection reason
+> alpaca order history --rejected
+
+# Check account limits
+> alpaca limits
+```
+
+### Debug Mode
+
+```python
+# Enable debug logging
+import logging
+logging.getLogger('trading_orchestrator.brokers').setLevel(logging.DEBUG)
+
+# Run with debug
+python main.py --debug
+
+# View detailed logs
+tail -f logs/trading_orchestrator.log | grep DEBUG
+```
+
+### Getting Support
+
+1. **Documentation:** Check broker-specific docs
+2. **GitHub Issues:** Report bugs and problems
+3. **Community:** Ask questions in Discord
+4. **Broker Support:** Contact broker directly for API issues
+
+## Next Steps
+
+After broker integration:
+
+1. **Configure Risk Management** - Set position limits and circuit breakers
+2. **Test Strategies** - Paper trade with multiple brokers
+3. **Monitor Performance** - Track execution quality and costs
+4. **Optimize Routing** - Improve order execution with smart routing
+
+Remember: Always start with paper trading and thoroughly test your integration before going live!

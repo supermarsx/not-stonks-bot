@@ -14,7 +14,7 @@ import pytest
 import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from trading_orchestrator.strategies.exit_strategies.volatility_stop import (
@@ -22,16 +22,14 @@ from trading_orchestrator.strategies.exit_strategies.volatility_stop import (
     ATRVolatilityStop,
     BollingerBandExit,
     StandardDeviationStop,
-    VolatilityThresholdExit,
-    VolatilityStopConfig
+    VolatilityThresholdExit
 )
 
 from trading_orchestrator.strategies.exit_strategies.base_exit_strategy import (
     ExitReason,
     ExitType,
     ExitConfiguration,
-    ExitCondition,
-    ExitSignal
+    ExitCondition
 )
 
 

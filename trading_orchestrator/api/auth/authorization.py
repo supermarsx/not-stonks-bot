@@ -1,471 +1,378 @@
 """
-Authorization manager for API
+Authorization Manager for API access control
 
-Provides role-based access control (RBAC) and permission validation
+Provides authorization services:
+- Role-based access control (RBAC)
+- Resource permission validation
+- Strategy access control
+- API endpoint protection
 """
 
+from typing import Dict, List, Optional, Any, Set
 from enum import Enum
-from typing import Dict, List, Set, Any, Optional
 from datetime import datetime
+
+from fastapi import HTTPException, status
 from loguru import logger
 
 
 class Permission(str, Enum):
-    """Available permissions"""
+    """API permissions"""
     # Strategy permissions
     READ_STRATEGIES = "read_strategies"
     WRITE_STRATEGIES = "write_strategies"
     EXECUTE_STRATEGIES = "execute_strategies"
     DELETE_STRATEGIES = "delete_strategies"
-    MANAGE_STRATEGIES = "manage_strategies"
-    
-    # Performance and analytics
     VIEW_PERFORMANCE = "view_performance"
-    MANAGE_PERFORMANCE = "manage_performance"
-    
-    # Backtesting
     RUN_BACKTESTS = "run_backtests"
-    VIEW_BACKTEST_RESULTS = "view_backtest_results"
-    MANAGE_BACKTESTS = "manage_backtests"
+    MANAGE_ENSEMBLES = "manage_ensembles"
     
     # User management
     MANAGE_USERS = "manage_users"
-    VIEW_USER_ACTIVITIES = "view_user_activities"
     
-    # System management
-    MANAGE_SYSTEM = "manage_system"
-    VIEW_SYSTEM_LOGS = "view_system_logs"
-    CONFIGURE_SYSTEM = "configure_system"
+    # System administration
+    SYSTEM_ADMIN = "system_admin"
     
-    # WebSocket access
-    USE_WEBSOCKETS = "use_websockets"
-    MANAGE_WEBSOCKETS = "manage_websockets"
+    # Trade execution
+    PLACE_TRADES = "place_trades"
+    VIEW_TRADES = "view_trades"
     
-    # Data export/import
-    EXPORT_DATA = "export_data"
-    IMPORT_DATA = "import_data"
-    
-    # Alerts and notifications
-    MANAGE_ALERTS = "manage_alerts"
-    VIEW_ALERTS = "view_alerts"
+    # Risk management
+    VIEW_RISK = "view_risk"
+    MANAGE_RISK = "manage_risk"
 
 
 class Role(str, Enum):
-    """Available user roles"""
+    """User roles"""
     ADMIN = "admin"
     TRADER = "trader"
-    VIEWER = "viewer"
     ANALYST = "analyst"
-    
+    VIEWER = "viewer"
 
-# Role-based permission mappings
-ROLE_PERMISSIONS = {
-    Role.ADMIN: {
-        Permission.READ_STRATEGIES,
-        Permission.WRITE_STRATEGIES,
-        Permission.EXECUTE_STRATEGIES,
-        Permission.DELETE_STRATEGIES,
-        Permission.MANAGE_STRATEGIES,
-        Permission.VIEW_PERFORMANCE,
-        Permission.MANAGE_PERFORMANCE,
-        Permission.RUN_BACKTESTS,
-        Permission.VIEW_BACKTEST_RESULTS,
-        Permission.MANAGE_BACKTESTS,
-        Permission.MANAGE_USERS,
-        Permission.VIEW_USER_ACTIVITIES,
-        Permission.MANAGE_SYSTEM,
-        Permission.VIEW_SYSTEM_LOGS,
-        Permission.CONFIGURE_SYSTEM,
-        Permission.USE_WEBSOCKETS,
-        Permission.MANAGE_WEBSOCKETS,
-        Permission.EXPORT_DATA,
-        Permission.IMPORT_DATA,
-        Permission.MANAGE_ALERTS,
-        Permission.VIEW_ALERTS,
-    },
-    Role.TRADER: {
-        Permission.READ_STRATEGIES,
-        Permission.WRITE_STRATEGIES,
-        Permission.EXECUTE_STRATEGIES,
-        Permission.DELETE_STRATEGIES,
-        Permission.MANAGE_STRATEGIES,
-        Permission.VIEW_PERFORMANCE,
-        Permission.RUN_BACKTESTS,
-        Permission.VIEW_BACKTEST_RESULTS,
-        Permission.USE_WEBSOCKETS,
-        Permission.VIEW_ALERTS,
-    },
-    Role.ANALYST: {
-        Permission.READ_STRATEGIES,
-        Permission.VIEW_PERFORMANCE,
-        Permission.MANAGE_PERFORMANCE,
-        Permission.RUN_BACKTESTS,
-        Permission.VIEW_BACKTEST_RESULTS,
-        Permission.USE_WEBSOCKETS,
-        Permission.EXPORT_DATA,
-        Permission.VIEW_ALERTS,
-    },
-    Role.VIEWER: {
-        Permission.READ_STRATEGIES,
-        Permission.VIEW_PERFORMANCE,
-        Permission.VIEW_BACKTEST_RESULTS,
-        Permission.USE_WEBSOCKETS,
-        Permission.VIEW_ALERTS,
-    },
-}
+
+class ResourceType(str, Enum):
+    """Resource types for authorization"""
+    STRATEGY = "strategy"
+    PORTFOLIO = "portfolio"
+    TRADE = "trade"
+    USER = "user"
+    SYSTEM = "system"
 
 
 class AuthorizationManager:
-    """Manages role-based access control and permission validation"""
+    """
+    Authorization manager for role-based access control
+    
+    Manages user roles, permissions, and resource access
+    """
     
     def __init__(self):
-        # User role assignments: user_id -> set of roles
-        self.user_roles: Dict[str, Set[Role]] = {}
-        
-        # User-specific permission overrides: user_id -> set of permissions
-        self.user_permissions: Dict[str, Set[Permission]] = {}
-        
-        # Resource access control: resource_type -> {resource_id -> set of user_ids}
-        self.resource_access: Dict[str, Dict[str, Set[str]]] = {
-            "strategy": {},
-            "user": {},
-            "backtest": {}
+        # Role permissions mapping
+        self.role_permissions: Dict[Role, Set[Permission]] = {
+            Role.ADMIN: {
+                Permission.READ_STRATEGIES, Permission.WRITE_STRATEGIES,
+                Permission.EXECUTE_STRATEGIES, Permission.DELETE_STRATEGIES,
+                Permission.VIEW_PERFORMANCE, Permission.RUN_BACKTESTS,
+                Permission.MANAGE_ENSEMBLES, Permission.MANAGE_USERS,
+                Permission.SYSTEM_ADMIN, Permission.PLACE_TRADES,
+                Permission.VIEW_TRADES, Permission.VIEW_RISK, Permission.MANAGE_RISK
+            },
+            Role.TRADER: {
+                Permission.READ_STRATEGIES, Permission.WRITE_STRATEGIES,
+                Permission.EXECUTE_STRATEGIES, Permission.VIEW_PERFORMANCE,
+                Permission.RUN_BACKTESTS, Permission.MANAGE_ENSEMBLES,
+                Permission.PLACE_TRADES, Permission.VIEW_TRADES,
+                Permission.VIEW_RISK
+            },
+            Role.ANALYST: {
+                Permission.READ_STRATEGIES, Permission.VIEW_PERFORMANCE,
+                Permission.RUN_BACKTESTS, Permission.VIEW_TRADES,
+                Permission.VIEW_RISK
+            },
+            Role.VIEWER: {
+                Permission.READ_STRATEGIES, Permission.VIEW_PERFORMANCE
+            }
         }
         
-        # Permission validation cache
-        self._permission_cache: Dict[str, bool] = {}
+        # Resource ownership cache
+        self.resource_ownership: Dict[str, Dict[str, Any]] = {}
+    
+    def get_user_permissions(self, user: Dict[str, Any]) -> Set[Permission]:
+        """
+        Get permissions for a user based on their role
         
-        # Initialize default admin user
-        self._setup_default_admin()
-    
-    def _setup_default_admin(self):
-        """Setup default admin user"""
-        admin_user_id = "admin"
-        self.user_roles[admin_user_id] = {Role.ADMIN}
-        logger.info(f"Default admin user created: {admin_user_id}")
-    
-    def assign_role(self, user_id: str, role: Role) -> bool:
-        """Assign a role to a user"""
+        Returns: Set of permissions
+        """
         try:
-            if user_id not in self.user_roles:
-                self.user_roles[user_id] = set()
-            
-            self.user_roles[user_id].add(role)
-            self._clear_permission_cache(user_id)
-            
-            logger.info(f"Role {role.value} assigned to user: {user_id}")
-            return True
+            role_str = user.get("role", "viewer").lower()
+            role = Role(role_str) if role_str in [r.value for r in Role] else Role.VIEWER
+            return self.role_permissions.get(role, self.role_permissions[Role.VIEWER])
             
         except Exception as e:
-            logger.error(f"Error assigning role to user {user_id}: {e}")
-            return False
+            logger.error(f"Error getting user permissions: {e}")
+            return self.role_permissions[Role.VIEWER]
     
-    def remove_role(self, user_id: str, role: Role) -> bool:
-        """Remove a role from a user"""
+    def has_permission(self, user: Dict[str, Any], permission: Permission) -> bool:
+        """
+        Check if user has specific permission
+        
+        Returns: True if user has permission
+        """
         try:
-            if user_id in self.user_roles and role in self.user_roles[user_id]:
-                self.user_roles[user_id].remove(role)
-                
-                # Remove user if no roles left
-                if not self.user_roles[user_id]:
-                    del self.user_roles[user_id]
-                
-                self._clear_permission_cache(user_id)
-                
-                logger.info(f"Role {role.value} removed from user: {user_id}")
-                return True
-            
-            return False
+            user_permissions = self.get_user_permissions(user)
+            return permission in user_permissions
             
         except Exception as e:
-            logger.error(f"Error removing role from user {user_id}: {e}")
+            logger.error(f"Error checking permission: {e}")
             return False
     
-    def grant_permission(self, user_id: str, permission: Permission) -> bool:
-        """Grant specific permission to user"""
+    def has_any_permission(self, user: Dict[str, Any], permissions: List[Permission]) -> bool:
+        """
+        Check if user has any of the specified permissions
+        
+        Returns: True if user has at least one permission
+        """
         try:
-            if user_id not in self.user_permissions:
-                self.user_permissions[user_id] = set()
-            
-            self.user_permissions[user_id].add(permission)
-            self._clear_permission_cache(user_id)
-            
-            logger.info(f"Permission {permission.value} granted to user: {user_id}")
-            return True
+            user_permissions = self.get_user_permissions(user)
+            return any(perm in user_permissions for perm in permissions)
             
         except Exception as e:
-            logger.error(f"Error granting permission to user {user_id}: {e}")
+            logger.error(f"Error checking permissions: {e}")
             return False
     
-    def revoke_permission(self, user_id: str, permission: Permission) -> bool:
-        """Revoke specific permission from user"""
+    def has_all_permissions(self, user: Dict[str, Any], permissions: List[Permission]) -> bool:
+        """
+        Check if user has all of the specified permissions
+        
+        Returns: True if user has all permissions
+        """
         try:
-            if user_id in self.user_permissions and permission in self.user_permissions[user_id]:
-                self.user_permissions[user_id].remove(permission)
-                
-                # Remove user if no permissions left
-                if not self.user_permissions[user_id]:
-                    del self.user_permissions[user_id]
-                
-                self._clear_permission_cache(user_id)
-                
-                logger.info(f"Permission {permission.value} revoked from user: {user_id}")
-                return True
-            
-            return False
+            user_permissions = self.get_user_permissions(user)
+            return all(perm in user_permissions for perm in permissions)
             
         except Exception as e:
-            logger.error(f"Error revoking permission from user {user_id}: {e}")
+            logger.error(f"Error checking permissions: {e}")
             return False
     
-    def has_permission(self, user_id: str, permission: Permission) -> bool:
-        """Check if user has specific permission"""
-        try:
-            cache_key = f"{user_id}:{permission.value}"
-            
-            # Check cache first
-            if cache_key in self._permission_cache:
-                return self._permission_cache[cache_key]
-            
-            # Get user's roles and explicit permissions
-            roles = self.user_roles.get(user_id, set())
-            explicit_permissions = self.user_permissions.get(user_id, set())
-            
-            # Check explicit permissions first
-            if permission in explicit_permissions:
-                self._permission_cache[cache_key] = True
-                return True
-            
-            # Check role-based permissions
-            for role in roles:
-                role_permissions = ROLE_PERMISSIONS.get(role, set())
-                if permission in role_permissions:
-                    self._permission_cache[cache_key] = True
-                    return True
-            
-            # No permission found
-            self._permission_cache[cache_key] = False
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error checking permission for user {user_id}: {e}")
-            return False
-    
-    def has_any_permission(self, user_id: str, permissions: List[Permission]) -> bool:
-        """Check if user has any of the specified permissions"""
-        for permission in permissions:
-            if self.has_permission(user_id, permission):
-                return True
-        return False
-    
-    def has_all_permissions(self, user_id: str, permissions: List[Permission]) -> bool:
-        """Check if user has all of the specified permissions"""
-        for permission in permissions:
-            if not self.has_permission(user_id, permission):
-                return False
-        return True
-    
-    def get_user_permissions(self, user_id: str) -> Set[Permission]:
-        """Get all permissions for a user"""
-        try:
-            roles = self.user_roles.get(user_id, set())
-            explicit_permissions = self.user_permissions.get(user_id, set())
-            
-            # Collect all role-based permissions
-            role_permissions = set()
-            for role in roles:
-                role_permissions.update(ROLE_PERMISSIONS.get(role, set()))
-            
-            # Combine with explicit permissions
-            all_permissions = role_permissions.union(explicit_permissions)
-            
-            return all_permissions
-            
-        except Exception as e:
-            logger.error(f"Error getting permissions for user {user_id}: {e}")
-            return set()
-    
-    def get_user_roles(self, user_id: str) -> Set[Role]:
-        """Get all roles for a user"""
-        return self.user_roles.get(user_id, set())
-    
-    def grant_resource_access(
-        self,
-        resource_type: str,
-        resource_id: str,
-        user_id: str,
-        permission: Permission
-    ) -> bool:
-        """Grant user access to specific resource"""
-        try:
-            if resource_type not in self.resource_access:
-                self.resource_access[resource_type] = {}
-            
-            if resource_id not in self.resource_access[resource_type]:
-                self.resource_access[resource_type][resource_id] = set()
-            
-            # Map permissions to user access
-            access_key = f"{user_id}:{permission.value}"
-            self.resource_access[resource_type][resource_id].add(access_key)
-            
-            logger.info(f"Resource access granted: {resource_type}:{resource_id} to user {user_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error granting resource access: {e}")
-            return False
-    
-    def revoke_resource_access(
-        self,
-        resource_type: str,
-        resource_id: str,
-        user_id: str,
-        permission: Permission
-    ) -> bool:
-        """Revoke user access to specific resource"""
-        try:
-            if (resource_type in self.resource_access and 
-                resource_id in self.resource_access[resource_type]):
-                
-                access_key = f"{user_id}:{permission.value}"
-                self.resource_access[resource_type][resource_id].discard(access_key)
-                
-                # Clean up empty sets
-                if not self.resource_access[resource_type][resource_id]:
-                    del self.resource_access[resource_type][resource_id]
-                
-                logger.info(f"Resource access revoked: {resource_type}:{resource_id} from user {user_id}")
-                return True
-            
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error revoking resource access: {e}")
-            return False
-    
-    def has_resource_access(
-        self,
-        resource_type: str,
-        resource_id: str,
-        user_id: str,
-        permission: Permission
-    ) -> bool:
-        """Check if user has access to specific resource"""
-        try:
-            access_key = f"{user_id}:{permission.value}"
-            
-            return (
-                resource_type in self.resource_access and
-                resource_id in self.resource_access[resource_type] and
-                access_key in self.resource_access[resource_type][resource_id]
+    def require_permission(self, user: Dict[str, Any], permission: Permission):
+        """
+        Raise HTTPException if user doesn't have permission
+        
+        Raises: HTTPException with 403 status if permission denied
+        """
+        if not self.has_permission(user, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission required: {permission.value}"
             )
+    
+    def require_any_permission(self, user: Dict[str, Any], permissions: List[Permission]):
+        """
+        Raise HTTPException if user doesn't have any of the permissions
+        
+        Raises: HTTPException with 403 status if permission denied
+        """
+        if not self.has_any_permission(user, permissions):
+            permission_names = [perm.value for perm in permissions]
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"At least one permission required: {', '.join(permission_names)}"
+            )
+    
+    def require_all_permissions(self, user: Dict[str, Any], permissions: List[Permission]):
+        """
+        Raise HTTPException if user doesn't have all of the permissions
+        
+        Raises: HTTPException with 403 status if permission denied
+        """
+        if not self.has_all_permissions(user, permissions):
+            permission_names = [perm.value for perm in permissions]
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"All permissions required: {', '.join(permission_names)}"
+            )
+    
+    def can_access_strategy(self, user: Dict[str, Any], strategy_id: str, owner_id: str) -> bool:
+        """
+        Check if user can access a strategy
+        
+        Returns: True if user can access strategy
+        """
+        try:
+            # Admin can access all strategies
+            if self.has_permission(user, Permission.SYSTEM_ADMIN):
+                return True
+            
+            # Strategy owner can always access
+            if user.get("id") == owner_id:
+                return True
+            
+            # Check if strategy is shared (this would come from database)
+            # For now, assume private strategies only
+            return False
             
         except Exception as e:
-            logger.error(f"Error checking resource access: {e}")
+            logger.error(f"Error checking strategy access: {e}")
             return False
     
-    def get_users_with_resource_access(
-        self,
-        resource_type: str,
-        resource_id: str
-    ) -> List[str]:
-        """Get all users with access to specific resource"""
+    def require_strategy_access(self, user: Dict[str, Any], strategy_id: str, owner_id: str):
+        """
+        Raise HTTPException if user can't access strategy
+        
+        Raises: HTTPException with 403 status if access denied
+        """
+        if not self.can_access_strategy(user, strategy_id, owner_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this strategy"
+            )
+    
+    def can_modify_strategy(self, user: Dict[str, Any], strategy_id: str, owner_id: str) -> bool:
+        """
+        Check if user can modify a strategy
+        
+        Returns: True if user can modify strategy
+        """
         try:
-            if (resource_type in self.resource_access and 
-                resource_id in self.resource_access[resource_type]):
-                
-                access_keys = self.resource_access[resource_type][resource_id]
-                users = [key.split(":")[0] for key in access_keys]
-                return list(set(users))  # Remove duplicates
+            # Admin can modify all strategies
+            if self.has_permission(user, Permission.SYSTEM_ADMIN):
+                return True
             
-            return []
+            # Strategy owner can modify
+            if user.get("id") == owner_id:
+                return True
+            
+            # Check write permission for non-owners (shared strategies)
+            return self.has_permission(user, Permission.WRITE_STRATEGIES)
             
         except Exception as e:
-            logger.error(f"Error getting users with resource access: {e}")
-            return []
+            logger.error(f"Error checking strategy modification access: {e}")
+            return False
     
-    def _clear_permission_cache(self, user_id: str):
-        """Clear permission cache for user"""
-        keys_to_remove = [key for key in self._permission_cache.keys() if key.startswith(f"{user_id}:")]
-        for key in keys_to_remove:
-            del self._permission_cache[key]
+    def require_strategy_modification(self, user: Dict[str, Any], strategy_id: str, owner_id: str):
+        """
+        Raise HTTPException if user can't modify strategy
+        
+        Raises: HTTPException with 403 status if modification denied
+        """
+        if not self.can_modify_strategy(user, strategy_id, owner_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied to modify this strategy"
+            )
     
-    def get_all_users(self) -> List[str]:
-        """Get all users with roles"""
-        return list(self.user_roles.keys())
+    def can_execute_strategy(self, user: Dict[str, Any], strategy_id: str, owner_id: str) -> bool:
+        """
+        Check if user can execute a strategy
+        
+        Returns: True if user can execute strategy
+        """
+        try:
+            # Admin can execute all strategies
+            if self.has_permission(user, Permission.SYSTEM_ADMIN):
+                return True
+            
+            # Strategy owner can execute
+            if user.get("id") == owner_id:
+                return True
+            
+            # Check execute permission for shared strategies
+            return self.has_permission(user, Permission.EXECUTE_STRATEGIES)
+            
+        except Exception as e:
+            logger.error(f"Error checking strategy execution access: {e}")
+            return False
     
-    def get_users_by_role(self, role: Role) -> List[str]:
-        """Get all users with specific role"""
-        return [user_id for user_id, roles in self.user_roles.items() if role in roles]
+    def require_strategy_execution(self, user: Dict[str, Any], strategy_id: str, owner_id: str):
+        """
+        Raise HTTPException if user can't execute strategy
+        
+        Raises: HTTPException with 403 status if execution denied
+        """
+        if not self.can_execute_strategy(user, strategy_id, owner_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied to execute this strategy"
+            )
     
-    def get_role_statistics(self) -> Dict[str, int]:
-        """Get statistics about role distribution"""
-        stats = {}
-        for role in Role:
-            stats[role.value] = len(self.get_users_by_role(role))
-        return stats
+    def can_delete_strategy(self, user: Dict[str, Any], strategy_id: str, owner_id: str) -> bool:
+        """
+        Check if user can delete a strategy
+        
+        Returns: True if user can delete strategy
+        """
+        try:
+            # Only strategy owner or admin can delete
+            if user.get("id") == owner_id:
+                return True
+            
+            return self.has_permission(user, Permission.SYSTEM_ADMIN)
+            
+        except Exception as e:
+            logger.error(f"Error checking strategy deletion access: {e}")
+            return False
     
-    def validate_user_context(
-        self,
-        user_id: str,
-        required_permissions: List[Permission],
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Validate user has required permissions and resource access"""
-        result = {
-            "valid": True,
-            "missing_permissions": [],
-            "resource_access_denied": False,
-            "user_roles": [],
-            "user_permissions": []
-        }
+    def require_strategy_deletion(self, user: Dict[str, Any], strategy_id: str, owner_id: str):
+        """
+        Raise HTTPException if user can't delete strategy
         
-        # Get user information
-        user_roles = self.get_user_roles(user_id)
-        user_permissions = self.get_user_permissions(user_id)
-        
-        result["user_roles"] = [role.value for role in user_roles]
-        result["user_permissions"] = [perm.value for perm in user_permissions]
-        
-        # Check permissions
-        for permission in required_permissions:
-            if not self.has_permission(user_id, permission):
-                result["missing_permissions"].append(permission.value)
-                result["valid"] = False
-        
-        # Check resource access if specified
-        if resource_type and resource_id:
-            for permission in required_permissions:
-                if not self.has_resource_access(resource_type, resource_id, user_id, permission):
-                    result["resource_access_denied"] = True
-                    result["valid"] = False
-        
-        return result
+        Raises: HTTPException with 403 status if deletion denied
+        """
+        if not self.can_delete_strategy(user, strategy_id, owner_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only strategy owners or administrators can delete strategies"
+            )
     
-    def get_authorization_summary(self, user_id: str) -> Dict[str, Any]:
-        """Get comprehensive authorization summary for user"""
-        roles = self.get_user_roles(user_id)
-        permissions = self.get_user_permissions(user_id)
-        
-        # Get resource access summary
-        resource_access = {}
-        for resource_type, resources in self.resource_access.items():
-            resource_access[resource_type] = {}
-            for resource_id, access_keys in resources.items():
-                user_access_keys = [key for key in access_keys if key.startswith(f"{user_id}:")]
-                if user_access_keys:
-                    resource_access[resource_type][resource_id] = [
-                        key.split(":")[1] for key in user_access_keys
-                    ]
-        
-        return {
-            "user_id": user_id,
-            "roles": [role.value for role in roles],
-            "permissions": [perm.value for perm in permissions],
-            "role_permissions": sum(1 for _ in permissions),  # Simplified count
-            "explicit_permissions": len([p for p in permissions if 
-                                       not any(p in ROLE_PERMISSIONS.get(r, set()) for r in roles)]),
-            "resource_access": resource_access,
-            "created_at": datetime.utcnow().isoformat()
-        }
+    def can_manage_users(self, user: Dict[str, Any]) -> bool:
+        """Check if user can manage other users"""
+        return self.has_permission(user, Permission.MANAGE_USERS)
+    
+    def require_user_management(self, user: Dict[str, Any]):
+        """Raise HTTPException if user can't manage users"""
+        if not self.can_manage_users(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied to manage users"
+            )
+    
+    def can_access_system_admin(self, user: Dict[str, Any]) -> bool:
+        """Check if user can access system administration features"""
+        return self.has_permission(user, Permission.SYSTEM_ADMIN)
+    
+    def require_system_admin(self, user: Dict[str, Any]):
+        """Raise HTTPException if user can't access system administration"""
+        if not self.can_access_system_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="System administration access required"
+            )
+    
+    def get_user_role(self, user: Dict[str, Any]) -> Role:
+        """Get user role"""
+        try:
+            role_str = user.get("role", "viewer").lower()
+            return Role(role_str) if role_str in [r.value for r in Role] else Role.VIEWER
+        except Exception as e:
+            logger.error(f"Error getting user role: {e}")
+            return Role.VIEWER
+    
+    def is_admin(self, user: Dict[str, Any]) -> bool:
+        """Check if user is an administrator"""
+        return self.get_user_role(user) == Role.ADMIN
+    
+    def is_trader(self, user: Dict[str, Any]) -> bool:
+        """Check if user is a trader"""
+        return self.get_user_role(user) in [Role.ADMIN, Role.TRADER]
+    
+    def can_place_trades(self, user: Dict[str, Any]) -> bool:
+        """Check if user can place trades"""
+        return self.has_permission(user, Permission.PLACE_TRADES)
+    
+    def require_trade_permission(self, user: Dict[str, Any]):
+        """Raise HTTPException if user can't place trades"""
+        if not self.can_place_trades(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied to place trades"
+            )

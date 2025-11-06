@@ -1,301 +1,413 @@
 # Contributing to not-stonks-bot
 
-Thank you for your interest in contributing to not-stonks-bot! We welcome contributions from the community to make this enterprise-grade trading platform even better.
+Thank you for your interest in contributing to not-stonks-bot! We welcome contributions from developers of all skill levels.
 
-## 🤝 How to Contribute
+## 🚀 Getting Started
 
-### Reporting Issues
-- Use GitHub Issues to report bugs or request features
-- Provide detailed information about the issue
-- Include steps to reproduce the problem
-- Specify your environment (OS, Python version, etc.)
+### Prerequisites
 
-### Submitting Changes
+- **Python 3.11+** - Required for development
+- **Node.js 18+** - Required for frontend development
+- **Git** - For version control
+- **Docker** - For containerized development
 
-#### 1. Fork the Repository
-```bash
-git clone https://github.com/yourusername/not-stonks-bot.git
-cd not-stonks-bot
-git remote add upstream https://github.com/supermarsx/not-stonks-bot.git
+### Development Setup
+
+1. **Fork the repository**
+   ```bash
+   git clone https://github.com/your-username/not-stonks-bot.git
+   cd not-stonks-bot
+   ```
+
+2. **Create a virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install Python dependencies**
+   ```bash
+   pip install -r trading_orchestrator/requirements.txt
+   pip install -r trading_orchestrator/requirements-dev.txt  # Development dependencies
+   ```
+
+4. **Set up frontend development**
+   ```bash
+   cd matrix-trading-command-center
+   npm install
+   cd ..
+   ```
+
+5. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your settings
+   ```
+
+6. **Run tests to verify setup**
+   ```bash
+   python -m pytest trading_orchestrator/tests/
+   ```
+
+## 🏗️ Development Workflow
+
+### Branch Naming Convention
+
+- `feature/feature-name` - New features
+- `bugfix/issue-description` - Bug fixes
+- `hotfix/critical-fix` - Critical fixes
+- `docs/documentation-update` - Documentation updates
+- `refactor/code-improvement` - Code refactoring
+
+### Commit Messages
+
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+type(scope): description
+
+[optional body]
+
+[optional footer(s)]
 ```
 
-#### 2. Create a Feature Branch
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples:**
 ```bash
-git checkout -b feature/your-feature-name
+feat(broker): add Binance Futures support
+fix(risk): resolve position limit calculation error
+docs(readme): update installation instructions
+refactor(ui): simplify matrix component structure
 ```
 
-#### 3. Make Your Changes
-- Follow the code style guidelines (see below)
-- Add tests for new functionality
-- Update documentation as needed
+## 📝 Code Style
 
-#### 4. Test Your Changes
+### Python Code Style
+
+We use several tools to maintain code quality:
+
 ```bash
-# Run the test suite
-python -m pytest tests/
+# Format code
+black trading_orchestrator/
+isort trading_orchestrator/
 
-# Run specific tests
-python health_check.py --full
+# Lint code
+flake8 trading_orchestrator/
 
-# Test in demo mode
-python main.py --demo
+# Type checking
+mypy trading_orchestrator/
 ```
 
-#### 5. Commit Your Changes
+**Configuration files:**
+- `pyproject.toml` - Black, isort, and pytest configuration
+- `.flake8` - Flake8 configuration
+- `mypy.ini` - MyPy configuration
+
+### JavaScript/TypeScript Code Style
+
 ```bash
-git add .
-git commit -m "feat: add your feature description"
+# Lint frontend code
+cd matrix-trading-command-center
+npm run lint
+
+# Format frontend code
+npm run format
 ```
 
-#### 6. Push and Create Pull Request
+### Code Quality Standards
+
+1. **Follow PEP 8** for Python code
+2. **Use type hints** where possible
+3. **Write docstrings** for all public functions and classes
+4. **Maintain test coverage** above 80%
+5. **Use meaningful variable and function names**
+6. **Keep functions small and focused**
+7. **Avoid duplicate code**
+
+## 🧪 Testing
+
+### Running Tests
+
 ```bash
-git push origin feature/your-feature-name
+# Run all tests
+python -m pytest
+
+# Run tests with coverage
+python -m pytest --cov=trading_orchestrator --cov-report=html
+
+# Run specific test file
+python -m pytest trading_orchestrator/tests/test_broker.py
+
+# Run frontend tests
+cd matrix-trading-command-center
+npm test
 ```
 
-## 📋 Code Style Guidelines
+### Writing Tests
 
-### Python Code Standards
-- **Black** for code formatting (100 character line limit)
-- **isort** for import sorting
-- **flake8** for linting and style checking
-- **mypy** for type checking
-- **pytest** for testing framework
+1. **Test Structure**: Use Arrange-Act-Assert pattern
+2. **Test Coverage**: Aim for 80%+ coverage
+3. **Test Categories**:
+   - Unit tests for individual functions/classes
+   - Integration tests for component interactions
+   - End-to-end tests for full workflows
 
-### Code Quality Requirements
-- 80%+ test coverage
-- All functions and classes must have docstrings
-- Type hints for all function parameters and return values
-- No linting errors or warnings
-
-### Example Code Style
+**Example test:**
 ```python
-def calculate_position_size(
-    risk_percentage: float,
-    account_balance: float,
-    stop_loss_distance: float
-) -> float:
-    """
-    Calculate optimal position size based on risk parameters.
+import pytest
+from trading_orchestrator.brokers.alpaca_broker import AlpacaBroker
+
+class TestAlpacaBroker:
+    def test_connect_success(self, mock_alpaca_config):
+        """Test successful connection to Alpaca."""
+        broker = AlpacaBroker(mock_alpaca_config)
+        result = broker.connect()
+        assert result is True
+        assert broker.is_connected is True
     
-    Args:
-        risk_percentage: Maximum risk as percentage of account (0.01 = 1%)
-        account_balance: Total account balance
-        stop_loss_distance: Distance to stop loss in percentage
-    
-    Returns:
-        Optimal position size in base currency
-        
-    Raises:
-        ValueError: If risk_percentage is invalid
-    """
-    if not 0 < risk_percentage <= 1:
-        raise ValueError("Risk percentage must be between 0 and 1")
-    
-    max_risk_amount = account_balance * risk_percentage
-    position_size = max_risk_amount / stop_loss_distance
-    
-    return position_size
+    def test_get_account_info(self, broker):
+        """Test retrieving account information."""
+        account = broker.get_account()
+        assert account is not None
+        assert 'equity' in account
 ```
 
 ## 🏗️ Architecture Guidelines
 
-### Module Structure
+### Project Structure
+
 ```
-trading_orchestrator/
-├── brokers/           # Broker integrations
-├── strategies/        # Trading strategies
-├── risk/             # Risk management
-├── analytics/        # Performance analytics
-├── crawlers/         # Data collection
-├── ai/              # AI integrations
-└── api/             # REST API
+not-stonks-bot/
+├── trading_orchestrator/     # Main Python package
+│   ├── ai/                  # AI/ML components
+│   ├── analytics/           # Data analysis
+│   ├── api/                 # REST API
+│   ├── brokers/             # Broker integrations
+│   ├── config/              # Configuration
+│   ├── risk/                # Risk management
+│   ├── strategies/          # Trading strategies
+│   └── ui/                  # Terminal UI
+├── matrix-trading-command-center/  # Frontend React app
+├── docs/                    # Documentation
+└── tests/                   # Test files
 ```
 
 ### Design Principles
-- **Single Responsibility**: Each module has one clear purpose
-- **Dependency Injection**: Avoid hardcoded dependencies
-- **Error Handling**: Comprehensive error handling and logging
-- **Configuration**: All settings should be configurable
 
-## 🧪 Testing Guidelines
-
-### Test Categories
-- **Unit Tests**: Test individual functions and classes
-- **Integration Tests**: Test component interactions
-- **System Tests**: End-to-end functionality tests
-- **Performance Tests**: Load and stress testing
-
-### Testing Best Practices
-```python
-import pytest
-from unittest.mock import Mock, patch
-from trading_orchestrator.brokers.alpaca import AlpacaBroker
-
-class TestAlpacaBroker:
-    def test_place_order_success(self):
-        """Test successful order placement."""
-        broker = AlpacaBroker(api_key="test", secret_key="test")
-        
-        with patch('requests.post') as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json.return_value = {
-                'id': 'order_123',
-                'status': 'accepted'
-            }
-            
-            result = broker.place_order(
-                symbol='AAPL',
-                side='buy',
-                quantity=10
-            )
-            
-            assert result['id'] == 'order_123'
-            assert result['status'] == 'accepted'
-```
-
-## 📝 Documentation Standards
-
-### Required Documentation
-- **README updates**: Update README for new features
-- **API documentation**: Document all new endpoints
-- **Code comments**: Complex logic should be commented
-- **CHANGELOG**: Update CHANGELOG.md for all changes
-
-### Documentation Format
-```markdown
-## Feature Description
-Brief description of what this feature does.
-
-### Usage Example
-```python
-# Example code showing how to use the feature
-```
-
-### Configuration
-```json
-{
-  "feature_name": {
-    "enabled": true,
-    "option": "value"
-  }
-}
-```
-```
-
-## 🚀 Development Setup
-
-### Prerequisites
-- Python 3.8+
-- Git
-- Docker (optional)
-
-### Setup Commands
-```bash
-# Clone repository
-git clone https://github.com/supermarsx/not-stonks-bot.git
-cd not-stonks-bot
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate     # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Install pre-commit hooks
-pre-commit install
-
-# Run tests
-python -m pytest tests/
-```
+1. **Modularity**: Keep components small and focused
+2. **Separation of Concerns**: Separate business logic from UI
+3. **Dependency Injection**: Use interfaces for broker integrations
+4. **Error Handling**: Always handle exceptions gracefully
+5. **Logging**: Use structured logging throughout
+6. **Configuration**: Externalize all configuration
 
 ## 🔒 Security Guidelines
 
-### Security Best Practices
-- **Never commit API keys or sensitive data**
-- **Use environment variables for configuration**
-- **Validate all inputs**
-- **Implement proper error handling**
-- **Follow OWASP security guidelines**
+### API Keys and Secrets
 
-### Security Review Checklist
-- [ ] No hardcoded credentials
-- [ ] Input validation implemented
-- [ ] Error messages don't leak sensitive data
-- [ ] Authentication/authorization properly implemented
-- [ ] Encryption used for sensitive data
+- **Never commit** API keys or secrets to version control
+- **Use environment variables** for all sensitive data
+- **Implement proper key rotation** mechanisms
+- **Validate** all external API responses
 
-## 📊 Performance Guidelines
+### Code Security
 
-### Performance Standards
-- **Sub-second response times** for critical operations
-- **Memory usage optimization** for long-running processes
-- **Efficient database queries** with proper indexing
-- **Caching strategy** for frequently accessed data
+- **Input validation**: Validate all user inputs
+- **SQL injection prevention**: Use parameterized queries
+- **XSS prevention**: Sanitize user-provided data
+- **Access control**: Implement proper authentication/authorization
 
-### Performance Testing
+### Security Scanning
+
+Run security scans before submitting PRs:
+
 ```bash
-# Performance benchmark
-python benchmark.py
+# Python security scanning
+pip install bandit[toml]
+bandit -r trading_orchestrator/
 
-# Memory usage analysis
-python -m memory_profiler trading_orchestrator/main.py
-
-# Load testing
-python load_test.py --concurrent-users 50 --duration 300s
+# Frontend security scanning
+cd matrix-trading-command-center
+npm audit
 ```
 
-## 🤖 AI Integration Guidelines
+## 📋 Pull Request Process
 
-### AI Model Integration
-- Support multiple AI providers (OpenAI, Anthropic, Local)
-- Implement cost management and token throttling
-- Provide fallbacks for AI service failures
-- Document API usage and costs
+### Before Submitting
 
-### Example AI Integration
-```python
-from trading_orchestrator.ai.providers import OpenAIProvider
+1. **Update documentation** if needed
+2. **Run full test suite** 
+3. **Check code coverage**
+4. **Update changelog** if applicable
+5. **Ensure security scan passes**
 
-class MarketAnalyzer:
-    def __init__(self):
-        self.ai_provider = OpenAIProvider(
-            api_key="your-api-key",
-            model="gpt-4",
-            cost_per_token=0.00003
-        )
-    
-    async def analyze_sentiment(self, news_text: str) -> float:
-        """Analyze market sentiment from news text."""
-        prompt = f"Analyze the market sentiment of this news: {news_text}"
-        
-        response = await self.ai_provider.generate(
-            prompt=prompt,
-            max_tokens=100,
-            temperature=0.1
-        )
-        
-        return self._parse_sentiment(response.content)
+### Pull Request Template
+
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix (non-breaking change)
+- [ ] New feature (non-breaking change)
+- [ ] Breaking change (fix or feature that causes existing functionality to not work as expected)
+- [ ] Documentation update
+
+## Testing
+- [ ] Tests pass locally
+- [ ] Added tests for new functionality
+- [ ] Manual testing completed
+
+## Checklist
+- [ ] Code follows style guidelines
+- [ ] Self-review completed
+- [ ] Code is well-commented
+- [ ] Documentation updated
+- [ ] No breaking changes (or clearly documented)
 ```
 
-## ⚠️ Risk Disclaimer
+### Review Process
 
-All contributions related to trading functionality must include appropriate risk warnings and disclaimers. Trading involves substantial risk of loss and should not be promoted without proper warnings.
+1. **Automated checks** must pass (CI/CD)
+2. **At least one maintainer** review required
+3. **Code review** for architecture and security
+4. **Testing review** for test quality and coverage
+5. **Documentation review** for accuracy and completeness
 
-## 📞 Getting Help
+## 🐛 Reporting Issues
 
-- **GitHub Discussions**: For general questions and feature discussions
-- **GitHub Issues**: For bug reports and specific issues
-- **Documentation**: Check the docs/ directory for detailed guides
+### Bug Reports
 
-## 📜 License
+Use the bug report template and include:
 
-By contributing to not-stonks-bot, you agree that your contributions will be licensed under the MIT License.
+- **Clear description** of the issue
+- **Steps to reproduce** the problem
+- **Expected behavior** vs actual behavior
+- **Screenshots/logs** if applicable
+- **Environment details** (OS, Python version, etc.)
 
----
+### Feature Requests
 
-Thank you for contributing to not-stonks-bot! Your efforts help make this trading platform better for everyone. 🚀
+Use the feature request template and include:
+
+- **Clear problem statement** this feature solves
+- **Proposed solution** description
+- **Alternative solutions** considered
+- **Additional context** or examples
+
+## 💡 Development Tips
+
+### Debugging
+
+```bash
+# Enable debug logging
+export LOG_LEVEL=DEBUG
+
+# Use Python debugger
+python -m pdb script.py
+
+# Profile code
+python -m cProfile script.py
+```
+
+### Performance Monitoring
+
+```bash
+# Memory profiling
+pip install memory-profiler
+python -m memory_profiler script.py
+
+# Line profiling
+pip install line-profiler
+kernprof -l -v script.py
+```
+
+### Database Development
+
+```bash
+# Apply migrations
+python -m alembic upgrade head
+
+# Create new migration
+python -m alembic revision --autogenerate -m "description"
+
+# Reset database
+python -m alembic downgrade base
+python -m alembic upgrade head
+```
+
+## 📚 Resources
+
+### Documentation
+
+- [Python Best Practices](https://docs.python.org/3/tutorial/)
+- [React Documentation](https://reactjs.org/docs)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Trading APIs](https://alpaca.markets/docs/)
+
+### Tools
+
+- **IDE**: VS Code with Python extensions
+- **Linting**: flake8, pylint
+- **Formatting**: black, isort
+- **Testing**: pytest, unittest
+- **Documentation**: Sphinx, mkdocs
+
+### Community
+
+- **GitHub Discussions**: For questions and ideas
+- **Discord**: Real-time chat
+- **Stack Overflow**: Use tag `not-stonks-bot`
+
+## 🎯 Areas for Contribution
+
+### High Priority
+
+- [ ] **New broker integrations** (Robinhood, TD Ameritrade, etc.)
+- [ ] **Advanced AI strategies** (LSTM, reinforcement learning)
+- [ ] **Mobile app** (React Native or Flutter)
+- [ ] **Cloud deployment** (AWS, GCP, Azure)
+- [ ] **Backtesting engine** improvements
+
+### Medium Priority
+
+- [ ] **WebSocket streaming** for real-time data
+- [ ] **Advanced charting** (TradingView integration)
+- [ ] **Portfolio analytics** (Sharpe ratio, drawdown analysis)
+- [ ] **Multi-language support**
+- [ ] **Plugin system** for custom strategies
+
+### Documentation
+
+- [ ] **API reference** documentation
+- [ ] **Video tutorials** for new users
+- [ ] **Strategy examples** with explanations
+- [ ] **Deployment guides** for various platforms
+
+## 📄 License
+
+By contributing, you agree that your contributions will be licensed under the same MIT License that covers the project.
+
+## 👥 Maintainers
+
+- **Lead Developer**: [@your-username](https://github.com/your-username)
+- **Core Contributors**: [See contributors page](https://github.com/your-username/not-stonks-bot/graphs/contributors)
+
+## 🙏 Recognition
+
+Contributors who make significant contributions will be:
+
+- Listed in the **README.md** contributors section
+- Added to the **CONTRIBUTORS.md** file
+- Mentioned in **release notes** for their contributions
+- Eligible for **commit access** to the repository
+
+Thank you for contributing to not-stonks-bot! 🎉

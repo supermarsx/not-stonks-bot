@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-matrix-dark-green;
+  }
+
+  body {
+    @apply bg-matrix-black text-matrix-green font-mono;
+    background-image: 
+      linear-gradient(0deg, transparent 24%, rgba(0, 255, 0, 0.03) 25%, rgba(0, 255, 0, 0.03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 0, 0.03) 75%, rgba(0, 255, 0, 0.03) 76%, transparent 77%, transparent),
+      linear-gradient(90deg, transparent 24%, rgba(0, 255, 0, 0.03) 25%, rgba(0, 255, 0, 0.03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 0, 0.03) 75%, rgba(0, 255, 0, 0.03) 76%, transparent 77%, transparent);
+    background-size: 50px 50px;
+  }
+}
+
+@layer components {
+  .matrix-panel {
+    @apply border-2 border-matrix-dark-green bg-matrix-black/90 p-4 shadow-matrix-glow backdrop-blur-sm;
+  }
+
+  .matrix-button {
+    @apply border-2 border-matrix-green bg-matrix-dark-green px-4 py-2 text-matrix-green transition-all hover:bg-matrix-green hover:text-matrix-black hover:shadow-matrix-glow-lg;
+  }
+
+  .matrix-input {
+    @apply border-2 border-matrix-dark-green bg-matrix-black px-3 py-2 text-matrix-green placeholder-matrix-medium-green focus:border-matrix-green focus:outline-none focus:ring-1 focus:ring-matrix-green;
+  }
+}

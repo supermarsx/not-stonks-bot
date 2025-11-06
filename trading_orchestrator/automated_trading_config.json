@@ -1,0 +1,71 @@
+{
+  "market_hours": {
+    "enable_pre_market": true,
+    "enable_after_hours": true,
+    "pre_market_start": "04:00:00",
+    "pre_market_end": "09:30:00",
+    "after_hours_start": "16:00:00",
+    "after_hours_end": "20:00:00",
+    "preferred_exchanges": [
+      "NYSE",
+      "NASDAQ"
+    ],
+    "enabled_exchanges": [
+      "NYSE",
+      "NASDAQ",
+      "LSE"
+    ],
+    "trading_days": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "skip_holidays": true,
+    "timezone": "America/New_York"
+  },
+  "strategies": {
+    "enabled_strategies": [
+      "trend_following",
+      "mean_reversion",
+      "momentum"
+    ],
+    "strategy_weights": {
+      "trend_following": 0.4,
+      "mean_reversion": 0.3,
+      "momentum": 0.3
+    },
+    "preferred_symbols": [
+      "AAPL",
+      "GOOGL",
+      "MSFT",
+      "TSLA",
+      "AMZN"
+    ],
+    "avoid_symbols": [],
+    "preferred_sectors": [
+      "technology",
+      "healthcare",
+      "financial"
+    ],
+    "parameters": {
+      "trend_following": {
+        "fast_period": 10,
+        "slow_period": 30,
+        "signal_threshold": 0.02
+      },
+      "mean_reversion": {
+        "lookback_period": 20,
+        "std_dev_threshold": 2.0,
+        "entry_threshold": 0.05
+      },
+      "momentum": {
+        "momentum_period": 14,
+        "volume_threshold": 1.5,
+        "price_change_threshold": 0.03
+      }
+    }
+  },
+  "risk": {
+    "risk_level": 

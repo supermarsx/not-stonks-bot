@@ -1,0 +1,492 @@
+{
+  "template_name": "risk_focused",
+  "environment": "risk_focused",
+  "description": "Risk management focused configuration for conservative trading",
+  "config": {
+    "application": {
+      "name": "Trading Orchestrator Risk-Focused",
+      "version": "1.0.0",
+      "environment": "risk_focused",
+      "debug": false,
+      "log_level": "INFO",
+      "api_host": "0.0.0.0",
+      "api_port": 8000,
+      "api_workers": 2
+    },
+    "database": {
+      "type": "postgresql",
+      "url": "postgresql://risk_user:${DB_PASSWORD}@risk-db:5432/trading_risk",
+      "echo": false,
+      "pool_size": 10,
+      "max_overflow": 20,
+      "pool_timeout": 30,
+      "pool_recycle": 3600,
+      "ssl_mode": "require",
+      "connection_timeout": 15,
+      "query_timeout": 60
+    },
+    "brokers": {
+      "binance": {
+        "enabled": true,
+        "testnet": true,
+        "paper": true,
+        "rate_limit": 600,
+        "api_key": "${BINANCE_API_KEY}",
+        "api_secret": "${BINANCE_API_SECRET}",
+        "timeout": 30,
+        "retries": 3,
+        "connection_pool_size": 5,
+        "conservative_mode": true
+      },
+      "alpaca": {
+        "enabled": true,
+        "paper": true,
+        "rate_limit": 100,
+        "api_key": "${ALPACA_API_KEY}",
+        "api_secret": "${ALPACA_API_SECRET}",
+        "base_url": "https://paper-api.alpaca.markets",
+        "timeout": 30,
+        "retries": 3,
+        "conservative_mode": true
+      },
+      "ibkr": {
+        "enabled": false,
+        "host": "${IBKR_HOST}",
+        "port": 7497,
+        "client_id": 1,
+        "paper": true,
+        "max_concurrent_requests": 3,
+        "request_timeout": 30
+      },
+      "trading212": {
+        "enabled": false,
+        "practice": true,
+        "rate_limit": 60,
+        "api_key": "${TRADING212_API_KEY}",
+        "base_url": "https://practice.trading212.com",
+        "timeout": 30,
+        "retries": 3
+      }
+    },
+    "risk": {
+      "max_position_size": 10000.0,
+      "max_daily_loss": 1000.0,
+      "max_open_orders": 10,
+      "risk_per_trade": 0.01,
+      "stop_loss_percentage": 0.02,
+      "take_profit_percentage": 0.03,
+      "correlation_limit": 0.5,
+      "ultra_conservative": true,
+      "circuit_breakers": {
+        "enabled": true,
+        "daily_loss_limit": 1500.0,
+        "consecutive_loss_limit": 2,
+        "drawdown_limit": 0.05,
+        "position_concentration_limit": 0.10,
+        "volatility_limit": 0.30,
+        "correlation_spike_limit": 0.8,
+        "var_limit": 0.005
+      },
+      "limits": {
+        "max_leverage": 0.5,
+        "min_account_balance": 5000.0,
+        "max_order_size": 5000.0,
+        "max_daily_volume": 50000.0,
+        "max_orders_per_hour": 10,
+        "max_orders_per_day": 50,
+        "allowed_markets": ["US"],
+        "restricted_symbols": [],
+        "max_slippage_bps": 10,
+        "min_liquidity_usd": 100000
+      },
+      "position_limits": {
+        "max_positions": 5,
+        "max_position_duration_hours": 72,
+        "max_sector_exposure": 0.20,
+        "max_correlation_exposure": 0.30,
+        "max_volatility_exposure": 0.15
+      },
+      "stress_testing": {
+        "enabled": true,
+        "scenario_analysis": true,
+        "monte_carlo_simulations": 10000,
+        "var_calculation": "historical",
+        "stress_periods": [2008, 2020, 2022],
+        "scenario_shocks": {
+          "market_crash": -0.20,
+          "volatility_spike": 2.0,
+          "correlation_breakdown": 0.9,
+          "liquidity_crisis": -0.50
+        }
+      },
+      "real_time_monitoring": {
+        "enabled": true,
+        "check_interval_seconds": 5,
+        "alert_immediate": true,
+        "parallel_checks": false,
+        "emergency_stop": true
+      }
+    },
+    "ai": {
+      "provider": "openai",
+      "trading_mode": "PAPER",
+      "default_model_tier": "accurate",
+      "openai_api_key": "${OPENAI_API_KEY}",
+      "max_tokens_per_request": 3000,
+      "request_timeout": 60,
+      "conservative_decisions": true,
+      "human_oversight": true,
+      "risk_preference": "low",
+      "local_models": {
+        "enabled": false,
+        "model_path": "./models/risk_focused",
+        "preferred_backend": "transformers"
+      },
+      "risk_assessment": {
+        "enabled": true,
+        "detailed_analysis": true,
+        "scenario_analysis": true,
+        "backtesting_required": true,
+        "human_review_threshold": 0.7
+      }
+    },
+    "strategies": {
+      "enabled_strategies": [
+        "low_risk_etf_trading",
+        "dividend_arbitrage",
+        "put_call_ratio",
+        "vix_trading",
+        "bond_ladder"
+      ],
+      "low_risk_etf_trading": {
+        "enabled": true,
+        "etf_universe": ["SPY", "QQQ", "IWM", "VTI", "GLD", "TLT"],
+        "momentum_threshold": 0.02,
+        "volatility_filter": 0.15,
+        "correlation_filter": 0.70,
+        "max_position_duration": 168,
+        "rebalance_frequency": "weekly"
+      },
+      "dividend_arbitrage": {
+        "enabled": true,
+        "min_dividend_yield": 0.03,
+        "max_ex_dividend_days": 30,
+        "capture_window_days": 5,
+        "risk_adjusted_return": true,
+        "covered_calls": false
+      },
+      "put_call_ratio": {
+        "enabled": true,
+        "pcr_threshold": 0.8,
+        "contrarian_signal": true,
+        "confirmation_days": 3,
+        "underlying_filter": "large_cap",
+        "max_risk_per_trade": 0.005
+      },
+      "vix_trading": {
+        "enabled": true,
+        "vix_threshold_high": 25.0,
+        "vix_threshold_low": 15.0,
+        "strategy": "mean_reversion",
+        "hedge_ratio": 0.5,
+        "stop_loss": 0.02
+      },
+      "bond_ladder": {
+        "enabled": true,
+        "bond_universe": ["IEF", "TLT", "SHY", "LQD"],
+        "duration_ladder": [2, 5, 7, 10],
+        "yield_threshold": 0.03,
+        "credit_rating_filter": "AAA",
+        "rebalance_frequency": "monthly"
+      },
+      "backtesting": {
+        "start_date": "2015-01-01",
+        "end_date": "2023-12-31",
+        "initial_capital": 100000.0,
+        "benchmark_symbol": "SPY",
+        "save_results": true,
+        "results_path": "./backtests/risk_focused/",
+        "stress_testing": true,
+        "walk_forward_analysis": true,
+        "out_of_sample_testing": true,
+        "monte_carlo_simulations": 5000
+      }
+    },
+    "market_data": {
+      "data_sources": {
+        "primary": "broker",
+        "fallback": "yahoo",
+        "rate_limits": {
+          "broker": 100,
+          "yahoo": 1000,
+          "alphavantage": 250
+        }
+      },
+      "symbols": {
+        "us_stocks": ["AAPL", "MSFT", "GOOGL", "AMZN", "JNJ", "PG", "KO", "WMT"],
+        "etfs": ["SPY", "QQQ", "IWM", "VTI", "GLD", "TLT", "IEF", "SHY"],
+        "bonds": ["TLT", "IEF", "SHY", "LQD", "HYG"],
+        "volatility": ["VIX", "VIXY"],
+        "dividend_stocks": ["JNJ", "PG", "KO", "WMT", "T", "VZ"]
+      },
+      "update_intervals": {
+        "real_time": 60,
+        "minute": 300,
+        "hourly": 3600,
+        "daily": 86400
+      },
+      "storage": {
+        "database_retention_days": 1095,
+        "cache_size_mb": 1024,
+        "compression": true,
+        "backup_interval_hours": 12,
+        "cleanup_old_data": true,
+        "data_quality_checks": true
+      },
+      "fundamental_data": {
+        "enabled": true,
+        "financial_statements": true,
+        "earnings_data": true,
+        "dividend_data": true,
+        "analyst_estimates": true,
+        "credit_ratings": true
+      }
+    },
+    "logging": {
+      "level": "INFO",
+      "file": "logs/risk_focused_trading.log",
+      "max_file_size": 100,
+      "backup_count": 10,
+      "detailed_risk_logging": true,
+      "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
+      "handlers": {
+        "console": {
+          "enabled": true,
+          "level": "INFO"
+        },
+        "file": {
+          "enabled": true,
+          "level": "INFO"
+        },
+        "email": {
+          "enabled": true,
+          "level": "WARNING",
+          "smtp_server": "${SMTP_SERVER}",
+          "smtp_port": 587,
+          "username": "${SMTP_USERNAME}",
+          "password": "${SMTP_PASSWORD}",
+          "recipients": ["risk@company.com", "compliance@company.com"]
+        }
+      },
+      "risk_logs": {
+        "enabled": true,
+        "file": "logs/risk_events.log",
+        "detailed_tracking": true,
+        "position_tracking": true,
+        "correlation_tracking": true,
+        "var_tracking": true,
+        "stress_test_results": true
+      },
+      "compliance_logs": {
+        "enabled": true,
+        "file": "logs/compliance.log",
+        "regulatory_reporting": true,
+        "audit_trail": true,
+        "immutable_storage": true
+      }
+    },
+    "ui": {
+      "theme": "dark",
+      "refresh_rate": 5000,
+      "terminal_size": {
+        "width": 140,
+        "height": 50
+      },
+      "risk_dashboard": {
+        "enabled": true,
+        "risk_metrics": true,
+        "var_display": true,
+        "correlation_matrix": true,
+        "stress_test_results": true,
+        "alerts_panel": true
+      },
+      "notifications": {
+        "enabled": true,
+        "trade_alerts": false,
+        "risk_alerts": true,
+        "system_alerts": true,
+        "compliance_alerts": true,
+        "email_alerts": true,
+        "sms_alerts": false,
+        "sound": false
+      }
+    },
+    "monitoring": {
+      "health_checks": {
+        "enabled": true,
+        "interval": 60,
+        "timeout": 15
+      },
+      "risk_monitoring": {
+        "enabled": true,
+        "real_time_risk": true,
+        "portfolio_var": true,
+        "position_risk": true,
+        "correlation_monitoring": true,
+        "volatility_monitoring": true
+      },
+      "metrics": {
+        "enabled": true,
+        "prometheus_port": 9090,
+        "collect_interval": 300,
+        "retention_days": 365,
+        "custom_risk_metrics": true
+      },
+      "alerts": {
+        "enabled": true,
+        "risk_alerts": true,
+        "conditions": {
+          "var_breach": 0.005,
+          "correlation_spike": 0.8,
+          "volatility_spike": 0.3,
+          "position_concentration": 0.15,
+          "daily_loss_percent": 0.02,
+          "drawdown_percent": 0.05
+        },
+        "escalation": {
+          "enabled": true,
+          "escalation_levels": 3,
+          "escalation_intervals": [5, 15, 60],
+          "auto_escalation": true
+        }
+      },
+      "dashboards": {
+        "enabled": true,
+        "grafana_integration": true,
+        "risk_dashboards": true,
+        "compliance_dashboards": true,
+        "performance_dashboards": true
+      }
+    },
+    "security": {
+      "encryption": {
+        "enabled": true,
+        "algorithm": "AES-256",
+        "encrypt_sensitive_config": true,
+        "encrypt_risk_data": true,
+        "key_rotation_days": 90
+      },
+      "authentication": {
+        "api_keys_required": true,
+        "session_timeout": 1800,
+        "two_factor_auth": true,
+        "role_based_access": true,
+        "ip_whitelist": true,
+        "audit_all_access": true
+      },
+      "audit": {
+        "enabled": true,
+        "detailed_logging": true,
+        "immutable_logs": true,
+        "compliance_mode": true,
+        "regulatory_requirements": true
+      },
+      "network": {
+        "ssl_required": true,
+        "certificate_validation": true,
+        "secure_headers": true,
+        "cors_policy": "strict"
+      }
+    },
+    "performance": {
+      "database": {
+        "connection_pool_size": 10,
+        "connection_timeout": 15,
+        "query_timeout": 60,
+        "connection_retry": true,
+        "backup_database": true
+      },
+      "caching": {
+        "enabled": true,
+        "redis_host": "redis-risk",
+        "redis_port": 6379,
+        "cache_ttl": 1800,
+        "max_cache_size": 1024,
+        "cache_encryption": true
+      },
+      "async": {
+        "max_workers": 4,
+        "worker_timeout": 120,
+        "queue_size": 100,
+        "priority_queues": true,
+        "resource_limits": true
+      }
+    },
+    "compliance": {
+      "enabled": true,
+      "regulatory_framework": "SEC_FINRA_BASEL_III",
+      "record_retention_days": 2555,
+      "audit_requirements": true,
+      "risk_reporting": true,
+      "stress_testing": true,
+      "capital_requirements": true,
+      "liquidity_monitoring": true,
+      "market_risk": true,
+      "credit_risk": true,
+      "operational_risk": true,
+      "daily_reports": true,
+      "monthly_reports": true,
+      "quarterly_reports": true,
+      "annual_reports": true
+    },
+    "reporting": {
+      "daily_reports": {
+        "enabled": true,
+        "risk_summary": true,
+        "performance_summary": true,
+        "position_summary": true,
+        "compliance_check": true
+      },
+      "monthly_reports": {
+        "enabled": true,
+        "detailed_analysis": true,
+        "stress_test_results": true,
+        "regulatory_report": true
+      },
+      "ad_hoc_reports": {
+        "enabled": true,
+        "custom_analysis": true,
+        "scenario_analysis": true,
+        "what_if_analysis": true
+      }
+    }
+  },
+  "variables": {
+    "DB_PASSWORD": "",
+    "BINANCE_API_KEY": "",
+    "BINANCE_API_SECRET": "",
+    "ALPACA_API_KEY": "",
+    "ALPACA_API_SECRET": "",
+    "TRADING212_API_KEY": "",
+    "IBKR_HOST": "",
+    "OPENAI_API_KEY": "",
+    "SMTP_SERVER": "",
+    "SMTP_USERNAME": "",
+    "SMTP_PASSWORD": ""
+  },
+  "dependencies": [
+    "ultra_conservative_risk",
+    "advanced_risk_monitoring",
+    "compliance_reporting"
+  ],
+  "version": "1.0.0",
+  "risk_profile": {
+    "risk_tolerance": "very_low",
+    "target_return_annual": 0.08,
+    "max_volatility_annual": 0.12,
+    "max_drawdown": 0.05,
+    "sharpe_ratio_target": 1.5,
+    "var_limit_daily": 0.005,
+    "stress_test_pass_required": true
+  }
+}

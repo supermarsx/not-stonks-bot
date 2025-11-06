@@ -871,7 +871,7 @@ class ConsecutiveLossCircuitBreaker:
         
         if self.consecutive_losses >= self.max_consecutive_losses:
             self.is_halted = True
-            await self.trigger_circuit_aker(
+            await self.trigger_circuit_breaker(
                 f"{self.consecutive_losses} consecutive losses"
             )
 ```
@@ -1754,7 +1754,6 @@ The system supports comprehensive order types across all brokers:
 | **Iceberg** | ✅ | ✅ | ✅ | ❌ | Large order splitting |
 | **Post-Only** | ✅ | ✅ | ⚠️ | ❌ | Maker-only orders |
 | **Time-in-Force** | ✅ | ✅ | ✅ | ⚠️ | Order expiration rules |
-
 
 #### Order Execution Flow
 

@@ -1,628 +1,858 @@
 # Usage Guide
 
+This comprehensive guide covers how to use the Day Trading Orchestrator system effectively.
+
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Basic Operations](#basic-operations)
+- [Trading Interface](#trading-interface)
+- [Strategy Management](#strategy-management)
+- [Risk Controls](#risk-controls)
+- [Portfolio Management](#portfolio-management)
+- [AI Features](#ai-features)
+- [Advanced Features](#advanced-features)
+- [Daily Workflow](#daily-workflow)
+- [Best Practices](#best-practices)
+
 ## Getting Started
 
-### System Overview
-The Not Stonks Bot is an automated trading system that combines traditional algorithmic trading with AI-powered decision making. It supports multiple brokers, strategies, and risk management features.
+### First Launch
 
-### Quick Start
+```bash
+# Start the system
+python main.py
 
-1. **Installation**
-   ```bash
-   git clone https://github.com/supermarsx/not-stonks-bot.git
-   cd not-stonks-bot
-   ./install.sh
-   ```
+# Or use launch scripts
+./start.sh        # Linux/macOS
+start.bat         # Windows
+python run.py     # Cross-platform
+```
 
-2. **Configuration**
-   ```bash
-   cp config/config.template.json config/config.json
-   # Edit config.json with your settings
-   ```
+### Interface Overview
 
-3. **Testing**
-   ```bash
-   ./not-stonks-bot --test-mode --validate-config
-   ```
+When you first launch the system, you'll see the Matrix-themed terminal interface:
 
-4. **Start Trading**
-   ```bash
-   ./not-stonks-bot --start
-   ```
+```
+╔══════════════════════════════════════════════════════════════╗
+║    ██████╗ ██╗   ██╗██████╗ ███╗   ███╗                    ║
+║   ██╔═══██╗██║   ██║██╔══██╗████╗ ████║                    ║
+║   ██║   ██║██║   ██║██████╔╝██╔████╔██║                    ║
+║   ██║   ██║██║   ██║██╔══██╗██║╚██╔╝██║                    ║
+║   ╚██████╔╝╚██████╔╝██████╔╝██║ ╚═╝ ██║                    ║
+║    ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝     ╚═╝                    ║
+║                                                              ║
+║           DAY TRADING ORCHESTRATOR SYSTEM                    ║
+║                 Multi-Broker AI Trading                     ║
+╚══════════════════════════════════════════════════════════════╝
+
+🚀 Initializing Day Trading Orchestrator...
+📋 Configuration loaded from config.json
+💾 Database initialized
+🔌 Broker factory initialized with 3 brokers
+🤖 AI models initialized
+🛠️ Trading tools initialized
+🧠 AI orchestrator initialized
+⚡ Risk engine initialized
+📋 OMS initialized
+📈 Strategy registry initialized
+📊 Market data manager initialized
+💻 Matrix terminal interface initialized
+✅ System initialization complete!
+
+🏁 Starting Day Trading Orchestrator...
+
+Welcome to the Matrix Terminal
+Type 'help' for available commands
+Type 'status' for system status
+Type 'demo' to run demo mode
+```
+
+### Command Palette
+
+The system provides a command palette for quick access to all features:
+
+```bash
+# Show command palette
+Ctrl+P
+
+# Or type 'help' in the terminal
+> help
+```
+
+Available commands:
+- `status` - Show system status
+- `connect <broker>` - Connect to broker
+- `symbols` - List available symbols
+- `strategies` - Manage trading strategies
+- `portfolio` - View portfolio
+- `orders` - Manage orders
+- `risk` - Configure risk limits
+- `ai` - AI-powered features
+- `demo` - Run demo mode
+- `quit` - Exit system
 
 ## Basic Operations
 
-### Starting the System
+### Connecting to Brokers
 
-#### Command Line
 ```bash
-# Start with default config
-./not-stonks-bot start
+# Connect to specific broker
+> connect alpaca
 
-# Start with custom config
-./not-stonks-bot --config /path/to/config.json start
+# Connect to all enabled brokers
+> connect all
 
-# Start in background
-./not-stonks-bot start --daemon
-
-# Start with specific log level
-./not-stonks-bot start --log-level DEBUG
+# Check broker status
+> status brokers
 ```
 
-#### Service Management
+### Viewing Market Data
+
 ```bash
-# Start as service
-sudo systemctl start not-stonks-bot
+# View real-time quotes
+> quote AAPL
+> quote BTC-USD
 
-# Enable auto-start
-sudo systemctl enable not-stonks-bot
+# View price history
+> history AAPL --period 1d --interval 1h
 
-# Check status
-sudo systemctl status not-stonks-bot
+# View market overview
+> markets
 ```
 
-### Stopping the System
+### Basic Order Placement
 
-#### Graceful Shutdown
 ```bash
-# Stop trading gracefully
-./not-stonks-bot stop
+# Place market order
+> order buy AAPL 100 market
 
-# Force stop
-./not-stonks-bot stop --force
+# Place limit order
+> order buy AAPL 100 limit 150.50
+
+# Place stop loss order
+> order sell AAPL 100 stop 145.00
+
+# View open orders
+> orders
 ```
 
-#### Emergency Stop
+### Position Management
+
 ```bash
-# Immediate stop with position closing
-./not-stonks-bot emergency-stop
+# View current positions
+> positions
 
-# Stop without closing positions
-./not-stonks-bot emergency-stop --keep-positions
-```
+# View position details
+> position AAPL
 
-### System Status
+# Close position
+> close AAPL
 
-#### Check Status
-```bash
-# General status
-./not-stonks-bot status
-
-# Detailed status
-./not-stonks-bot status --verbose
-
-# JSON output
-./not-stonks-bot status --json
-```
-
-#### Health Check
-```bash
-# Basic health check
-./not-stonks-bot health
-
-# Comprehensive health check
-./not-stonks-bot health --comprehensive
-
-# Broker connectivity check
-./not-stonks-bot health --brokers
-
-# Database check
-./not-stonks-bot health --database
+# Close all positions
+> close all
 ```
 
 ## Trading Interface
 
-### Portfolio Management
+### Real-Time Dashboard
 
-#### View Portfolio
-```bash
-# Current positions
-./not-stonks-bot portfolio show
+The Matrix interface provides a real-time trading dashboard:
 
-# Portfolio summary
-./not-stonks-bot portfolio summary
+```
+┌─ Portfolio Status ─┐┌─ Market Data ─────┐┌─ Active Strategies ─┐
+│ Cash: $50,000     ││ AAPL:  $150.25↑   ││ Mean Reversion     │
+│ Equity: $75,000   ││ BTC:   $45,200↓   ││ Trend Following    │
+│ P&L:   +$2,500    ││ TSLA:  $220.80↑   ││ Pairs Trading      │
+│ Margin: $0        ││ SPY:   $425.30→   ││                    │
+└───────────────────┘└───────────────────┘└────────────────────┘
 
-# Historical performance
-./not-stonks-bot portfolio performance
-
-# Risk metrics
-./not-stonks-bot portfolio risk
+┌─ Risk Metrics ─────┐┌─ Active Orders ───┐┌─ System Health ─────┐
+│ VaR:    1.2%       ││ AAPL BUY 50 MKT  ││ DB:    ✓ Healthy   │
+│ Heat:   15%        ││ BTC SELL 0.5 LTC ││ AI:    ✓ Active    │
+│ Drawdown: 2.5%     ││ TSLA BUY 20 LMT  ││ Risk:  ✓ Good      │
+│ Sharpe: 1.8        ││                  ││ Brokers: ✓ 3/3     │
+└───────────────────┘└───────────────────┘└────────────────────┘
 ```
 
-#### Manual Trades
+### Interactive Charts
+
 ```bash
-# Place market order
-./not-stonks-bot trade place --symbol AAPL --qty 10 --side buy --type market
+# Open chart for symbol
+> chart AAPL
 
-# Place limit order
-./not-stonks-bot trade place --symbol AAPL --qty 10 --side buy --type limit --price 150.00
+# Chart with indicators
+> chart AAPL --indicators RSI,MA20,MA50
 
-# Cancel order
-./not-stonks-bot trade cancel --order-id 12345
-
-# Close position
-./not-stonks-bot trade close --symbol AAPL
+# Multiple symbols comparison
+> chart AAPL,MSFT,GOOGL --relative
 ```
 
-### Market Data
+### Order Book
 
-#### Real-time Data
 ```bash
-# Get quote
-./not-stonks-bot market quote AAPL
+# View order book
+> book AAPL
 
-# Get multiple quotes
-./not-stonks-bot market quotes AAPL,GOOGL,MSFT
+# View with market depth
+> book AAPL --depth 10
 
-# Get order book
-./not-stonks-bot market orderbook AAPL
-
-# Get recent trades
-./not-stonks-bot market trades AAPL
+# View paper trading order book
+> book AAPL --paper
 ```
 
-#### Historical Data
+### Trade Log
+
 ```bash
-# Get historical prices
-./not-stonks-bot market history AAPL --period 1d --interval 1m
+# View recent trades
+> trades
 
-# Get price with custom range
-./not-stonks-bot market history AAPL --start "2024-01-01" --end "2024-01-15"
+# View trades for specific symbol
+> trades AAPL --limit 50
 
-# Export to CSV
-./not-stonks-bot market history AAPL --output data.csv
-```
-
-### Order Management
-
-#### View Orders
-```bash
-# Current orders
-./not-stonks-bot orders list
-
-# Orders by status
-./not-stonks-bot orders list --status open
-
-# Historical orders
-./not-stonks-bot orders history --days 7
-
-# Order details
-./not-stonks-bot orders show 12345
-```
-
-#### Order Actions
-```bash
-# Modify order
-./not-stonks-bot orders modify 12345 --price 149.50
-
-# Cancel order
-./not-stonks-bot orders cancel 12345
-
-# Cancel all orders
-./not-stonks-bot orders cancel-all
-
-# Reject order
-./not-stonks-bot orders reject 12345 --reason "Insufficient funds"
+# Export trade history
+> trades --export csv --file trades_2024.csv
 ```
 
 ## Strategy Management
 
-### Strategy Configuration
+### Strategy Selection
 
-#### Create Strategy
 ```bash
-# Create from template
-./not-stonks-bot strategy create my_strategy --template moving_average
+# List available strategies
+> strategies list
 
-# Create custom strategy
-./not-stonks-bot strategy create my_strategy --config strategy.json
+# Enable strategy
+> strategy enable mean_reversion
+
+# Disable strategy
+> strategy disable pairs_trading
+
+# Configure strategy parameters
+> strategy config mean_reversion --lookback 20 --threshold 2.0
 ```
 
-#### Edit Strategy
-```bash
-# Edit strategy config
-./not-stonks-bot strategy edit my_strategy
+### Strategy Execution
 
-# Update parameters
-./not-stonks-bot strategy update my_strategy --params '{"period": 20, "threshold": 0.02}'
-```
-
-#### Strategy Actions
 ```bash
 # Start strategy
-./not-stonks-bot strategy start my_strategy
+> strategy start mean_reversion
 
 # Stop strategy
-./not-stonks-bot strategy stop my_strategy
+> strategy stop mean_reversion
 
-# Pause strategy
-./not-stonks-bot strategy pause my_strategy
+# View strategy status
+> strategy status
 
-# Resume strategy
-./not-stonks-bot strategy resume my_strategy
+# View strategy performance
+> strategy performance mean_reversion --period 1d
 ```
 
-### Strategy Monitoring
+### Strategy Types
 
-#### Strategy Status
+#### Mean Reversion Strategy
+
 ```bash
-# List all strategies
-./not-stonks-bot strategy list
+# Configure mean reversion
+> strategy config mean_reversion \
+    --lookback 20 \
+    --entry_threshold 2.0 \
+    --exit_threshold 0.5 \
+    --min_confidence 0.75
 
-# Strategy details
-./not-stonks-bot strategy show my_strategy
-
-# Strategy performance
-./not-stonks-bot strategy performance my_strategy
-
-# Strategy logs
-./not-stonks-bot strategy logs my_strategy --lines 100
+# Start mean reversion trading
+> strategy start mean_reversion
 ```
 
-#### Strategy Analytics
+#### Trend Following Strategy
+
 ```bash
-# Strategy performance report
-./not-stonks-bot strategy report my_strategy
+# Configure trend following
+> strategy config trend_following \
+    --fast_ma 10 \
+    --slow_ma 30 \
+    --rsi_period 14 \
+    --min_trend_strength 0.6
 
-# Strategy comparison
-./not-stonks-bot strategy compare strategy1,strategy2
-
-# Strategy optimization
-./not-stonks-bot strategy optimize my_strategy --iterations 1000
+# Start trend following
+> strategy start trend_following
 ```
 
-## Risk Management
+#### Pairs Trading Strategy
 
-### Position Management
-
-#### View Positions
 ```bash
-# All positions
-./not-stonks-bot position list
+# Configure pairs trading
+> strategy config pairs_trading \
+    --correlation_threshold 0.8 \
+    --zscore_entry 2.0 \
+    --zscore_exit 0.5
 
-# Position details
-./not-stonks-bot position show AAPL
-
-# Position history
-./not-stonks-bot position history AAPL --days 30
+# Start pairs trading
+> strategy start pairs_trading
 ```
 
-#### Position Actions
+### Backtesting Strategies
+
 ```bash
-# Close position
-./not-stonks-bot position close AAPL
+# Backtest strategy
+> backtest mean_reversion --start 2023-01-01 --end 2024-01-01
 
-# Close multiple positions
-./not-stonks-bot position close-by-filter --sector technology
+# Compare strategies
+> backtest compare mean_reversion trend_following --period 6m
 
-# Rebalance portfolio
-./not-stonks-bot position rebalance --target-weights file://portfolio.json
+# View backtest results
+> backtest results --strategy mean_reversion --detailed
 ```
 
-### Risk Limits
+## Risk Controls
 
-#### Configure Limits
+### Position Limits
+
 ```bash
-# Set position limit
-./not-stonks-bot risk set-limit position-size 10000
+# Set maximum position size
+> risk limit position 10000
 
 # Set daily loss limit
-./not-stonks-bot risk set-limit daily-loss 5000
+> risk limit daily_loss 5000
 
-# Set exposure limit
-./not-stonks-bot risk set-limit sector-exposure 0.30
+# Set maximum number of open orders
+> risk limit open_orders 100
+
+# View current limits
+> risk limits
 ```
 
-#### Risk Monitoring
+### Circuit Breakers
+
 ```bash
-# Check current risk metrics
-./not-stonks-bot risk check
+# Enable circuit breakers
+> risk circuit enable
 
-# Risk report
-./not-stonks-bot risk report
+# Set daily loss circuit breaker
+> risk circuit daily_loss 10000
 
-# Risk alerts
-./not-stonks-bot risk alerts
+# Set consecutive loss circuit breaker
+> risk circuit consecutive_losses 3
+
+# View circuit breaker status
+> risk circuit status
 ```
 
-### Risk Actions
+### Risk Monitoring
 
-#### Emergency Procedures
 ```bash
-# Reduce all positions
-./not-stonks-bot risk reduce-all --by 0.5
+# View portfolio risk metrics
+> risk metrics
 
-# Close losing positions
-./not-stonks-bot risk close-losers --threshold 0.05
+# View correlation matrix
+> risk correlation
 
-# Emergency hedge
-./not-stonks-bot risk hedge --positions AAPL,GOOGL
+# View sector exposure
+> risk sectors
+
+# View risk heatmap
+> risk heatmap
+```
+
+### Compliance Controls
+
+```bash
+# Check pattern day trader status
+> compliance pdt
+
+# Verify wash sale compliance
+> compliance wash_sale
+
+# Check margin requirements
+> compliance margin
+
+# Generate compliance report
+> compliance report --format pdf
+```
+
+## Portfolio Management
+
+### Portfolio Overview
+
+```bash
+# View portfolio summary
+> portfolio
+
+# View detailed positions
+> portfolio details
+
+# View allocation by asset class
+> portfolio allocation
+
+# View performance metrics
+> portfolio performance --period 1m
+```
+
+### Asset Allocation
+
+```bash
+# View current allocation
+> allocation
+
+# Rebalance portfolio
+> rebalance --target stocks:60% bonds:30% cash:10%
+
+# View sector allocation
+> allocation sectors
+
+# View geographic allocation
+> allocation regions
+```
+
+### Performance Analysis
+
+```bash
+# Calculate returns
+> returns --period 1y
+
+# View Sharpe ratio
+> performance sharpe
+
+# View maximum drawdown
+> performance drawdown
+
+# Compare to benchmark
+> performance benchmark SPY
+```
+
+### Portfolio Optimization
+
+```bash
+# Optimize portfolio weights
+> optimize --method modern_portfolio_theory
+
+# View efficient frontier
+> optimize frontier
+
+# Rebalance based on optimization
+> optimize rebalance
 ```
 
 ## AI Features
 
-### AI Analysis
+### Market Analysis
 
-#### Market Analysis
 ```bash
-# AI market analysis
-./not-stonks-bot ai analyze market AAPL
+# Analyze market conditions
+> ai analyze AAPL
+
+# Get market sentiment
+> ai sentiment AAPL --source news,social
+
+# Technical pattern recognition
+> ai patterns AAPL
+
+# Fibonacci levels
+> ai fibonacci AAPL
+```
+
+### AI Strategy Recommendations
+
+```bash
+# Get strategy recommendation
+> ai recommend AAPL --confidence_threshold 0.8
+
+# Market regime analysis
+> ai regime
+
+# Risk assessment
+> ai risk_assessment AAPL
+
+# Portfolio optimization suggestion
+> ai optimize_portfolio
+```
+
+### News Analysis
+
+```bash
+# Analyze news for symbol
+> ai news AAPL
 
 # Sentiment analysis
-./not-stonks-bot ai sentiment AAPL
-
-# Technical analysis
-./not-stonks-bot ai technical AAPL
-
-# Fundamental analysis
-./not-stonks-bot ai fundamental AAPL
-```
-
-#### News Analysis
-```bash
-# Get AI news analysis
-./not-stonks-bot ai news AAPL
-
-# News sentiment
-./not-stonks-bot ai news-sentiment AAPL
+> ai sentiment news AAPL
 
 # Event impact analysis
-./not-stonks-bot ai event-impact earnings --symbol AAPL
+> ai events AAPL --period 1d
+
+# Earnings announcement analysis
+> ai earnings AAPL
 ```
 
-### AI Training
+### Custom AI Prompts
 
-#### Model Training
 ```bash
-# Train prediction model
-./not-stonks-bot ai train predict --symbol AAPL --days 365
+# Use custom prompt
+> ai prompt "Analyze the technical outlook for AAPL based on current market conditions"
 
-# Train sentiment model
-./not-stonks-bot ai train sentiment --data news_data.csv
+# Save custom prompt
+> ai prompt save my_analysis "Analyze market volatility"
 
-# Backtest AI model
-./not-stonks-bot ai backtest model.pkl --start 2023-01-01
-```
-
-#### Model Management
-```bash
-# List models
-./not-stonks-bot ai models list
-
-# Load model
-./not-stonks-bot ai models load model.pkl
-
-# Save model
-./not-stonks-bot ai models save model.pkl
-
-# Model performance
-./not-stonks-bot ai models performance model.pkl
+# Use saved prompt
+> ai prompt use my_analysis
 ```
 
 ## Advanced Features
 
-### Automation
+### Order Types
 
-#### Scheduled Tasks
+#### Advanced Order Types
+
 ```bash
-# Create scheduled task
-./not-stonks-bot schedule create "Daily Rebalance" --cron "0 16 * * 1-5" --command "portfolio rebalance"
+# One-Cancels-the-Other (OCO)
+> order oco AAPL \
+    --buy_limit 148.00 \
+    --sell_stop 145.00
 
-# List scheduled tasks
-./not-stonks-bot schedule list
+# Bracket Order
+> order bracket AAPL \
+    --parent_buy 100 \
+    --child_stop 145.00 \
+    --child_take_profit 155.00
 
-# Enable/disable task
-./not-stonks-bot schedule disable "Daily Rebalance"
+# Trailing Stop
+> order sell 50 AAPL \
+    --type trailing_stop \
+    --trail_amount 5.00
+
+# Iceberg Order
+> order buy 1000 AAPL \
+    --type iceberg \
+    --display_quantity 100
 ```
 
-#### Event Triggers
+#### Conditional Orders
+
 ```bash
-# Create trigger
-./not-stonks-bot trigger create price_alert --symbol AAPL --condition "price < 140" --action "close AAPL"
+# If-Then Order
+> order if AAPL > 150 then buy AAPL 100 market
 
-# List triggers
-./not-stonks-bot trigger list
+# Time-Based Order
+> order buy AAPL 100 at_time "2024-01-01 09:30:00"
 
-# Test trigger
-./not-stonks-bot trigger test price_alert
+# Volume-Based Order
+> order buy AAPL 100 if_volume > 1000000
 ```
 
-### Integration
+### Options Trading
 
-#### Webhook Setup
 ```bash
-# Configure webhook
-./not-stonks-bot webhook configure --url https://your-domain.com/webhook --secret secret123
+# View options chains
+> options chain AAPL --expiration 2024-03-15
 
-# Test webhook
-./not-stonks-bot webhook test
+# Buy call option
+> options call AAPL 150 2024-03-15 buy 1
 
-# Webhook logs
-./not-stonks-bot webhook logs
+# Buy put option
+> options put AAPL 155 2024-03-15 buy 1
+
+# Complex options strategy
+> options straddle AAPL 150 2024-03-15
 ```
 
-#### API Usage
+### Futures Trading
+
 ```bash
-# Start API server
-./not-stonks-bot api start --port 8080
+# View futures contracts
+> futures contracts ES
 
-# API health check
-curl http://localhost:8080/health
+# Buy E-mini S&P 500
+> futures buy ES 2024-03-15 2
 
-# Get portfolio via API
-curl http://localhost:8080/portfolio
+# Set margin requirements
+> futures margin ES 5000
+
+# View contract specifications
+> futures specs ES 2024-03-15
 ```
 
-## Monitoring and Alerts
+### Forex Trading
 
-### Logging
+```bash# View currency pairs
+> forex pairs
 
-#### Log Management
-```bash
-# View real-time logs
-./not-stonks-bot logs tail
+# Buy EUR/USD
+> forex buy EURUSD 10000
 
-# View specific log level
-./not-stonks-bot logs --level ERROR
+# Set stop loss
+> forex stop_loss EURUSD 1.0850
 
-# Search logs
-./not-stonks-bot logs search "order failed"
+# View major pairs
+> forex majors
 
-# Export logs
-./not-stonks-bot logs export --start "2024-01-01" --end "2024-01-31" --output logs.zip
+# Cross currency analysis
+> forex cross EURGBP
 ```
 
-#### Log Configuration
+### Cryptocurrency Trading
+
 ```bash
-# Set log level
-./not-stonks-bot logs set-level DEBUG
+# View crypto pairs
+> crypto pairs
 
-# Configure log rotation
-./not-stonks-bot logs configure --max-size 100MB --backup-count 5
+# Buy Bitcoin
+> crypto buy BTCUSDT 0.5
 
-# Add custom logger
-./not-stonks-bot logs add-handler syslog --facility local0
-```
+# Set take profit
+> crypto take_profit BTCUSDT 50000
 
-### Alerts
+# View altcoins
+> crypto altcoins --market_cap 1000000000
 
-#### Alert Configuration
-```bash
-# Create alert
-./not-stonks-bot alert create high_loss --condition "portfolio_pnl < -0.05" --action email
-
-# List alerts
-./not-stonks-bot alert list
-
-# Test alert
-./not-stonks-bot alert test high_loss
-
-# Disable alert
-./not-stonks-bot alert disable high_loss
-```
-
-#### Notification Channels
-```bash
-# Configure email alerts
-./not-stonks-bot notification email --smtp-server smtp.gmail.com --username user --password pass
-
-# Configure Slack alerts
-./not-stonks-bot notification slack --webhook-url https://hooks.slack.com/...
-
-# Configure SMS alerts
-./not-stonks-bot notification sms --provider twilio --account-sid xxx --auth-token xxx
+# DeFi analysis
+> crypto defi analyze
 ```
 
 ## Daily Workflow
 
-### Morning Routine
+### Pre-Market Routine
 
-1. **System Check**
-   ```bash
-   ./not-stonks-bot health --comprehensive
-   ```
+```bash
+# Check market status
+> market status
 
-2. **Portfolio Review**
-   ```bash
-   ./not-stonks-bot portfolio summary
-   ./not-stonks-bot position list --unrealized
-   ```
+# Review overnight news
+> news overnight
 
-3. **Risk Check**
-   ```bash
-   ./not-stonks-bot risk check
-   ./not-stonks-bot alert list
-   ```
+# Update risk limits
+> risk limits review
 
-4. **Strategy Status**
-   ```bash
-   ./not-stonks-bot strategy list
-   ./not-stonks-bot strategy performance --today
-   ```
+# Check economic calendar
+> calendar today
 
-5. **Market Analysis**
-   ```bash
-   ./not-stonks-bot ai analyze market
-   ./not-stonks-bot market overview
-   ```
+# Pre-market analysis
+> ai analysis --market_brief
+```
 
-### During Trading Hours
+### Market Hours
 
-1. **Monitor Positions**
-   ```bash
-   # Set up monitoring
-   watch -n 60 './not-stonks-bot position list'
-   ```
+```bash
+# Monitor positions
+> monitor positions
 
-2. **Monitor Strategies**
-   ```bash
-   # Check strategy performance
-   ./not-stonks-bot strategy performance --live
-   ```
+# Watch key levels
+> watch AAPL,TSLA,SPY
 
-3. **Handle Alerts**
-   ```bash
-   # Check for alerts
-   ./not-stonks-bot alert list
-   ./not-stonks-bot logs --level WARNING --since 1h
-   ```
+# Review AI signals
+> ai signals --active
 
-### End of Day
+# Check risk metrics
+> risk check
 
-1. **Daily Report**
-   ```bash
-   ./not-stonks-bot report daily
-   ./not-stonks-bot performance summary --period 1d
-   ```
+# Monitor news
+> news watch --symbols AAPL
+```
 
-2. **Position Review**
-   ```bash
-   ./not-stonks-bot position history --today
-   ./not-stonks-bot orders history --today
-   ```
+### End-of-Day Routine
 
-3. **System Health**
-   ```bash
-   ./not-stonks-bot health --summary
-   ./not-stonks-bot logs summary --today
-   ```
+```bash
+# Close positions
+> close --time market_close
 
-4. **Data Backup**
-   ```bash
-   ./not-stonks-bot backup data
-   ./not-stonks-bot export portfolio --format csv
-   ```
+# Generate reports
+> report daily --format pdf
+
+# Backup data
+> backup data
+
+# Update strategy parameters
+> strategy update
+
+# Review performance
+> performance summary --period 1d
+```
+
+### Risk Review
+
+```bash
+# Daily risk report
+> risk report --daily
+
+# P&L analysis
+> pnl analysis
+
+# Position concentration
+> risk concentration
+
+# Margin utilization
+> margin usage
+
+# Compliance check
+> compliance check
+```
 
 ## Best Practices
 
 ### Security
-- Use strong passwords and API keys
-- Enable two-factor authentication
-- Regularly rotate credentials
-- Monitor access logs
-- Use VPN for remote access
 
-### Performance
-- Monitor system resources
-- Optimize database queries
-- Use caching where appropriate
-- Regular maintenance tasks
-- Performance profiling
+1. **API Key Management:**
+   - Use environment variables for sensitive data
+   - Rotate API keys regularly
+   - Use paper trading for testing
+   - Enable 2FA on all broker accounts
+
+2. **System Security:**
+   - Keep system updated
+   - Use secure connections
+   - Monitor access logs
+   - Regular security audits
 
 ### Risk Management
-- Set appropriate position limits
-- Regular risk assessments
-- Diversification strategies
-- Stop-loss mechanisms
-- Regular strategy reviews
 
-### Maintenance
-- Regular system updates
-- Database optimization
-- Log rotation and cleanup
-- Backup verification
-- Disaster recovery testing
+1. **Position Sizing:**
+   - Never risk more than 2% per trade
+   - Use position size calculators
+   - Monitor correlation between positions
+   - Diversify across asset classes
 
----
+2. **Daily Limits:**
+   - Set maximum daily loss limits
+   - Monitor drawdown closely
+   - Use circuit breakers
+   - Regular risk reviews
 
-*For detailed documentation on specific features, see the individual guide files in docs/*
+### Strategy Management
+
+1. **Backtesting:**
+   - Always backtest strategies
+   - Use out-of-sample testing
+   - Monitor live vs backtest performance
+   - Regular strategy review
+
+2. **Performance Tracking:**
+   - Track all strategies separately
+   - Monitor Sharpe ratios
+   - Compare to benchmarks
+   - Regular performance attribution
+
+### System Monitoring
+
+1. **Health Checks:**
+   - Run daily health checks
+   - Monitor system resources
+   - Check broker connectivity
+   - Verify data feeds
+
+2. **Alert Setup:**
+   - Configure risk alerts
+   - Set up email notifications
+   - Use system monitoring
+   - Emergency contact list
+
+## Keyboard Shortcuts
+
+### Global Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+C` | Exit system |
+| `Ctrl+P` | Command palette |
+| `Ctrl+Z` | Undo last action |
+| `F1` | Show help |
+| `F2` | System status |
+| `F3` | Quick order |
+| `F4` | Portfolio view |
+| `F5` | Refresh all data |
+| `F10` | Settings menu |
+
+### Trading Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+B` | Buy order |
+| `Ctrl+S` | Sell order |
+| `Ctrl+O` | Open orders |
+| `Ctrl+L` | Close position |
+| `Ctrl+I` | Position info |
+| `Ctrl+M` | Market data |
+| `Ctrl+T` | Trading strategies |
+| `Ctrl+R` | Risk controls |
+
+## Troubleshooting Common Issues
+
+### Connection Issues
+
+```bash
+# Check broker connectivity
+> status brokers
+
+# Test connection
+> test broker alpaca
+
+# Restart connection
+> restart broker alpaca
+
+# View connection logs
+> logs connection --last 1h
+```
+
+### Order Execution Issues
+
+```bash
+# Check order status
+> order status --id ORDER_ID
+
+# View execution logs
+> logs orders --symbol AAPL
+
+# Cancel and retry
+> order cancel --id ORDER_ID
+> order retry --id ORDER_ID
+```
+
+### AI Integration Issues
+
+```bash
+# Test AI connectivity
+> ai test
+
+# Check API limits
+> ai limits
+
+# Reset AI session
+> ai reset
+
+# View AI logs
+> logs ai --last 1h
+```
+
+## Getting Help
+
+### Built-in Help
+
+```bash
+# General help
+> help
+
+# Command-specific help
+> help order
+> help strategy
+> help risk
+
+# Tutorial mode
+> tutorial
+```
+
+### Support Resources
+
+- **[Documentation](docs/)** - Comprehensive documentation
+- **[GitHub Issues](https://github.com/your-username/day-trading-orchestrator/issues)** - Bug reports
+- **[Community Forum](https://forum.trading-orchestrator.com)** - Discussions
+- **[Discord](https://discord.gg/trading-orchestrator)** - Real-time support
+- **[Email Support](mailto:support@trading-orchestrator.com)** - Technical support
+
+## Next Steps
+
+After mastering the basics:
+
+1. **Advanced Strategies** - Develop custom strategies
+2. **API Integration** - Build custom integrations
+3. **Portfolio Management** - Advanced portfolio techniques
+4. **Risk Analytics** - Sophisticated risk models
+5. **Machine Learning** - Custom ML models
+
+Remember: Always start with paper trading and small position sizes when testing new strategies or features!

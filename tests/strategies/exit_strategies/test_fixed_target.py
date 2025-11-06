@@ -14,7 +14,7 @@ import pytest
 import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from trading_orchestrator.strategies.exit_strategies.fixed_target import (
@@ -25,8 +25,7 @@ from trading_orchestrator.strategies.exit_strategies.fixed_target import (
 from trading_orchestrator.strategies.exit_strategies.base_exit_strategy import (
     ExitReason,
     ExitType,
-    ExitConfiguration,
-    ExitSignal
+    ExitConfiguration
 )
 
 

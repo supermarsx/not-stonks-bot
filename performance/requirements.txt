@@ -1,0 +1,55 @@
+# Performance Optimization System Requirements
+# Core dependencies for the comprehensive performance monitoring system
+
+# Async and concurrent programming
+asyncio>=3.4.3
+aiofiles>=0.7.1
+
+# Redis integration
+redis>=4.3.4
+aioredis>=2.0.1
+
+# System monitoring and profiling
+psutil>=5.8.0
+
+# Database connectivity (optional - choose based on your database)
+# psycopg2-binary>=2.9.3  # PostgreSQL
+# pymysql>=1.0.2          # MySQL
+# cx_Oracle>=8.3.0        # Oracle
+# sqlite3                 # Built-in with Python
+
+# Data serialization
+orjson>=3.6.7
+
+# Financial data and APIs (optional)
+# alpaca-trade-api>=3.0.2      # Alpaca trading
+# python-binance>=1.0.16       # Binance API
+# interactive Brokers TWS API  # Interactive Brokers
+
+# HTTP clients for API monitoring
+requests>=2.28.0
+aiohttp>=3.8.0
+
+# Performance profiling
+py-spy>=0.3.8  # Optional: for advanced profiling
+
+# Logging and monitoring
+colorlog>=6.6.0  # Enhanced console logging
+
+# Compression for log archival
+bz2file>=0.98    # BZip2 compression support
+lz4>=3.1.3       # LZ4 compression (optional)
+
+# Development and testing (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.18.0
+# black>=22.0.0
+# flake8>=4.0.0
+
+# Production deployment (optional)
+# gunicorn>=20.1.0
+# supervisor>=4.2.0
+
+# Note: These are core requirements for the performance system
+# Additional dependencies may be needed for specific integrations
+# such as broker APIs, databases, or monitoring services.

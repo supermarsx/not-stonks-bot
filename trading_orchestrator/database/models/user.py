@@ -34,7 +34,7 @@ class User(Base):
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     
     def __repr__(self):
-        return f"<User(id={self.id}, username='{self.username}', email='{self.email}')"
+        return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
 
 
 class APIKey(Base):
@@ -63,7 +63,7 @@ class APIKey(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<APIKey(id={self.id}, user_id={self.user_id}, broker='{self.broker_name}')"
+        return f"<APIKey(id={self.id}, user_id={self.user_id}, broker='{self.broker_name}')>"
 
 
 class Session(Base):
@@ -89,7 +89,7 @@ class Session(Base):
     last_activity_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     def __repr__(self):
-        return f"<Session(id={self.id}, user_id={self.user_id}, active={self.is_active})"
+        return f"<Session(id={self.id}, user_id={self.user_id}, active={self.is_active})>"
 
 
 class AuditLog(Base):
@@ -121,4 +121,4 @@ class AuditLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     
     def __repr__(self):
-        return f"<AuditLog(id={self.id}, event_type='{self.event_type}', action='{self.action}')"
+        return f"<AuditLog(id={self.id}, event_type='{self.event_type}', action='{self.action}')>"

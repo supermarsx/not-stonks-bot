@@ -3,554 +3,534 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { 
-  Settings, 
+  Server, 
   Key, 
-  Wifi, 
-  WifiOff, 
+  TestTube, 
   CheckCircle, 
   XCircle, 
-  RefreshCw,
+  AlertTriangle,
+  Copy,
   Eye,
   EyeOff,
-  Globe,
-  Shield,
-  Clock
+  Plus,
+  Trash2,
+  RefreshCw,
+  Settings
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { useConfigStore } from '@/stores/configStore';
 
 interface Broker {
   id: string;
   name: string;
-  displayName: string;
-  logo?: string;
-  isEnabled: boolean;
-  environment: 'paper' | 'live' | 'sandbox';
-  credentials: {
+  type: 'alpaca' | 'binance' | 'ibkr' | 'degiro' | 'trading212' | 'xtb' | 'trade_republic';
+  status: 'connected' | 'disconnected' | 'error' | 'testing';
+  config: {
     apiKey: string;
     secretKey: string;
-    additionalFields?: Record<string, string>;
-  };
-  settings: {
+    environment: 'paper' | 'live' | 'sandbox';
     baseUrl?: string;
-    gatewayUrl?: string;
-    port?: number;
-    timeout?: number;
-    maxRetries?: number;
+    additionalSettings?: Record<string, any>;
   };
-  status: 'connected' | 'disconnected' | 'error' | 'testing';
-  lastConnected?: Date;
-  latency?: number;
-  error?: string;
+  connectionTest?: {
+    lastTested: string;
+    result: 'success' | 'failure';
+    latency?: number;
+    message?: string;
+  };
 }
 
 const BrokerConfig: React.FC = () => {
-  const { config, updateConfig, validateConfig } = useConfigStore();
-  const [brokers, setBrokers] = useState<Broker[]>([
-    {
-      id: 'alpaca',
-      name: 'alpaca',
-      displayName: 'Alpaca Markets',
-      isEnabled: false,
-      environment: 'paper',
-      credentials: {
-        apiKey: '',
-        secretKey: ''
-      },
-      settings: {
-        baseUrl: 'https://paper-api.alpaca.markets',
-        timeout: 30000,
-        maxRetries: 3
-      },
-      status: 'disconnected'
-    },
-    {
-      id: 'binance',
-      name: 'binance',
-      displayName: 'Binance',
-      isEnabled: false,
-      environment: 'sandbox',
-      credentials: {
-        apiKey: '',
-        secretKey: ''
-      },
-      settings: {
-        baseUrl: 'https://testnet.binance.vision',
-        timeout: 30000,
-        maxRetries: 3
-      },
-      status: 'disconnected'
-    },
-    {
-      id: 'ibkr',
-      name: 'ibkr',
-      displayName: 'Interactive Brokers',
-      isEnabled: false,
-      environment: 'paper',
-      credentials: {
-        apiKey: '',
-        secretKey: ''
-      },
-      settings: {
-        gatewayUrl: 'localhost',
-        port: 7497,
-        timeout: 60000,
-        maxRetries: 3
-      },
-      status: 'disconnected'
-    },
-    {
-      id: 'degiro',
-      name: 'degiro',
-      displayName: 'DEGIRO',
-      isEnabled: false,
-      environment: 'paper',
-      credentials: {
-        apiKey: '',
-        secretKey: ''
-      },
-      settings: {
-        timeout: 30000,
-        maxRetries: 3
-      },
-      status: 'disconnected'
-    },
-    {
-      id: 'trading212',
-      name: 'trading212',
-      displayName: 'Trading 212',
-      isEnabled: false,
-      environment: 'paper',
-      credentials: {
-        apiKey: '',
-        secretKey: ''
-      },
-      settings: {
-        baseUrl: 'https://live.trading212.com/api/v0',
-        timeout: 30000,
-        maxRetries: 3
-      },
-      status: 'disconnected'
-    },
-    {
-      id: 'xtb',
-      name: 'xtb',
-      displayName: 'XTB',
-      isEnabled: false,
-      environment: 'demo',
-      credentials: {
-        apiKey: '',
-        secretKey: ''
-      },
-      settings: {
-        baseUrl: 'https://demo.xtb.com',
-        timeout: 30000,
-        maxRetries: 3
-      },
-      status: 'disconnected'
-    },
-    {
-      id: 'traderepublic',
-      name: 'traderepublic',
-      displayName: 'Trade Republic',
-      isEnabled: false,
-      environment: 'paper',
-      credentials: {
-        apiKey: '',
-        secretKey: ''
-      },
-      settings: {
-        timeout: 30000,
-        maxRetries: 3
-      },
-      status: 'disconnected'
-    }
-  ]);
-
-  const [selectedBroker, setSelectedBroker] = useState<string>('alpaca');
+  const [brokers, setBrokers] = useState<Broker[]>([]);
+  const [activeBroker, setActiveBroker] = useState<string | null>(null);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [isLoading, setIsLoading] = useState(false);
   const [testingConnection, setTestingConnection] = useState<string | null>(null);
 
-  const currentBroker = brokers.find(b => b.id === selectedBroker);
+  const brokerTypes = [
+    { value: 'alpaca', label: 'Alpaca Trading' },
+    { value: 'binance', label: 'Binance' },
+    { value: 'ibkr', label: 'Interactive Brokers' },
+    { value: 'degiro', label: 'DEGIRO' },
+    { value: 'trading212', label: 'Trading 212' },
+    { value: 'xtb', label: 'XTB' },
+    { value: 'trade_republic', label: 'Trade Republic' }
+  ];
 
-  const updateBroker = (brokerId: string, updates: Partial<Broker>) => {
-    setBrokers(prev => prev.map(broker => 
-      broker.id === brokerId ? { ...broker, ...updates } : broker
+  const environments = [
+    { value: 'paper', label: 'Paper Trading' },
+    { value: 'live', label: 'Live Trading' },
+    { value: 'sandbox', label: 'Sandbox' }
+  ];
+
+  useEffect(() => {
+    loadBrokers();
+  }, []);
+
+  const loadBrokers = async () => {
+    setIsLoading(true);
+    try {
+      // Load brokers from storage
+      const savedBrokers = await window.electronAPI?.getBrokers() || [];
+      setBrokers(savedBrokers);
+    } catch (error) {
+      console.error('Failed to load brokers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveBrokers = async () => {
+    setIsLoading(true);
+    try {
+      await window.electronAPI?.saveBrokers(brokers);
+    } catch (error) {
+      console.error('Failed to save brokers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addBroker = () => {
+    const newBroker: Broker = {
+      id: `broker_${Date.now()}`,
+      name: '',
+      type: 'alpaca',
+      status: 'disconnected',
+      config: {
+        apiKey: '',
+        secretKey: '',
+        environment: 'paper',
+        baseUrl: '',
+        additionalSettings: {}
+      }
+    };
+    setBrokers([...brokers, newBroker]);
+    setActiveBroker(newBroker.id);
+  };
+
+  const updateBroker = (id: string, updates: Partial<Broker>) => {
+    setBrokers(brokers.map(broker => 
+      broker.id === id ? { ...broker, ...updates } : broker
     ));
   };
 
-  const testConnection = async (brokerId: string) => {
-    const broker = brokers.find(b => b.id === brokerId);
-    if (!broker || !broker.credentials.apiKey || !broker.credentials.secretKey) {
-      toast.error('Please fill in API credentials first');
-      return;
+  const deleteBroker = (id: string) => {
+    setBrokers(brokers.filter(broker => broker.id !== id));
+    if (activeBroker === id) {
+      setActiveBroker(null);
     }
+  };
 
-    setTestingConnection(brokerId);
-    
+  const testConnection = async (broker: Broker) => {
+    setTestingConnection(broker.id);
     try {
       // Simulate connection test
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Simulate random latency
-      const latency = Math.floor(Math.random() * 200) + 50;
-      
-      updateBroker(brokerId, {
-        status: 'connected',
-        lastConnected: new Date(),
-        latency,
-        error: undefined
+      const connectionTest = {
+        lastTested: new Date().toISOString(),
+        result: Math.random() > 0.3 ? 'success' as const : 'failure' as const,
+        latency: Math.floor(Math.random() * 500) + 50,
+        message: Math.random() > 0.3 ? 'Connection successful' : 'Invalid API credentials'
+      };
+
+      updateBroker(broker.id, {
+        status: connectionTest.result === 'success' ? 'connected' : 'error',
+        connectionTest
       });
-      
-      toast.success(`Connected to ${broker.displayName} successfully`);
     } catch (error) {
-      updateBroker(brokerId, {
+      updateBroker(broker.id, {
         status: 'error',
-        error: 'Connection failed. Please check your credentials.'
+        connectionTest: {
+          lastTested: new Date().toISOString(),
+          result: 'failure',
+          message: error instanceof Error ? error.message : 'Connection test failed'
+        }
       });
-      
-      toast.error(`Failed to connect to ${broker.displayName}`);
     } finally {
       setTestingConnection(null);
     }
   };
 
-  const toggleSecrets = (brokerId: string) => {
-    setShowSecrets(prev => ({
-      ...prev,
-      [brokerId]: !prev[brokerId]
-    }));
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      connected: 'default',
+      disconnected: 'outline',
+      error: 'destructive',
+      testing: 'secondary'
+    };
+
+    const colors: Record<string, string> = {
+      connected: 'bg-green-500',
+      disconnected: 'bg-gray-400',
+      error: 'bg-red-500',
+      testing: 'bg-yellow-500'
+    };
+
+    return (
+      <Badge variant={variants[status] || 'outline'} className="gap-1">
+        <div className={`h-2 w-2 rounded-full ${colors[status] || 'bg-gray-400'}`} />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'connected':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'testing':
-        return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />;
-      default:
-        return <WifiOff className="h-4 w-4 text-gray-400" />;
-    }
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'connected':
-        return 'bg-green-500';
-      case 'error':
-        return 'bg-red-500';
-      case 'testing':
-        return 'bg-blue-500';
-      default:
-        return 'bg-gray-400';
-    }
+  const getBrokerIcon = (type: string) => {
+    return <Server className="h-4 w-4" />;
   };
+
+  const activeBrokerData = brokers.find(broker => broker.id === activeBroker);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-matrix-green">Broker Configuration</h1>
-          <p className="text-matrix-green/70 mt-1">Configure your broker connections and API credentials</p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Server className="h-5 w-5" />
+            Broker Configuration
+          </CardTitle>
+          <CardDescription>
+            Configure trading broker connections and API settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              Connected brokers: {brokers.filter(b => b.status === 'connected').length} of {brokers.length}
+            </p>
+            <Button onClick={addBroker} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Broker
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Broker Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {brokers.map((broker) => (
-          <Card 
-            key={broker.id} 
-            className={`border-matrix-green/20 bg-black/40 cursor-pointer transition-all hover:border-matrix-green/40 ${
-              selectedBroker === broker.id ? 'ring-2 ring-matrix-green/50' : ''
-            }`}
-            onClick={() => setSelectedBroker(broker.id)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-matrix-green/20 rounded-lg flex items-center justify-center">
-                    <Globe className="h-4 w-4 text-matrix-green" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-matrix-green">{broker.displayName}</h3>
-                    <p className="text-xs text-matrix-green/60">{broker.name}</p>
-                  </div>
-                </div>
-                <Badge 
-                  variant="outline" 
-                  className={`text-xs ${getStatusColor(broker.status)}/20 border-current`}
-                >
-                  <div className="flex items-center gap-1">
-                    {getStatusIcon(broker.status)}
-                    {broker.status}
-                  </div>
-                </Badge>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-matrix-green/60">Environment</span>
-                  <span className="text-matrix-green capitalize">{broker.environment}</span>
-                </div>
-                
-                {broker.latency && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-matrix-green/60">Latency</span>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-matrix-green/60" />
-                      <span className="text-matrix-green">{broker.latency}ms</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Brokers List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Brokers</CardTitle>
+            <CardDescription>
+              Manage your broker connections
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {brokers.map((broker) => (
+              <div
+                key={broker.id}
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  activeBroker === broker.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                }`}
+                onClick={() => setActiveBroker(broker.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {getBrokerIcon(broker.type)}
+                    <div>
+                      <h3 className="font-medium">{broker.name || 'Unnamed Broker'}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {brokerTypes.find(bt => bt.value === broker.type)?.label}
+                      </p>
                     </div>
                   </div>
-                )}
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(broker.status)}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteBroker(broker.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
                 
-                {broker.lastConnected && (
-                  <div className="text-xs text-matrix-green/50">
-                    Last connected: {broker.lastConnected.toLocaleTimeString()}
+                {broker.connectionTest && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Last tested: {new Date(broker.connectionTest.lastTested).toLocaleString()}
+                    {broker.connectionTest.latency && (
+                      <span> • Latency: {broker.connectionTest.latency}ms</span>
+                    )}
                   </div>
                 )}
-                
-                {broker.error && (
-                  <Alert className="mt-2 py-2">
-                    <AlertDescription className="text-xs text-red-400">
-                      {broker.error}
-                    </AlertDescription>
-                  </Alert>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            ))}
 
-      {/* Selected Broker Configuration */}
-      {currentBroker && (
-        <Card className="border-matrix-green/20 bg-black/40">
+            {brokers.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Server className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No brokers configured</p>
+                <Button onClick={addBroker} variant="outline" className="mt-2" size="sm">
+                  Add your first broker
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Broker Configuration */}
+        <Card>
           <CardHeader>
-            <CardTitle className="text-matrix-green flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              {currentBroker.displayName} Configuration
-            </CardTitle>
-            <CardDescription className="text-matrix-green/70">
-              Configure API credentials and connection settings
+            <CardTitle>Configuration</CardTitle>
+            <CardDescription>
+              {activeBrokerData ? 'Configure broker settings' : 'Select a broker to configure'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="credentials" className="space-y-4">
-              <TabsList className="bg-black/60 border border-matrix-green/20">
-                <TabsTrigger value="credentials" className="data-[state=active]:bg-matrix-green/20">
-                  <Key className="h-4 w-4 mr-2" />
-                  Credentials
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="data-[state=active]:bg-matrix-green/20">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </TabsTrigger>
-                <TabsTrigger value="advanced" className="data-[state=active]:bg-matrix-green/20">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Advanced
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="credentials" className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-matrix-green">Enable Broker</Label>
-                      <p className="text-xs text-matrix-green/60">Enable this broker for trading</p>
-                    </div>
-                    <Switch
-                      checked={currentBroker.isEnabled}
-                      onCheckedChange={(checked) => updateBroker(currentBroker.id, { isEnabled: checked })}
+            {activeBrokerData ? (
+              <div className="space-y-4">
+                {/* Basic Settings */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">Basic Settings</h3>
+                  
+                  <div>
+                    <Label htmlFor="broker-name">Name</Label>
+                    <Input
+                      id="broker-name"
+                      value={activeBrokerData.name}
+                      onChange={(e) => updateBroker(activeBrokerData.id, { name: e.target.value })}
+                      placeholder="My Broker Account"
                     />
                   </div>
 
-                  <div className="space-y-0.5">
-                    <Label className="text-matrix-green">Environment</Label>
+                  <div>
+                    <Label htmlFor="broker-type">Type</Label>
                     <Select
-                      value={currentBroker.environment}
-                      onValueChange={(value: 'paper' | 'live' | 'sandbox' | 'demo') => 
-                        updateBroker(currentBroker.id, { environment: value })
-                      }
+                      value={activeBrokerData.type}
+                      onValueChange={(value) => updateBroker(activeBrokerData.id, { type: value as Broker['type'] })}
                     >
-                      <SelectTrigger className="bg-black/40 border-matrix-green/20">
+                      <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="paper">Paper Trading</SelectItem>
-                        <SelectItem value="sandbox">Sandbox</SelectItem>
-                        <SelectItem value="demo">Demo</SelectItem>
-                        <SelectItem value="live">Live Trading</SelectItem>
+                        {brokerTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">API Key</Label>
-                    <div className="relative">
-                      <Input
-                        type={showSecrets[currentBroker.id]?.apiKey ? 'text' : 'password'}
-                        value={currentBroker.credentials.apiKey}
-                        onChange={(e) => updateBroker(currentBroker.id, {
-                          credentials: { ...currentBroker.credentials, apiKey: e.target.value }
-                        })}
-                        placeholder="Enter your API key"
-                        className="bg-black/40 border-matrix-green/20 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => toggleSecrets(currentBroker.id)}
-                      >
-                        {showSecrets[currentBroker.id]?.apiKey ? (
-                          <EyeOff className="h-4 w-4 text-matrix-green/60" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-matrix-green/60" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">Secret Key</Label>
-                    <div className="relative">
-                      <Input
-                        type={showSecrets[currentBroker.id]?.secretKey ? 'text' : 'password'}
-                        value={currentBroker.credentials.secretKey}
-                        onChange={(e) => updateBroker(currentBroker.id, {
-                          credentials: { ...currentBroker.credentials, secretKey: e.target.value }
-                        })}
-                        placeholder="Enter your secret key"
-                        className="bg-black/40 border-matrix-green/20 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => toggleSecrets(currentBroker.id)}
-                      >
-                        {showSecrets[currentBroker.id]?.secretKey ? (
-                          <EyeOff className="h-4 w-4 text-matrix-green/60" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-matrix-green/60" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Broker-specific additional fields */}
-                  {currentBroker.id === 'ibkr' && (
-                    <div className="space-y-2">
-                      <Label className="text-matrix-green">IB Gateway</Label>
-                      <Input
-                        value={currentBroker.settings.gatewayUrl || ''}
-                        onChange={(e) => updateBroker(currentBroker.id, {
-                          settings: { ...currentBroker.settings, gatewayUrl: e.target.value }
-                        })}
-                        placeholder="localhost"
-                        className="bg-black/40 border-matrix-green/20"
-                      />
-                    </div>
-                  )}
-
-                  {currentBroker.id === 'binance' && (
-                    <div className="space-y-2">
-                      <Label className="text-matrix-green">Base URL</Label>
-                      <Input
-                        value={currentBroker.settings.baseUrl || ''}
-                        onChange={(e) => updateBroker(currentBroker.id, {
-                          settings: { ...currentBroker.settings, baseUrl: e.target.value }
-                        })}
-                        placeholder="https://testnet.binance.vision"
-                        className="bg-black/40 border-matrix-green/20"
-                      />
-                    </div>
-                  )}
-
-                  <div className="pt-4 space-y-3">
-                    <Button
-                      onClick={() => testConnection(currentBroker.id)}
-                      disabled={testingConnection === currentBroker.id || !currentBroker.credentials.apiKey || !currentBroker.credentials.secretKey}
-                      className="w-full"
+                  <div>
+                    <Label htmlFor="environment">Environment</Label>
+                    <Select
+                      value={activeBrokerData.config.environment}
+                      onValueChange={(value) => updateBroker(activeBrokerData.id, {
+                        config: { ...activeBrokerData.config, environment: value as any }
+                      })}
                     >
-                      {testingConnection === currentBroker.id ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Testing Connection...
-                        </>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {environments.map((env) => (
+                          <SelectItem key={env.value} value={env.value}>
+                            {env.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* API Credentials */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">API Credentials</h3>
+                  
+                  <div>
+                    <Label htmlFor="api-key">API Key</Label>
+                    <div className="flex">
+                      <Input
+                        id="api-key"
+                        type={showSecrets[activeBrokerData.id] ? 'text' : 'password'}
+                        value={activeBrokerData.config.apiKey}
+                        onChange={(e) => updateBroker(activeBrokerData.id, {
+                          config: { ...activeBrokerData.config, apiKey: e.target.value }
+                        })}
+                        placeholder="Enter API key"
+                        className="pr-10"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2"
+                        onClick={() => copyToClipboard(activeBrokerData.config.apiKey)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1"
+                        onClick={() => setShowSecrets({
+                          ...showSecrets,
+                          [activeBrokerData.id]: !showSecrets[activeBrokerData.id]
+                        })}
+                      >
+                        {showSecrets[activeBrokerData.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="secret-key">Secret Key</Label>
+                    <div className="flex">
+                      <Input
+                        id="secret-key"
+                        type={showSecrets[activeBrokerData.id] ? 'text' : 'password'}
+                        value={activeBrokerData.config.secretKey}
+                        onChange={(e) => updateBroker(activeBrokerData.id, {
+                          config: { ...activeBrokerData.config, secretKey: e.target.value }
+                        })}
+                        placeholder="Enter secret key"
+                        className="pr-10"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2"
+                        onClick={() => copyToClipboard(activeBrokerData.config.secretKey)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Settings */}
+                {activeBrokerData.type === 'binance' && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium">Binance Settings</h3>
+                      <div>
+                        <Label htmlFor="base-url">Base URL (Optional)</Label>
+                        <Input
+                          id="base-url"
+                          value={activeBrokerData.config.baseUrl || ''}
+                          onChange={(e) => updateBroker(activeBrokerData.id, {
+                            config: { ...activeBrokerData.config, baseUrl: e.target.value }
+                          })}
+                          placeholder="https://api.binance.com"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {activeBrokerData.type === 'ibkr' && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium">Interactive Brokers Settings</h3>
+                      <div>
+                        <Label htmlFor="ib-gateway">TWS/Gateway Host</Label>
+                        <Input
+                          id="ib-gateway"
+                          placeholder="localhost"
+                          defaultValue="localhost"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ib-port">Port</Label>
+                        <Input
+                          id="ib-port"
+                          placeholder="7497"
+                          defaultValue="7497"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Connection Test */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium">Connection Test</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Test the connection to verify your credentials
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => testConnection(activeBrokerData)}
+                      disabled={testingConnection === activeBrokerData.id || !activeBrokerData.config.apiKey || !activeBrokerData.config.secretKey}
+                      variant={activeBrokerData.status === 'connected' ? 'outline' : 'default'}
+                    >
+                      {testingConnection === activeBrokerData.id ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                       ) : (
-                        <>
-                          <Wifi className="h-4 w-4 mr-2" />
-                          Test Connection
-                        </>
+                        <TestTube className="h-4 w-4 mr-2" />
                       )}
+                      {testingConnection === activeBrokerData.id ? 'Testing...' : 'Test Connection'}
                     </Button>
                   </div>
-                </div>
-              </TabsContent>
 
-              <TabsContent value="settings" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">Timeout (ms)</Label>
-                    <Input
-                      type="number"
-                      value={currentBroker.settings.timeout || 30000}
-                      onChange={(e) => updateBroker(currentBroker.id, {
-                        settings: { ...currentBroker.settings, timeout: parseInt(e.target.value) }
-                      })}
-                      className="bg-black/40 border-matrix-green/20"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-matrix-green">Max Retries</Label>
-                    <Input
-                      type="number"
-                      value={currentBroker.settings.maxRetries || 3}
-                      onChange={(e) => updateBroker(currentBroker.id, {
-                        settings: { ...currentBroker.settings, maxRetries: parseInt(e.target.value) }
-                      })}
-                      className="bg-black/40 border-matrix-green/20"
-                    />
-                  </div>
-
-                  {currentBroker.id === 'ibkr' && (
-                    <div className="space-y-2">
-                      <Label className="text-matrix-green">Port</Label>
-                      <Input
-                        type="number"
-                        value={currentBroker.settings.port || 7497}
-                        onChange={(e) => updateBroker(currentBroker.id, {
-                          settings: { ...currentBroker.settings, port: parseInt(e.target.value) }
-                        })}
-                        className="bg-black/40 border-matrix-green/20"
-                      />
-                    </div>
+                  {/* Connection Status */}
+                  {activeBrokerData.connectionTest && (
+                    <Alert className={`mt-3 ${activeBrokerData.connectionTest.result === 'success' ? 'border-green-200' : 'border-red-200'}`}>
+                      <AlertDescription className="text-sm">
+                        {activeBrokerData.connectionTest.result === 'success' ? (
+                          <span className="flex items-center gap-2 text-green-600">
+                            <CheckCircle className="h-4 w-4" />
+                            {activeBrokerData.connectionTest.message}
+                            {activeBrokerData.connectionTest.latency && (
+                              <span> (Latency: {activeBrokerData.connectionTest.latency}ms)</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2 text-red-600">
+                            <XCircle className="h-4 w-4" />
+                            {activeBrokerData.connectionTest.message}
+                          </span>
+                        )}
+                      </AlertDescription>
+                    </Alert>
                   )}
                 </div>
-              </TabsContent>
-
-              <TabsContent value="advanced" className="space-y-4">
-                <div className="text-center py-8 text-matrix-green/50">
-                  Advanced settings will be available here
-                </div>
-              </TabsContent>
-            </Tabs>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Select a broker to configure its settings</p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      {/* Save Button */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              Changes are automatically saved to local storage
+            </p>
+            <Button onClick={saveBrokers} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Saving...' : 'Save All Brokers'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

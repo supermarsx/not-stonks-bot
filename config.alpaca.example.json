@@ -1,112 +1,108 @@
+# Alpaca Trading Configuration Example
+# Copy this configuration to your main config.json file
+
 {
-  "$schema": "https://schema.trading-orchestrator.dev/broker/alpaca/v1",
   "brokers": {
-    "enabled": ["alpaca"],
     "alpaca": {
-      "name": "Alpaca Trading",
-      "type": "alpaca",
-      "api_key": "${ALPACA_API_KEY}",
-      "secret_key": "${ALPACA_SECRET_KEY}",
-      "api_url": "https://paper-api.alpaca.markets",
-      "data_url": "https://data.alpaca.markets",
-      "sandbox": true,
-      "rate_limit": {
+      "enabled": true,  // Set to true to enable Alpaca integration
+      
+      "authentication": {
+        "api_key": "YOUR_ALPACA_API_KEY_HERE",
+        "secret_key": "YOUR_ALPACA_SECRET_KEY_HERE",
+        "environment": "paper"  // "paper" or "live"
+      },
+      
+      "endpoints": {
+        "base_url": "https://paper-api.alpaca.markets",  // Paper trading
+        "data_url": "https://data.alpaca.markets",      // Market data
+        "version": "v2"
+      },
+      
+      "rate_limits": {
         "requests_per_minute": 200,
-        "requests_per_day": 10000,
-        "orders_per_minute": 30,
-        "orders_per_day": 1000
+        "burst_limit": 50,
+        "cool_down_seconds": 1
       },
-      "order_types": [
-        "market",
-        "limit",
-        "stop",
-        "stop_limit"
-      ],
-      "time_in_force": [
-        "day",
-        "gtc",
-        "ioc",
-        "fok"
-      ],
-      "supported_assets": [
-        "stocks",
-        "etfs",
-        "crypto"
-      ],
-      "crypto_pairs": [
-        "BTC/USD",
-        "ETH/USD",
-        "LTC/USD",
-        "BCH/USD"
-      ],
-      "websocket": {
-        "enabled": true,
-        "stream_url": "wss://stream.data.alpaca.markets/v2",
-        "heartbeat_interval": 30,
-        "reconnect_attempts": 5
-      },
-      "account": {
-        "currency": "USD",
-        "buying_power": 200000,
-        "regt_buying_power": 200000,
-        "daytrading_buying_power": 0,
-        "cash": 100000,
-        "portfolio_value": 100000,
-        "equity": 100000,
-        "last_equity": 100000,
-        "multiplier": 2
-      },
-      "settings": {
-        "connection_timeout": 10,
-        "read_timeout": 30,
-        "max_retries": 3,
-        "retry_backoff_factor": 1.0,
-        "enable_rate_limit": true,
-        "track_responses": true
-      },
-      "features": {
+      
+      "trading_settings": {
+        "default_order_type": "market",
+        "default_time_in_force": "day",
         "fractional_shares": true,
-        "extended_hours": false,
-        "fractional_crypto": true,
-        "options_trading": false,
-        "short_selling": true,
-        "margin_trading": false
+        "min_order_size": 1.0,
+        "max_order_size": 1000000.0
       },
-      "compliance": {
-        "pdt_protection": true,
-        "wash_sale_detection": true,
-        "pattern_day_trader_rules": true,
-        "risk_management_enabled": true
+      
+      "market_data": {
+        "real_time_streaming": true,
+        "subscription": {
+          "stocks": true,
+          "crypto": true,
+          "forex": false
+        },
+        "data_feed": "iex"  // "iex" or "sip"
       },
-      "data": {
-        "Bars": {
+      
+      "supported_assets": {
+        "stocks": {
           "enabled": true,
-          "timeframe": "1Min",
-          "limit": 1000
+          "exchanges": ["NYSE", "NASDAQ", "AMEX"],
+          "min_price": 0.01,
+          "max_price": 1000000.0
         },
-        "Trades": {
+        "crypto": {
           "enabled": true,
-          "limit": 1000
+          "pairs": ["BTCUSD", "ETHUSD", "LTCUSD", "BCHUSD"],
+          "fiat_currencies": ["USD"]
         },
-        "Quotes": {
-          "enabled": true,
-          "limit": 1000
-        },
-        "News": {
-          "enabled": true,
-          "limit": 50
+        "options": {
+          "enabled": false  // Enable if you have options approval
         }
+      },
+      
+      "order_types": {
+        "market": {
+          "enabled": true,
+          "commission": 0.0,
+          "description": "Market orders execute immediately at current market price"
+        },
+        "limit": {
+          "enabled": true,
+          "commission": 0.0,
+          "description": "Limit orders execute only at specified price or better"
+        },
+        "stop": {
+          "enabled": true,
+          "commission": 0.0,
+          "description": "Stop orders become market orders when triggered"
+        },
+        "stop_limit": {
+          "enabled": true,
+          "commission": 0.0,
+          "description": "Stop limit orders become limit orders when triggered"
+        }
+      },
+      
+      "features": {
+        "short_selling": true,
+        "margin_trading": false,
+        "dollar_cost_averaging": true,
+        "recurring_orders": false,
+        "after_hours_trading": false,
+        "pre_market_trading": false
+      },
+      
+      "compliance": {
+        "pattern_day_trader_rule": true,
+        "wash_sale_prevention": true,
+        "risk_checks": true,
+        "position_limits": true
+      },
+      
+      "webhooks": {
+        "enabled": false,
+        "url": "https://your-domain.com/webhooks/alpaca",
+        "events": ["trade", "order", "account", "position"]
       }
     }
-  },
-  "database": {
-    "path": "./data/alpaca_trading.db",
-    "backup_enabled": true,
-    "backup_interval_hours": 6,
-    "backup_retention_days": 30
-  },
-  "system": {
-    "log_level": "INFO",
-    "debug_mode": false
   }
 }

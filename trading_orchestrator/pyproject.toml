@@ -1,0 +1,256 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "day-trading-orchestrator"
+version = "1.0.0"
+description = "AI-Powered Multi-Broker Day Trading Orchestrator with Matrix Terminal Interface"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Trading Orchestrator Team", email = "team@trading-orchestrator.com"}
+]
+maintainers = [
+    {name = "Trading Orchestrator Team", email = "team@trading-orchestrator.com"}
+]
+keywords = [
+    "trading", "day-trading", "ai", "broker-integration", 
+    "matrix-terminal", "risk-management", "alpaca", "binance",
+    "ibkr", "trading212", "degiro"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.11"
+dependencies = [
+    # Core Framework
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    
+    # Database
+    "sqlalchemy>=2.0.23",
+    "alembic>=1.12.1",
+    "aiosqlite>=0.19.0",
+    "psycopg2-binary>=2.9.9",
+    
+    # Async Support
+    "aiohttp>=3.9.1",
+    "websockets>=12.0",
+    
+    # Broker APIs
+    "python-binance>=1.0.19",
+    "alpaca-py>=0.21.0",
+    
+    # Security & Authentication
+    "cryptography>=41.0.7",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    
+    # Terminal UI
+    "rich>=13.7.0",
+    "textual>=0.44.1",
+    "blessed>=1.20.0",
+    "prompt-toolkit>=3.0.43",
+    
+    # AI/LLM Integration
+    "openai>=1.3.7",
+    "anthropic>=0.7.7",
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.10",
+    
+    # Data Processing
+    "pandas>=2.1.4",
+    "numpy>=1.26.2",
+    "pyarrow>=14.0.1",
+    
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "httpx>=0.25.2",
+    "tenacity>=8.2.3",
+    "arrow>=1.3.0",
+    "pytz>=2023.3",
+    
+    # Logging & Monitoring
+    "loguru>=0.7.2",
+    "prometheus-client>=0.19.0",
+    
+    # Configuration
+    "pyyaml>=6.0.1",
+    "toml>=0.10.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1", 
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=23.12.0",
+    "isort>=5.13.2",
+    "flake8>=6.1.0",
+    "mypy>=1.7.1",
+    "pre-commit>=3.6.0",
+]
+ibkr = [
+    "ibapi>=10.19.3",
+    "ib-insync==0.9.86"
+]
+ai = [
+    "openai>=1.3.7",
+    "anthropic>=0.7.7",
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.10",
+]
+ui = [
+    "rich>=13.7.0",
+    "textual>=0.44.1",
+    "blessed>=1.20.0",
+    "prompt-toolkit>=3.0.43",
+]
+all = [
+    "ibapi>=10.19.3",
+    "ib-insync==0.9.86",
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1", 
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=23.12.0",
+    "isort>=5.13.2",
+    "flake8>=6.1.0",
+    "mypy>=1.7.1",
+    "pre-commit>=3.6.0",
+]
+
+[project.scripts]
+trading-orchestrator = "main:main"
+trading-orchestrator-demo = "ui.demo:run_demo"
+trading-orchestrator-config = "main:create_default_config"
+
+[project.urls]
+Homepage = "https://github.com/trading-orchestrator/day-trading-orchestrator"
+Documentation = "https://trading-orchestrator.readthedocs.io/"
+Repository = "https://github.com/trading-orchestrator/day-trading-orchestrator.git"
+"Bug Tracker" = "https://github.com/trading-orchestrator/day-trading-orchestrator/issues"
+
+[tool.setuptools]
+packages = ["trading_orchestrator"]
+
+[tool.setuptools.package-dir]
+"" = "."
+
+[tool.setuptools.package-data]
+ui = ["themes/*", "templates/*"]
+ai = ["prompts/*", "schemas/*"]
+docs = ["*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "E501", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".venv",
+    ".env"
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "ibapi.*",
+    "ib_insync.*",
+    "alpaca.*",
+    "binance.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "slow: marks tests as slow",
+]
+
+[tool.coverage.run]
+source = ["trading_orchestrator"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/*_test.py",
+    "setup.py",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

@@ -1,0 +1,461 @@
+{
+  "template_name": "hft",
+  "environment": "hft",
+  "description": "High-frequency trading configuration for ultra-low latency operations",
+  "config": {
+    "application": {
+      "name": "Trading Orchestrator HFT",
+      "version": "1.0.0",
+      "environment": "hft",
+      "debug": false,
+      "log_level": "ERROR",
+      "api_host": "0.0.0.0",
+      "api_port": 8000,
+      "api_workers": 32,
+      "priority": "high",
+      "real_time": true
+    },
+    "database": {
+      "type": "postgresql",
+      "url": "postgresql://hft_user:${DB_PASSWORD}@hft-db:5432/trading_hft",
+      "echo": false,
+      "pool_size": 100,
+      "max_overflow": 200,
+      "pool_timeout": 5,
+      "pool_recycle": 300,
+      "ssl_mode": "require",
+      "connection_timeout": 5,
+      "query_timeout": 10,
+      "statement_timeout": 5,
+      "lock_timeout": 5,
+      "application_name": "HFT_Trading",
+      "tcp_keepalives_idle": 600,
+      "tcp_keepalives_interval": 30,
+      "tcp_keepalives_count": 3,
+      "prepared_statements": true,
+      "connection_pre_ping": true
+    },
+    "brokers": {
+      "binance": {
+        "enabled": true,
+        "testnet": false,
+        "rate_limit": 10000,
+        "api_key": "${BINANCE_API_KEY}",
+        "api_secret": "${BINANCE_API_SECRET}",
+        "timeout": 3,
+        "retries": 1,
+        "connection_pool_size": 50,
+        "keep_alive": true,
+        "tcp_nodelay": true,
+        "low_latency_mode": true,
+        "websocket_priority": "high",
+        "order_book_depth": 20,
+        "user_data_stream": true
+      },
+      "alpaca": {
+        "enabled": false,
+        "paper": false,
+        "rate_limit": 200,
+        "api_key": "${ALPACA_API_KEY}",
+        "api_secret": "${ALPACA_API_SECRET}",
+        "base_url": "https://api.alpaca.markets",
+        "timeout": 5,
+        "retries": 1,
+        "connection_pool_size": 20,
+        "polygon_data": true,
+        "sip_data": true
+      },
+      "ibkr": {
+        "enabled": false,
+        "host": "${IBKR_HOST}",
+        "port": 7496,
+        "client_id": 1,
+        "paper": false,
+        "max_concurrent_requests": 20,
+        "request_timeout": 3,
+        "tws_api_version": "v1",
+        "smart_routing": true,
+        "default_currency": "USD"
+      }
+    },
+    "risk": {
+      "max_position_size": 1000000.0,
+      "max_daily_loss": 50000.0,
+      "max_open_orders": 1000,
+      "risk_per_trade": 0.01,
+      "stop_loss_percentage": 0.01,
+      "take_profit_percentage": 0.02,
+      "correlation_limit": 0.8,
+      "real_time_monitoring": true,
+      "circuit_breakers": {
+        "enabled": true,
+        "daily_loss_limit": 75000.0,
+        "consecutive_loss_limit": 10,
+        "drawdown_limit": 0.05,
+        "position_concentration_limit": 0.30,
+        "latency_threshold_ms": 100,
+        "error_rate_threshold": 0.01
+      },
+      "limits": {
+        "max_leverage": 3.0,
+        "min_account_balance": 50000.0,
+        "max_order_size": 500000.0,
+        "max_daily_volume": 10000000.0,
+        "max_orders_per_second": 100,
+        "max_orders_per_minute": 1000,
+        "allowed_markets": ["Crypto", "US"],
+        "restricted_symbols": [],
+        "max_slippage_bps": 5
+      },
+      "real_time_checks": {
+        "enabled": true,
+        "check_interval_ms": 10,
+        "parallel_checks": true,
+        "emergency_stop": true
+      }
+    },
+    "ai": {
+      "provider": "local",
+      "trading_mode": "LIVE",
+      "default_model_tier": "ultra_fast",
+      "local_models": {
+        "enabled": true,
+        "model_path": "./models/hft",
+        "preferred_backend": "onnx",
+        "gpu_acceleration": true,
+        "quantization": "int8",
+        "batch_size": 1,
+        "preload_models": true
+      },
+      "inference_optimization": {
+        "thread_affinity": [0, 1, 2, 3],
+        "memory_pinning": true,
+        "optimize_for_latency": true,
+        "cache_predictions": true,
+        "prediction_cache_size": 10000
+      },
+      "signals": {
+        "real_time_signals": true,
+        "signal_latency_target_ms": 1,
+        "feature_computation_ms": 0.5,
+        "model_inference_ms": 0.3,
+        "decision_making_ms": 0.2
+      }
+    },
+    "strategies": {
+      "enabled_strategies": [
+        "market_making",
+        "arbitrage",
+        "momentum",
+        "mean_reversion_fast",
+        "latency_arbitrage"
+      ],
+      "market_making": {
+        "enabled": true,
+        "spread_target_bps": 2,
+        "inventory_target": 0,
+        "inventory_limit": 100,
+        "risk_adjustment": true,
+        "adaptive_spreads": true,
+        "cancel_replace_limit": 1000,
+        "quote_refresh_ms": 100,
+        "position_hedging": true
+      },
+      "arbitrage": {
+        "enabled": true,
+        "min_profit_threshold_bps": 1,
+        "max_execution_time_ms": 50,
+        "min_liquidity_usd": 100000,
+        "exchange_pairs": ["binance-alpaca"],
+        "cross_exchange": true,
+        "triangular_arbitrage": true,
+        "latency_advantage": true
+      },
+      "momentum": {
+        "enabled": true,
+        "momentum_periods": [1, 5, 10],
+        "volatility_adjustment": true,
+        "min_momentum_threshold_bps": 5,
+        "breakout_confirmation": true,
+        "volume_confirmation": true,
+        "time_decay": true
+      },
+      "mean_reversion_fast": {
+        "enabled": true,
+        "lookback_period": 50,
+        "entry_threshold_bps": 10,
+        "exit_threshold_bps": 3,
+        "min_confidence": 0.85,
+        "dynamic_thresholds": true,
+        "adaptive_lookback": true
+      },
+      "latency_arbitrage": {
+        "enabled": true,
+        "latency_threshold_ms": 10,
+        "price_diff_threshold_bps": 0.5,
+        "volume_threshold": 1000,
+        "historical_latency_ms": 5,
+        "statistical_arbitrage": true
+      }
+    },
+    "market_data": {
+      "data_sources": {
+        "primary": "broker",
+        "fallback": "websocket",
+        "rate_limits": {
+          "broker": 10000,
+          "websocket": 100000
+        }
+      },
+      "real_time": {
+        "enabled": true,
+        "websocket_connections": 10,
+        "tick_data": true,
+        "level2_data": true,
+        "order_book_depth": 100,
+        "trade_ticks": true,
+        "quote_ticks": true,
+        "tick_aggregation": false
+      },
+      "symbols": {
+        "crypto": ["BTCUSDT", "ETHUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "SOLUSDT"],
+        "us_stocks": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],
+        "forex": ["EURUSD", "GBPUSD", "USDJPY"],
+        "high_volume": ["BTCUSDT", "ETHUSDT"]
+      },
+      "update_intervals": {
+        "real_time": 1,
+        "tick": 1,
+        "quote": 1,
+        "order_book": 10
+      },
+      "storage": {
+        "database_retention_days": 7,
+        "tick_storage": true,
+        "tick_compression": true,
+        "memory_mapping": true,
+        "circular_buffer": true,
+        "buffer_size": 1000000
+      }
+    },
+    "logging": {
+      "level": "ERROR",
+      "file": "logs/hft_trading.log",
+      "max_file_size": 500,
+      "backup_count": 10,
+      "performance_mode": true,
+      "minimal_logging": true,
+      "format": "{time:HH:mm:ss.SSS} | {level} | {message}",
+      "handlers": {
+        "console": {
+          "enabled": false
+        },
+        "file": {
+          "enabled": true,
+          "level": "ERROR"
+        },
+        "syslog": {
+          "enabled": true,
+          "host": "${SYSLOG_HOST}",
+          "port": 514,
+          "facility": "local0"
+        }
+      },
+      "trade_logs": {
+        "enabled": true,
+        "file": "logs/trades_hft.log",
+        "minimal_details": true,
+        "nanosecond_timestamps": true,
+        "order_ids": true,
+        "latency_logging": true
+      },
+      "performance_logs": {
+        "enabled": true,
+        "file": "logs/performance_hft.log",
+        "latency_metrics": true,
+        "throughput_metrics": true,
+        "error_rates": true
+      }
+    },
+    "ui": {
+      "theme": "matrix",
+      "refresh_rate": 100,
+      "terminal_size": {
+        "width": 200,
+        "height": 80
+      },
+      "real_time_dashboard": {
+        "enabled": true,
+        "latency_display": true,
+        "throughput_display": true,
+        "pnl_display": true,
+        "order_flow_display": true,
+        "risk_metrics_display": true
+      },
+      "notifications": {
+        "enabled": false,
+        "trade_alerts": false,
+        "risk_alerts": true,
+        "system_alerts": true,
+        "email_alerts": true,
+        "sound": false
+      }
+    },
+    "monitoring": {
+      "real_time_monitoring": {
+        "enabled": true,
+        "metrics_interval_ms": 100,
+        "latency_monitoring": true,
+        "throughput_monitoring": true,
+        "error_rate_monitoring": true
+      },
+      "metrics": {
+        "enabled": true,
+        "prometheus_port": 9090,
+        "collect_interval": 1,
+        "retention_days": 7,
+        "high_cardinality_metrics": true,
+        "custom_hft_metrics": true
+      },
+      "alerts": {
+        "enabled": true,
+        "conditions": {
+          "latency_p95_ms": 10,
+          "latency_p99_ms": 20,
+          "error_rate": 0.001,
+          "throughput_min": 1000,
+          "cpu_usage": 90,
+          "memory_usage": 85
+        },
+        "real_time_alerts": true,
+        "escalation_ms": 1000
+      },
+      "dashboards": {
+        "enabled": true,
+        "grafana_integration": true,
+        "real_time_updates": true,
+        "hft_specific_dashboards": true
+      }
+    },
+    "security": {
+      "encryption": {
+        "enabled": true,
+        "algorithm": "AES-256",
+        "encrypt_network_traffic": true,
+        "encrypt_storage": true
+      },
+      "authentication": {
+        "api_keys_required": true,
+        "session_timeout": 1800,
+        "two_factor_auth": true,
+        "certificate_auth": true
+      },
+      "audit": {
+        "enabled": true,
+        "minimal_logging": true,
+        "performance_impact": false,
+        "essential_events_only": true
+      },
+      "network": {
+        "low_latency_config": true,
+        "tcp_nodelay": true,
+        "tcp_quickack": true,
+        "so_reuseport": true,
+        "cpu_affinity": [0, 1, 2, 3]
+      }
+    },
+    "performance": {
+      "database": {
+        "connection_pool_size": 100,
+        "connection_timeout": 3,
+        "query_timeout": 5,
+        "prepared_statements": true,
+        "connection_pre_ping": true,
+        "disable_statement_cache": false,
+        "query_cache_size": 10000
+      },
+      "caching": {
+        "enabled": true,
+        "redis_host": "redis-cluster-hft",
+        "redis_port": 6379,
+        "cache_ttl": 1,
+        "max_cache_size": 4096,
+        "cache_eviction": "lru",
+        "compression": false,
+        "pipeline_mode": true,
+        "cluster_mode": true
+      },
+      "async": {
+        "max_workers": 100,
+        "worker_timeout": 10,
+        "queue_size": 10000,
+        "priority_queues": true,
+        "task_timeout": 60,
+        "cpu_affinity": [4, 5, 6, 7, 8, 9, 10, 11],
+        "high_priority_workers": 20
+      },
+      "memory": {
+        "memory_mapping": true,
+        "large_pages": true,
+        "memory_pools": true,
+        "object_pooling": true
+      },
+      "cpu": {
+        "cpu_affinity": [0, 1, 2, 3],
+        "numa_awareness": true,
+        "interrupt_affinity": [4, 5],
+        "priority_scheduling": true
+      },
+      "network": {
+        "bonding": true,
+        "jumbo_frames": true,
+        "interrupt_coalescing": false,
+        "flow_control": false
+      }
+    },
+    "hardware_optimization": {
+      "co_location": {
+        "enabled": true,
+        "exchange_proximity": "ultra_low_latency",
+        "fiber_optic_direct": true,
+        "dedicated_bandwidth": "10gbps"
+      },
+      "hardware_specs": {
+        "cpu": "Intel Xeon Gold 6348",
+        "memory": "DDR4-3200 128GB",
+        "storage": "NVMe PCIe 4.0 2TB",
+        "network": "Mellanox ConnectX-6",
+        "gpu": "NVIDIA A100"
+      },
+      "os_optimization": {
+        "kernel": "RT Linux",
+        "swappiness": 1,
+        "overcommit_memory": 1,
+        "transparent_hugepage": "always",
+        "numa_balancing": 0
+      }
+    }
+  },
+  "variables": {
+    "DB_PASSWORD": "",
+    "BINANCE_API_KEY": "",
+    "BINANCE_API_SECRET": "",
+    "ALPACA_API_KEY": "",
+    "ALPACA_API_SECRET": "",
+    "IBKR_HOST": "",
+    "SYSLOG_HOST": ""
+  },
+  "dependencies": [
+    "ultra_high_performance",
+    "ultra_low_latency_risk",
+    "real_time_monitoring"
+  ],
+  "version": "1.0.0",
+  "performance_notes": {
+    "target_latency_ms": 1,
+    "target_throughput_orders_per_second": 10000,
+    "target_uptime_percent": 99.99,
+    "max_memory_usage_gb": 64,
+    "max_cpu_usage_percent": 80
+  }
+}

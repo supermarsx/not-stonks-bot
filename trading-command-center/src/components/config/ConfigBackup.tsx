@@ -25,8 +25,7 @@ import {
   Shield,
   RefreshCw,
   Plus,
-  FolderOpen,
-  Key
+  FolderOpen
 } from 'lucide-react';
 
 interface BackupConfig {

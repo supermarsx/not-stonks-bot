@@ -1,165 +1,208 @@
 import React, { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { 
   Settings, 
   Save, 
-  Upload, 
-  Download, 
   RefreshCw, 
-  CheckCircle, 
-  AlertTriangle, 
+  Download, 
+  Upload, 
+  Shield, 
+  Brain, 
+  TrendingUp, 
+  AlertTriangle,
+  CheckCircle,
   XCircle,
-  Play,
+  Clock,
+  Server,
+  Bell,
+  LogOut,
+  Database,
+  Zap,
   FileText,
-  Shield,
-  Zap
+  Eye,
+  RotateCcw
 } from 'lucide-react';
-import { useConfigStore } from '@/stores/configStore';
-import { toast } from 'sonner';
+
+import BrokerConfig from './BrokerConfig';
+import StrategyConfig from './StrategyConfig';
+import RiskConfig from './RiskConfig';
+import AIConfig from './AIConfig';
+import ExitConfig from './ExitConfig';
+import LoggingConfig from './LoggingConfig';
+import NotificationConfig from './NotificationConfig';
+import SecurityConfig from './SecurityConfig';
+import PerformanceConfig from './PerformanceConfig';
+import ConfigIO from './ConfigIO';
+import ConfigValidator from './ConfigValidator';
+import ConfigBackup from './ConfigBackup';
 
 interface ConfigSection {
   id: string;
-  name: string;
-  status: 'valid' | 'invalid' | 'pending' | 'untested';
+  title: string;
   description: string;
-  component: React.ComponentType;
+  icon: React.ComponentType<any>;
+  component: React.ComponentType<any>;
+  required: boolean;
+  status: 'valid' | 'invalid' | 'pending' | 'untested';
+  lastModified?: string;
+}
+
+interface ConfigStatus {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  lastValidated: string;
 }
 
 const ConfigManager: React.FC = () => {
-  const {
-    config,
-    validationStatus,
-    isLoading,
-    isSaving,
-    autoSave,
-    setAutoSave,
-    validateConfig,
-    saveConfig,
-    loadConfig,
-    importConfig,
-    exportConfig,
-    resetConfig
-  } = useConfigStore();
-
   const [activeTab, setActiveTab] = useState('overview');
-  const [validationProgress, setValidationProgress] = useState(0);
-  const [isValidating, setIsValidating] = useState(false);
-
-  // Default configuration sections
-  const configSections: ConfigSection[] = [
+  const [configSections] = useState<ConfigSection[]>([
     {
       id: 'brokers',
-      name: 'Brokers',
-      status: validationStatus.brokers || 'pending',
-      description: 'Configure broker connections and API credentials',
-      component: () => <div>Broker Configuration</div>
+      title: 'Broker Configuration',
+      description: 'Configure trading broker connections and API settings',
+      icon: Server,
+      component: BrokerConfig,
+      required: true,
+      status: 'pending'
     },
     {
       id: 'strategies',
-      name: 'Strategies',
-      status: validationStatus.strategies || 'pending',
-      description: 'Define trading strategies and parameters',
-      component: () => <div>Strategy Configuration</div>
+      title: 'Strategy Configuration',
+      description: 'Set up trading strategies and parameters',
+      icon: TrendingUp,
+      component: StrategyConfig,
+      required: true,
+      status: 'pending'
     },
     {
       id: 'risk',
-      name: 'Risk Management',
-      status: validationStatus.risk || 'pending',
-      description: 'Set risk limits and position sizing rules',
-      component: () => <div>Risk Configuration</div>
+      title: 'Risk Management',
+      description: 'Configure risk limits, thresholds, and monitoring',
+      icon: Shield,
+      component: RiskConfig,
+      required: true,
+      status: 'pending'
     },
     {
       id: 'ai',
-      name: 'AI & ML',
-      status: validationStatus.ai || 'pending',
-      description: 'Configure AI models and machine learning parameters',
-      component: () => <div>AI Configuration</div>
+      title: 'AI & LLM Settings',
+      description: 'Configure AI models, LLM providers, and parameters',
+      icon: Brain,
+      component: AIConfig,
+      required: false,
+      status: 'pending'
     },
     {
-      id: 'notifications',
-      name: 'Notifications',
-      status: validationStatus.notifications || 'pending',
-      description: 'Set up alerts and notification channels',
-      component: () => <div>Notification Configuration</div>
-    },
-    {
-      id: 'security',
-      name: 'Security',
-      status: validationStatus.security || 'pending',
-      description: 'Security settings and authentication',
-      component: () => <div>Security Configuration</div>
-    },
-    {
-      id: 'performance',
-      name: 'Performance',
-      status: validationStatus.performance || 'pending',
-      description: 'Performance monitoring and optimization',
-      component: () => <div>Performance Configuration</div>
+      id: 'exit',
+      title: 'Exit Strategies',
+      description: 'Configure exit strategies and parameters',
+      icon: LogOut,
+      component: ExitConfig,
+      required: true,
+      status: 'pending'
     },
     {
       id: 'logging',
-      name: 'Logging',
-      status: validationStatus.logging || 'pending',
-      description: 'Configure logging levels and outputs',
-      component: () => <div>Logging Configuration</div>
+      title: 'Logging & Monitoring',
+      description: 'Configure log levels, destinations, and monitoring',
+      icon: FileText,
+      component: LoggingConfig,
+      required: true,
+      status: 'pending'
+    },
+    {
+      id: 'notifications',
+      title: 'Notifications',
+      description: 'Configure alert channels and notification templates',
+      icon: Bell,
+      component: NotificationConfig,
+      required: false,
+      status: 'pending'
+    },
+    {
+      id: 'security',
+      title: 'Security & Authentication',
+      description: 'Configure authentication methods and security settings',
+      icon: Shield,
+      component: SecurityConfig,
+      required: true,
+      status: 'pending'
+    },
+    {
+      id: 'performance',
+      title: 'Performance Tuning',
+      description: 'Configure optimization parameters and resource limits',
+      icon: Zap,
+      component: PerformanceConfig,
+      required: false,
+      status: 'pending'
     }
-  ];
+  ]);
 
-  // Calculate overall configuration progress
-  const getOverallStatus = () => {
-    const statuses = configSections.map(section => section.status);
-    const validCount = statuses.filter(status => status === 'valid').length;
-    const totalCount = statuses.length;
-    
-    if (validCount === totalCount) return 'valid';
-    if (validCount > 0) return 'partial';
-    return 'invalid';
-  };
+  const [configStatus, setConfigStatus] = useState<ConfigStatus>({
+    isValid: false,
+    errors: [],
+    warnings: [],
+    lastValidated: new Date().toISOString()
+  });
 
-  const overallStatus = getOverallStatus();
-  const progress = (configSections.filter(s => s.status === 'valid').length / configSections.length) * 100;
+  const [isLoading, setIsLoading] = useState(false);
+  const [unsavedChanges, setUnsavedChanges] = useState<string[]>([]);
+  const [autoSave, setAutoSave] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const handleValidate = async () => {
-    setIsValidating(true);
-    setValidationProgress(0);
-    
+  // Load configuration on component mount
+  useEffect(() => {
+    loadConfiguration();
+  }, []);
+
+  const loadConfiguration = async () => {
+    setIsLoading(true);
     try {
-      // Simulate validation progress
-      for (let i = 0; i <= 100; i += 10) {
-        setValidationProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      await validateConfig();
-      toast.success('Configuration validated successfully');
+      // Load configuration from storage
+      const config = await window.electronAPI?.loadConfig();
+      // Update sections with loaded config
+      console.log('Configuration loaded');
     } catch (error) {
-      toast.error('Configuration validation failed');
+      console.error('Failed to load configuration:', error);
     } finally {
-      setIsValidating(false);
-      setValidationProgress(0);
+      setIsLoading(false);
     }
   };
 
-  const handleSave = async () => {
+  const saveConfiguration = async () => {
+    setIsLoading(true);
     try {
-      await saveConfig();
-      toast.success('Configuration saved successfully');
+      // Save configuration to storage
+      await window.electronAPI?.saveConfig();
+      setUnsavedChanges([]);
     } catch (error) {
-      toast.error('Failed to save configuration');
+      console.error('Failed to save configuration:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleExport = async () => {
+  const validateConfiguration = async () => {
+    setIsLoading(true);
     try {
-      await exportConfig('json');
-      toast.success('Configuration exported successfully');
+      // Trigger validation
+      const status = await ConfigValidator.validateAll();
+      setConfigStatus(status);
     } catch (error) {
-      toast.error('Failed to export configuration');
+      console.error('Failed to validate configuration:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -170,257 +213,287 @@ const ConfigManager: React.FC = () => {
       case 'invalid':
         return <XCircle className="h-4 w-4 text-red-500" />;
       case 'pending':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <Clock className="h-4 w-4 text-yellow-500" />;
       default:
-        return <RefreshCw className="h-4 w-4 text-gray-400" />;
+        return <Eye className="h-4 w-4 text-gray-400" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'valid':
-        return 'bg-green-500';
-      case 'invalid':
-        return 'bg-red-500';
-      case 'pending':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-400';
-    }
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      valid: 'default',
+      invalid: 'destructive',
+      pending: 'secondary',
+      untested: 'outline'
+    };
+
+    return (
+      <Badge variant={variants[status] || 'outline'}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-matrix-green">Configuration Manager</h1>
-          <p className="text-matrix-green/70 mt-1">Manage your trading system configuration</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAutoSave(!autoSave)}
-            className={autoSave ? 'bg-green-500/20 border-green-500' : ''}
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            Auto-save: {autoSave ? 'ON' : 'OFF'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleValidate}
-            disabled={isValidating}
-          >
-            {isValidating ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <CheckCircle className="h-4 w-4 mr-2" />
-            )}
-            Validate
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Save
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Import
-          </Button>
-        </div>
-      </div>
-
-      {/* Configuration Overview */}
-      <Card className="border-matrix-green/20 bg-black/40">
+  const OverviewTab = () => (
+    <div className="space-y-6">
+      {/* Configuration Status Overview */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-matrix-green flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
             Configuration Overview
           </CardTitle>
-          <CardDescription className="text-matrix-green/70">
-            Current configuration status and progress
+          <CardDescription>
+            Monitor and manage your trading system configuration
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-matrix-green/80">Overall Status</span>
-            <div className="flex items-center gap-2">
-              {getStatusIcon(overallStatus)}
-              <span className="text-sm font-medium text-matrix-green capitalize">{overallStatus}</span>
-            </div>
-          </div>
-          
+          {/* Configuration Progress */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-matrix-green/80">Progress</span>
-              <span className="text-matrix-green">{Math.round(progress)}%</span>
+            <div className="flex justify-between text-sm">
+              <span>Configuration Progress</span>
+              <span>{configSections.filter(s => s.status === 'valid').length}/{configSections.length}</span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress 
+              value={(configSections.filter(s => s.status === 'valid').length / configSections.length) * 100} 
+              className="h-2"
+            />
           </div>
 
-          {isValidating && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-matrix-green/80">Validating...</span>
-                <span className="text-matrix-green">{validationProgress}%</span>
+          {/* Validation Status */}
+          <Alert className={configStatus.isValid ? 'border-green-200' : 'border-red-200'}>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex justify-between items-center">
+                <span>
+                  {configStatus.isValid 
+                    ? 'Configuration is valid and ready for deployment' 
+                    : 'Configuration has validation errors'
+                  }
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Last validated: {new Date(configStatus.lastValidated).toLocaleString()}
+                </span>
               </div>
-              <Progress value={validationProgress} className="h-2" />
+            </AlertDescription>
+          </Alert>
+
+          {/* Configuration Errors */}
+          {configStatus.errors.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-red-600">Configuration Errors</h4>
+              {configStatus.errors.map((error, index) => (
+                <Alert key={index} variant="destructive">
+                  <AlertDescription className="text-sm">{error}</AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          )}
+
+          {/* Configuration Warnings */}
+          {configStatus.warnings.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-yellow-600">Configuration Warnings</h4>
+              {configStatus.warnings.map((warning, index) => (
+                <Alert key={index}>
+                  <AlertDescription className="text-sm">{warning}</AlertDescription>
+                </Alert>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Configuration Sections Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {configSections.map((section) => (
-          <Card key={section.id} className="border-matrix-green/20 bg-black/40 hover:border-matrix-green/40 transition-colors cursor-pointer"
-                onClick={() => setActiveTab(section.id)}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-medium text-matrix-green">{section.name}</h3>
-                <Badge variant="outline" className={`text-xs ${getStatusColor(section.status)}/20 border-current`}>
-                  <div className="flex items-center gap-1">
-                    {getStatusIcon(section.status)}
-                    {section.status}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {configSections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <Card 
+              key={section.id}
+              className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+                unsavedChanges.includes(section.id) ? 'ring-2 ring-blue-500' : ''
+              }`}
+              onClick={() => setActiveTab(section.id)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-5 w-5" />
+                    <CardTitle className="text-sm">{section.title}</CardTitle>
                   </div>
-                </Badge>
-              </div>
-              <p className="text-xs text-matrix-green/70">{section.description}</p>
-            </CardContent>
-          </Card>
-        ))}
+                  <div className="flex items-center gap-2">
+                    {section.required && (
+                      <Badge variant="outline" className="text-xs">Required</Badge>
+                    )}
+                    {getStatusIcon(section.status)}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <CardDescription className="text-xs">
+                  {section.description}
+                </CardDescription>
+                <div className="mt-2 flex items-center justify-between">
+                  {getStatusBadge(section.status)}
+                  {section.lastModified && (
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(section.lastModified).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Configuration Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-black/60 border border-matrix-green/20">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-matrix-green/20">
-            <FileText className="h-4 w-4 mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="advanced" className="data-[state=active]:bg-matrix-green/20">
-            <Settings className="h-4 w-4 mr-2" />
-            Advanced
-          </TabsTrigger>
-          <TabsTrigger value="tools" className="data-[state=active]:bg-matrix-green/20">
-            <Shield className="h-4 w-4 mr-2" />
-            Tools
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-matrix-green/20 bg-black/40">
-              <CardHeader>
-                <CardTitle className="text-matrix-green">Quick Actions</CardTitle>
-                <CardDescription className="text-matrix-green/70">
-                  Common configuration tasks
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full justify-start" variant="outline">
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Trading System
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Validate All
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Configuration
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-matrix-green/20 bg-black/40">
-              <CardHeader>
-                <CardTitle className="text-matrix-green">System Health</CardTitle>
-                <CardDescription className="text-matrix-green/70">
-                  Configuration validation results
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {configSections.map((section) => (
-                  <div key={section.id} className="flex items-center justify-between">
-                    <span className="text-sm text-matrix-green/80">{section.name}</span>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(section.status)}
-                      <span className="text-xs text-matrix-green capitalize">{section.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={validateConfiguration} 
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Validate All
+            </Button>
+            <Button 
+              onClick={saveConfiguration} 
+              disabled={isLoading}
+              size="sm"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Configuration
+            </Button>
+            <ConfigIO />
           </div>
-        </TabsContent>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
-        <TabsContent value="advanced" className="space-y-4">
-          <Card className="border-matrix-green/20 bg-black/40">
-            <CardHeader>
-              <CardTitle className="text-matrix-green">Advanced Configuration</CardTitle>
-              <CardDescription className="text-matrix-green/70">
-                Fine-tune system behavior and performance
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-matrix-green/50">
-                Advanced configuration options will be displayed here
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+  const ConfigurationTabs = () => (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="advanced">Advanced</TabsTrigger>
+        <TabsTrigger value="tools">Tools</TabsTrigger>
+      </TabsList>
 
-        <TabsContent value="tools" className="space-y-4">
-          <Card className="border-matrix-green/20 bg-black/40">
-            <CardHeader>
-              <CardTitle className="text-matrix-green">Configuration Tools</CardTitle>
-              <CardDescription className="text-matrix-green/70">
-                Import, export, backup, and maintenance tools
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start" variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Import Configuration
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Export Configuration
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Backup Configuration
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
-                Load Template
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <TabsContent value="overview">
+        <OverviewTab />
+      </TabsContent>
+
+      <TabsContent value="advanced">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Configuration Sections</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              {showAdvanced ? 'Hide' : 'Show'} Advanced
+            </Button>
+          </div>
+
+          <Tabs value={activeTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+              {configSections.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <TabsTrigger 
+                    key={section.id} 
+                    value={section.id}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <Icon className="h-3 w-3" />
+                    <span className="hidden lg:inline">{section.title.split(' ')[0]}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            {configSections.map((section) => {
+              const Component = section.component;
+              return (
+                <TabsContent key={section.id} value={section.id}>
+                  <Component />
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="tools">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ConfigIO />
+          <ConfigValidator />
+          <ConfigBackup />
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Settings className="h-8 w-8" />
+            Configuration Manager
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Comprehensive configuration management for your trading system
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {unsavedChanges.length > 0 && (
+            <Badge variant="outline" className="animate-pulse">
+              {unsavedChanges.length} unsaved change{unsavedChanges.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          <Button 
+            onClick={saveConfiguration} 
+            disabled={isLoading || unsavedChanges.length === 0}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save
+          </Button>
+        </div>
+      </div>
+
+      {/* Auto-save Toggle */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-medium">Auto-save</h3>
+            <p className="text-sm text-muted-foreground">
+              Automatically save configuration changes
+            </p>
+          </div>
+          <Button
+            variant={autoSave ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAutoSave(!autoSave)}
+          >
+            {autoSave ? 'On' : 'Off'}
+          </Button>
+        </div>
+      </Card>
+
+      {/* Configuration Interface */}
+      <ConfigurationTabs />
     </div>
   );
 };

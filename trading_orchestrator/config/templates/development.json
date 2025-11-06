@@ -1,0 +1,278 @@
+{
+  "template_name": "development",
+  "environment": "development",
+  "description": "Development environment configuration for trading orchestrator",
+  "config": {
+    "application": {
+      "name": "Trading Orchestrator",
+      "version": "1.0.0",
+      "environment": "development",
+      "debug": true,
+      "log_level": "DEBUG",
+      "api_host": "0.0.0.0",
+      "api_port": 8000,
+      "api_workers": 2
+    },
+    "database": {
+      "type": "sqlite",
+      "url": "sqlite:///./dev_trading.db",
+      "echo": true,
+      "pool_size": 5,
+      "max_overflow": 10,
+      "pool_timeout": 30,
+      "pool_recycle": 3600
+    },
+    "brokers": {
+      "binance": {
+        "enabled": false,
+        "testnet": true,
+        "rate_limit": 1200,
+        "api_key": "${BINANCE_API_KEY}",
+        "api_secret": "${BINANCE_API_SECRET}",
+        "timeout": 30,
+        "retries": 3
+      },
+      "alpaca": {
+        "enabled": false,
+        "paper": true,
+        "rate_limit": 200,
+        "api_key": "${ALPACA_API_KEY}",
+        "api_secret": "${ALPACA_API_SECRET}",
+        "base_url": "https://paper-api.alpaca.markets",
+        "timeout": 30,
+        "retries": 3
+      },
+      "ibkr": {
+        "enabled": false,
+        "host": "127.0.0.1",
+        "port": 7497,
+        "client_id": 1,
+        "paper": true,
+        "max_concurrent_requests": 5,
+        "request_timeout": 30
+      },
+      "trading212": {
+        "enabled": false,
+        "practice": true,
+        "rate_limit": 120,
+        "api_key": "${TRADING212_API_KEY}",
+        "base_url": "https://practice.trading212.com",
+        "timeout": 30,
+        "retries": 3
+      }
+    },
+    "risk": {
+      "max_position_size": 1000.0,
+      "max_daily_loss": 100.0,
+      "max_open_orders": 20,
+      "risk_per_trade": 0.02,
+      "stop_loss_percentage": 0.05,
+      "take_profit_percentage": 0.10,
+      "correlation_limit": 0.7,
+      "circuit_breakers": {
+        "enabled": true,
+        "daily_loss_limit": 200.0,
+        "consecutive_loss_limit": 3,
+        "drawdown_limit": 0.10,
+        "position_concentration_limit": 0.25
+      },
+      "limits": {
+        "max_leverage": 1.0,
+        "min_account_balance": 100.0,
+        "max_order_size": 5000.0,
+        "max_daily_volume": 10000.0,
+        "allowed_markets": ["US", "EU"],
+        "restricted_symbols": []
+      }
+    },
+    "ai": {
+      "provider": "openai",
+      "trading_mode": "PAPER",
+      "default_model_tier": "fast",
+      "openai_api_key": "${OPENAI_API_KEY}",
+      "max_tokens_per_request": 2000,
+      "request_timeout": 30,
+      "local_models": {
+        "enabled": false,
+        "model_path": "./models/local",
+        "preferred_backend": "transformers"
+      },
+      "prompt_templates": {
+        "market_analysis": "./ai/prompts/market_analysis.txt",
+        "risk_assessment": "./ai/prompts/risk_assessment.txt",
+        "strategy_selection": "./ai/prompts/strategy_selection.txt"
+      }
+    },
+    "strategies": {
+      "enabled_strategies": ["mean_reversion", "trend_following"],
+      "mean_reversion": {
+        "lookback_period": 20,
+        "entry_threshold": 2.0,
+        "exit_threshold": 0.5,
+        "min_confidence": 0.75,
+        "enabled": true
+      },
+      "trend_following": {
+        "fast_ma_period": 10,
+        "slow_ma_period": 30,
+        "rsi_period": 14,
+        "min_trend_strength": 0.6,
+        "enabled": true
+      },
+      "backtesting": {
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+        "initial_capital": 10000.0,
+        "benchmark_symbol": "SPY",
+        "save_results": true,
+        "results_path": "./backtests/"
+      }
+    },
+    "market_data": {
+      "data_sources": {
+        "primary": "broker",
+        "fallback": "yahoo",
+        "rate_limits": {
+          "broker": 200,
+          "yahoo": 2000,
+          "alphavantage": 500
+        }
+      },
+      "symbols": {
+        "us_stocks": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],
+        "crypto": ["BTCUSDT", "ETHUSDT"],
+        "forex": ["EURUSD", "GBPUSD"]
+      },
+      "update_intervals": {
+        "real_time": 5,
+        "minute": 60,
+        "hourly": 3600,
+        "daily": 86400
+      },
+      "storage": {
+        "database_retention_days": 30,
+        "cache_size_mb": 256,
+        "compression": true,
+        "backup_interval_hours": 24
+      }
+    },
+    "logging": {
+      "level": "DEBUG",
+      "file": "logs/dev_trading.log",
+      "max_file_size": 50,
+      "backup_count": 3,
+      "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
+      "handlers": {
+        "console": {
+          "enabled": true,
+          "level": "INFO"
+        },
+        "file": {
+          "enabled": true,
+          "level": "DEBUG"
+        },
+        "email": {
+          "enabled": false,
+          "level": "ERROR",
+          "smtp_server": "smtp.gmail.com",
+          "smtp_port": 587,
+          "recipients": []
+        }
+      },
+      "trading_logs": {
+        "enabled": true,
+        "file": "logs/trades.log",
+        "trade_details": true,
+        "strategy_performance": true,
+        "risk_events": true
+      }
+    },
+    "ui": {
+      "theme": "matrix",
+      "refresh_rate": 1000,
+      "terminal_size": {
+        "width": 120,
+        "height": 40
+      },
+      "dashboard": {
+        "enable_real_time": true,
+        "chart_height": 400,
+        "auto_refresh": true,
+        "save_layout": true
+      },
+      "notifications": {
+        "enabled": true,
+        "trade_alerts": true,
+        "risk_alerts": true,
+        "error_alerts": true,
+        "sound": true
+      }
+    },
+    "monitoring": {
+      "health_checks": {
+        "enabled": true,
+        "interval": 30,
+        "timeout": 10
+      },
+      "metrics": {
+        "enabled": false,
+        "prometheus_port": 9090,
+        "collect_interval": 60,
+        "retention_days": 7
+      },
+      "alerts": {
+        "enabled": false,
+        "conditions": {
+          "high_cpu": 80,
+          "high_memory": 85,
+          "disk_usage": 90
+        }
+      }
+    },
+    "security": {
+      "encryption": {
+        "enabled": false,
+        "algorithm": "AES-256",
+        "key_derivation": "PBKDF2"
+      },
+      "authentication": {
+        "api_keys_required": false,
+        "session_timeout": 3600,
+        "max_login_attempts": 5,
+        "lockout_duration": 900
+      },
+      "audit": {
+        "enabled": true,
+        "log_file": "logs/audit.log",
+        "track_api_calls": true,
+        "track_user_actions": true
+      }
+    },
+    "performance": {
+      "database": {
+        "connection_pool_size": 5,
+        "connection_timeout": 30,
+        "query_timeout": 60,
+        "enable_wal_mode": true
+      },
+      "caching": {
+        "enabled": false
+      },
+      "async": {
+        "max_workers": 4,
+        "worker_timeout": 60,
+        "queue_size": 100
+      }
+    }
+  },
+  "variables": {
+    "BINANCE_API_KEY": "",
+    "BINANCE_API_SECRET": "",
+    "ALPACA_API_KEY": "",
+    "ALPACA_API_SECRET": "",
+    "TRADING212_API_KEY": "",
+    "OPENAI_API_KEY": ""
+  },
+  "dependencies": [],
+  "version": "1.0.0"
+}

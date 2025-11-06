@@ -198,6 +198,619 @@ class SystemHealthMonitor:
             duration=duration
         )
     
+    async def check_database_health(self) -> HealthCheckResult:
+        """Check database connectivity and performance"""
+        component = "Database"
+        start_time = time.time()
+        
+        try:
+            from config.database import engine
+            
+            query_start = time.time()
+            async with engine.connect() as conn:
+                result = await conn.execute("SELECT 1 as test")
+                row = result.fetchone()
+                query_time = time.time() - query_start
+            
+            if row and row[0] == 1:
+                status = "healthy"
+                message = f"Database responsive ({query_time:.3f}s query time)"
+                details = {
+                    "connection": "active",
+                    "query_time_seconds": round(query_time, 3),
+                    "test_query": "successful"
+                }
+            else:
+                status = "critical"
+                message = "Database query failed"
+                details = {"error": "Invalid query result"}
+                
+        except ImportError:
+            status = "unknown"
+            message = "Database module not available"
+            details = {"error": "ImportError"}
+        except Exception as e:
+            status = "critical"
+            message = f"Database connection failed: {str(e)}"
+            details = {"error": str(e)}
+        
+        duration = time.time() - start_time
+        
+        return HealthCheckResult(
+            component=component,
+            status=status,
+            message=message,
+            details=details,
+            timestamp=datetime.now(),
+            duration=duration
+        )
+    
+    async def check_broker_health(self) -> HealthCheckResult:
+        """Check all configured broker connections"""
+        component = "Broker Connections"
+        start_time = time.time()
+        
+        if not self.config.get("brokers"):
+            return HealthCheckResult(
+                component=component,
+                status="unknown",
+                message="No brokers configured",
+                details={},
+                timestamp=datetime.now(),
+                duration=time.time() - start_time
+            )
+        
+        broker_results = {}
+        healthy_brokers = 0
+        total_brokers = 0
+        
+        try:
+            for broker_name, broker_config in self.config["brokers"].items():
+                if not broker_config.get("enabled", False):
+                    continue
+                
+                total_brokers += 1
+                
+                # Test individual broker
+                broker_result = await self.check_single_broker(broker_name, broker_config)
+                broker_results[broker_name] = broker_result
+                
+                if broker_result["status"] == "healthy":
+                    healthy_brokers += 1
+            
+            # Determine overall status
+            if total_brokers == 0:
+                status = "unknown"
+                message = "No enabled brokers found"
+            elif healthy_brokers == total_brokers:
+                status = "healthy"
+                message = f"All {total_brokers} brokers healthy"
+            elif healthy_brokers > 0:
+                status = "warning"
+                message = f"{healthy_brokers}/{total_brokers} brokers healthy"
+            else:
+                status = "critical"
+                message = "No brokers are healthy"
+            
+        except Exception as e:
+            status = "unknown"
+            message = f"Error checking broker health: {str(e)}"
+            broker_results = {"error": str(e)}
+        
+        duration = time.time() - start_time
+        
+        return HealthCheckResult(
+            component=component,
+            status=status,
+            message=message,
+            details={"brokers": broker_results},
+            timestamp=datetime.now(),
+            duration=duration
+        )
+    
+    async def check_single_broker(self, name: str, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Check health of a single broker"""
+        try:
+            # Simplified broker health check
+            if name.lower() == "alpaca":
+                return await self.check_alpaca_health(config)
+            elif name.lower() == "binance":
+                return await self.check_binance_health(config)
+            elif name.lower() == "ibkr":
+                return await self.check_ibkr_health(config)
+            else:
+                return {
+                    "status": "healthy",
+                    "message": "Broker configuration valid",
+                    "details": {"type": name}
+                }
+        except Exception as e:
+            return {
+                "status": "critical",
+                "message": f"Broker check failed: {str(e)}",
+                "details": {"error": str(e)}
+            }
+    
+    async def check_alpaca_health(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Check Alpaca broker health"""
+        api_key = config.get("api_key")
+        secret_key = config.get("secret_key")
+        
+        if not api_key or not secret_key or api_key == "YOUR_ALPACA_API_KEY":
+            return {
+                "status": "warning",
+                "message": "Alpaca API keys not configured",
+                "details": {"configured": False}
+            }
+        
+        try:
+            import aiohttp
+            
+            base_url = config.get("base_url", "https://paper-api.alpaca.markets")
+            headers = {
+                "APCA-API-KEY-ID": api_key,
+                "APCA-API-SECRET-KEY": secret_key
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{base_url}/v2/account", headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return {
+                            "status": "healthy",
+                            "message": "Alpaca API accessible",
+                            "details": {
+                                "account_status": data.get("status"),
+                                "paper_mode": config.get("paper", True)
+                            }
+                        }
+                    else:
+                        error_text = await response.text()
+                        return {
+                            "status": "critical",
+                            "message": f"Alpaca API error: HTTP {response.status}",
+                            "details": {"error": error_text[:200]}
+                        }
+                        
+        except Exception as e:
+            return {
+                "status": "critical",
+                "message": f"Alpaca connection failed: {str(e)}",
+                "details": {"error": str(e)}
+            }
+    
+    async def check_binance_health(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Check Binance broker health"""
+        api_key = config.get("api_key")
+        secret_key = config.get("secret_key")
+        
+        if not api_key or not secret_key or api_key == "YOUR_BINANCE_API_KEY":
+            return {
+                "status": "warning",
+                "message": "Binance API keys not configured",
+                "details": {"configured": False}
+            }
+        
+        try:
+            import aiohttp
+            import hmac
+            import hashlib
+            
+            base_url = config.get("base_url", "https://testnet.binance.vision")
+            
+            # Test server time (no authentication required)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{base_url}/api/v3/time", timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return {
+                            "status": "healthy",
+                            "message": "Binance API accessible",
+                            "details": {
+                                "server_time": data.get("serverTime"),
+                                "testnet": config.get("testnet", True)
+                            }
+                        }
+                    else:
+                        return {
+                            "status": "critical",
+                            "message": f"Binance API error: HTTP {response.status}",
+                            "details": {"status_code": response.status}
+                        }
+                        
+        except Exception as e:
+            return {
+                "status": "critical",
+                "message": f"Binance connection failed: {str(e)}",
+                "details": {"error": str(e)}
+            }
+    
+    async def check_ibkr_health(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Check Interactive Brokers health"""
+        host = config.get("host", "127.0.0.1")
+        port = config.get("port", 7497)
+        
+        try:
+            import socket
+            
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            result = sock.connect_ex((host, int(port)))
+            sock.close()
+            
+            if result == 0:
+                return {
+                    "status": "healthy",
+                    "message": f"IBKR Gateway reachable on port {port}",
+                    "details": {
+                        "host": host,
+                        "port": port,
+                        "connection": "successful"
+                    }
+                }
+            else:
+                return {
+                    "status": "critical",
+                    "message": f"Cannot connect to IBKR Gateway at {host}:{port}",
+                    "details": {
+                        "host": host,
+                        "port": port,
+                        "connection": "failed"
+                    }
+                }
+                
+        except Exception as e:
+            return {
+                "status": "critical",
+                "message": f"IBKR connection error: {str(e)}",
+                "details": {"error": str(e)}
+            }
+    
+    async def check_ai_services(self) -> HealthCheckResult:
+        """Check AI service integration"""
+        component = "AI Services"
+        start_time = time.time()
+        
+        ai_config = self.config.get("ai", {})
+        ai_results = {}
+        healthy_services = 0
+        total_services = 0
+        
+        # Check OpenAI
+        if ai_config.get("openai_api_key") and ai_config["openai_api_key"] != "YOUR_OPENAI_API_KEY":
+            total_services += 1
+            ai_results["openai"] = await self.check_openai_health(ai_config["openai_api_key"])
+            if ai_results["openai"]["status"] == "healthy":
+                healthy_services += 1
+        else:
+            ai_results["openai"] = {
+                "status": "warning",
+                "message": "OpenAI API key not configured",
+                "details": {"configured": False}
+            }
+        
+        # Check Anthropic
+        if ai_config.get("anthropic_api_key") and ai_config["anthropic_api_key"] != "YOUR_ANTHROPIC_API_KEY":
+            total_services += 1
+            ai_results["anthropic"] = await self.check_anthropic_health(ai_config["anthropic_api_key"])
+            if ai_results["anthropic"]["status"] == "healthy":
+                healthy_services += 1
+        else:
+            ai_results["anthropic"] = {
+                "status": "warning",
+                "message": "Anthropic API key not configured",
+                "details": {"configured": False}
+            }
+        
+        # Check Local Models
+        if ai_config.get("local_models", {}).get("enabled", False):
+            total_services += 1
+            ai_results["local_models"] = await self.check_local_models_health()
+            if ai_results["local_models"]["status"] == "healthy":
+                healthy_services += 1
+        else:
+            ai_results["local_models"] = {
+                "status": "warning",
+                "message": "Local models not enabled",
+                "details": {"enabled": False}
+            }
+        
+        # Determine overall status
+        if total_services == 0:
+            status = "warning"
+            message = "No AI services configured"
+        elif healthy_services == total_services:
+            status = "healthy"
+            message = f"All {total_services} AI services healthy"
+        elif healthy_services > 0:
+            status = "warning"
+            message = f"{healthy_services}/{total_services} AI services healthy"
+        else:
+            status = "critical"
+            message = "No AI services are healthy"
+        
+        duration = time.time() - start_time
+        
+        return HealthCheckResult(
+            component=component,
+            status=status,
+            message=message,
+            details={"services": ai_results},
+            timestamp=datetime.now(),
+            duration=duration
+        )
+    
+    async def check_openai_health(self, api_key: str) -> Dict[str, Any]:
+        """Check OpenAI API health"""
+        try:
+            import aiohttp
+            
+            headers = {"Authorization": f"Bearer {api_key}"}
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    "https://api.openai.com/v1/models",
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        models_count = len(data.get("data", []))
+                        return {
+                            "status": "healthy",
+                            "message": f"OpenAI API accessible ({models_count} models available)",
+                            "details": {"models_available": models_count}
+                        }
+                    else:
+                        return {
+                            "status": "critical",
+                            "message": f"OpenAI API error: HTTP {response.status}",
+                            "details": {"status_code": response.status}
+                        }
+                        
+        except Exception as e:
+            return {
+                "status": "critical",
+                "message": f"OpenAI connection failed: {str(e)}",
+                "details": {"error": str(e)}
+            }
+    
+    async def check_anthropic_health(self, api_key: str) -> Dict[str, Any]:
+        """Check Anthropic API health"""
+        try:
+            import aiohttp
+            
+            headers = {
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            }
+            
+            data = {
+                "model": "claude-3-haiku-20240307",
+                "max_tokens": 1,
+                "messages": [{"role": "user", "content": "Hi"}]
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers=headers,
+                    json=data,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as response:
+                    if response.status == 200:
+                        return {
+                            "status": "healthy",
+                            "message": "Anthropic API accessible",
+                            "details": {"model": "claude-3-haiku-20240307"}
+                        }
+                    else:
+                        return {
+                            "status": "critical",
+                            "message": f"Anthropic API error: HTTP {response.status}",
+                            "details": {"status_code": response.status}
+                        }
+                        
+        except Exception as e:
+            return {
+                "status": "critical",
+                "message": f"Anthropic connection failed: {str(e)}",
+                "details": {"error": str(e)}
+            }
+    
+    async def check_local_models_health(self) -> Dict[str, Any]:
+        """Check local AI models health"""
+        try:
+            import subprocess
+            
+            # Check if Ollama is available
+            result = subprocess.run(["which", "ollama"], capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                return {
+                    "status": "critical",
+                    "message": "Ollama not found in PATH",
+                    "details": {"error": "ollama command not found"}
+                }
+            
+            # Try to list models
+            result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                models = result.stdout.strip().split('\n')
+                models = [m for m in models if m and not m.startswith('NAME')]
+                return {
+                    "status": "healthy",
+                    "message": f"Ollama accessible ({len(models)} models)",
+                    "details": {"models_count": len(models)}
+                }
+            else:
+                return {
+                    "status": "warning",
+                    "message": "Ollama found but model listing failed",
+                    "details": {"error": result.stderr}
+                }
+                
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "warning",
+                "message": "Ollama check timed out",
+                "details": {"error": "timeout"}
+            }
+        except Exception as e:
+            return {
+                "status": "critical",
+                "message": f"Local models check failed: {str(e)}",
+                "details": {"error": str(e)}
+            }
+    
+    async def check_file_system(self) -> HealthCheckResult:
+        """Check file system health and permissions"""
+        component = "File System"
+        start_time = time.time()
+        
+        try:
+            import os
+            
+            # Check critical directories
+            directories = ["logs", "data", "backups"]
+            dir_results = {}
+            
+            for dir_name in directories:
+                dir_path = Path(dir_name)
+                if dir_path.exists():
+                    if os.access(dir_path, os.W_OK):
+                        dir_results[dir_name] = {"exists": True, "writable": True}
+                    else:
+                        dir_results[dir_name] = {"exists": True, "writable": False}
+                else:
+                    dir_results[dir_name] = {"exists": False, "writable": False}
+            
+            # Check log file permissions
+            log_file = Path("logs/trading_orchestrator.log")
+            log_writable = False
+            if log_file.exists():
+                log_writable = os.access(log_file, os.W_OK)
+            
+            # Determine status
+            if all(result["writable"] for result in dir_results.values()):
+                status = "healthy"
+                message = "All critical directories writable"
+            elif any(result["writable"] for result in dir_results.values()):
+                status = "warning"
+                message = "Some directories not writable"
+            else:
+                status = "critical"
+                message = "Critical directories not writable"
+            
+            details = {
+                "directories": dir_results,
+                "log_file_writable": log_writable
+            }
+            
+        except Exception as e:
+            status = "unknown"
+            message = f"Error checking file system: {str(e)}"
+            details = {"error": str(e)}
+        
+        duration = time.time() - start_time
+        
+        return HealthCheckResult(
+            component=component,
+            status=status,
+            message=message,
+            details=details,
+            timestamp=datetime.now(),
+            duration=duration
+        )
+    
+    async def check_configuration(self) -> HealthCheckResult:
+        """Check configuration file validity"""
+        component = "Configuration"
+        start_time = time.time()
+        
+        try:
+            # Check if config file exists
+            config_file = Path(self.config_path)
+            if not config_file.exists():
+                return HealthCheckResult(
+                    component=component,
+                    status="critical",
+                    message=f"Configuration file {self.config_path} not found",
+                    details={"file_exists": False},
+                    timestamp=datetime.now(),
+                    duration=time.time() - start_time
+                )
+            
+            # Validate JSON syntax
+            try:
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+            except json.JSONDecodeError as e:
+                return HealthCheckResult(
+                    component=component,
+                    status="critical",
+                    message=f"Invalid JSON in configuration file: {str(e)}",
+                    details={"json_error": str(e)},
+                    timestamp=datetime.now(),
+                    duration=time.time() - start_time
+                )
+            
+            # Check required sections
+            required_sections = ["database", "brokers", "risk"]
+            missing_sections = []
+            for section in required_sections:
+                if section not in config:
+                    missing_sections.append(section)
+            
+            # Check API key configuration
+            api_key_issues = []
+            if "brokers" in config:
+                for broker_name, broker_config in config["brokers"].items():
+                    if broker_config.get("enabled", False):
+                        if broker_name.lower() == "alpaca":
+                            if not broker_config.get("api_key") or broker_config["api_key"] == "YOUR_ALPACA_API_KEY":
+                                api_key_issues.append(f"{broker_name} API key not set")
+                        elif broker_name.lower() == "binance":
+                            if not broker_config.get("api_key") or broker_config["api_key"] == "YOUR_BINANCE_API_KEY":
+                                api_key_issues.append(f"{broker_name} API key not set")
+            
+            # Determine status
+            status = "healthy"
+            messages = []
+            details = {
+                "file_exists": True,
+                "json_valid": True,
+                "config_sections": list(config.keys())
+            }
+            
+            if missing_sections:
+                status = "warning"
+                messages.append(f"Missing config sections: {', '.join(missing_sections)}")
+            
+            if api_key_issues:
+                status = "warning" if status == "healthy" else status
+                messages.append(f"Unconfigured API keys: {', '.join(api_key_issues)}")
+            
+            if not messages:
+                messages.append("Configuration file valid")
+            
+            message = "; ".join(messages)
+            
+        except Exception as e:
+            status = "unknown"
+            message = f"Error checking configuration: {str(e)}"
+            details = {"error": str(e)}
+        
+        duration = time.time() - start_time
+        
+        return HealthCheckResult(
+            component=component,
+            status=status,
+            message=message,
+            details=details,
+            timestamp=datetime.now(),
+            duration=duration
+        )
+    
     async def run_comprehensive_health_check(self) -> Dict[str, Any]:
         """Run all health checks and return comprehensive report"""
         print("🏥 Running Day Trading Orchestrator Health Check")
@@ -208,7 +821,12 @@ class SystemHealthMonitor:
         
         health_checks = [
             ("System Resources", self.check_system_resources),
-            ("Network Connectivity", self.check_network_connectivity)
+            ("Network Connectivity", self.check_network_connectivity),
+            ("Database", self.check_database_health),
+            ("Broker Connections", self.check_broker_health),
+            ("AI Services", self.check_ai_services),
+            ("File System", self.check_file_system),
+            ("Configuration", self.check_configuration)
         ]
         
         self.results = []
@@ -309,6 +927,19 @@ class SystemHealthMonitor:
             print("Your Day Trading Orchestrator is running optimally.")
         
         return summary
+    
+    def save_health_report(self, summary: Dict[str, Any], filename: str = None):
+        """Save health check report to file"""
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"health_report_{timestamp}.json"
+        
+        try:
+            with open(filename, 'w') as f:
+                json.dump(summary, f, indent=2)
+            print(f"\n📄 Health report saved to: {filename}")
+        except Exception as e:
+            print(f"\n❌ Failed to save health report: {e}")
 
 async def main():
     """Main health check runner"""
@@ -316,7 +947,9 @@ async def main():
     
     parser = argparse.ArgumentParser(description="Day Trading Orchestrator Health Check")
     parser.add_argument("--config", default="config.json", help="Configuration file path")
+    parser.add_argument("--output", help="Output file for health report")
     parser.add_argument("--quick", action="store_true", help="Run quick health check only")
+    parser.add_argument("--component", help="Check specific component only")
     
     args = parser.parse_args()
     
@@ -325,6 +958,10 @@ async def main():
     
     # Run health check
     summary = await monitor.run_comprehensive_health_check()
+    
+    # Save report if requested
+    if args.output:
+        monitor.save_health_report(summary, args.output)
     
     # Exit with appropriate code based on overall status
     status = summary["overall_status"]

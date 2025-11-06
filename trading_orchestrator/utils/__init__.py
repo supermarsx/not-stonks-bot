@@ -1,23 +1,42 @@
-# Utilities Package
+"""
+Utils Package for Day Trading Orchestrator
+Utility functions and helpers
+"""
 
-The utils package provides common utilities and helper functions
-used throughout the trading orchestrator system.
+from .logger import (
+    MatrixLogger,
+    TradingEventType,
+    TradingEvent,
+    setup_logging,
+    get_logger,
+    log_order_submitted,
+    log_order_filled,
+    log_risk_violation,
+    log_circuit_breaker,
+    log_ai_decision,
+    info,
+    debug,
+    warning,
+    error,
+    critical,
+    exception
+)
 
-Modules:
-- logger: Logging configuration and utilities
-- validators: Input validation functions
-- formatters: Data formatting utilities
-- calculations: Mathematical and financial calculations
-- date_utils: Date and time manipulation
-- file_utils: File and path utilities
-
-Key Functions:
-- Configuration loading and validation
-- Data type conversions
-- Mathematical calculations
-- Date/time formatting
-- Logging and error handling
-- File and directory operations
-
-These utilities help maintain code consistency and avoid
-repetition of common functionality across the system.
+__all__ = [
+    "MatrixLogger",
+    "TradingEventType", 
+    "TradingEvent",
+    "setup_logging",
+    "get_logger",
+    "log_order_submitted",
+    "log_order_filled", 
+    "log_risk_violation",
+    "log_circuit_breaker",
+    "log_ai_decision",
+    "info",
+    "debug",
+    "warning",
+    "error",
+    "critical",
+    "exception"
+]

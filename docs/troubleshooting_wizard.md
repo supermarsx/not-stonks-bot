@@ -1,1240 +1,1403 @@
-# Troubleshooting Wizard
+# Troubleshooting Wizard Guide
+
+## Overview
+
+The Troubleshooting Wizard is an interactive diagnostic system designed to help you quickly identify and resolve issues with the Day Trading Orchestrator. This guide explains how to use the wizard effectively and covers common problems you might encounter.
 
 ## Table of Contents
-- [Quick Diagnostic Procedures](#quick-diagnostic-procedures)
-- [Common Issues and Solutions](#common-issues-and-solutions)
-- [System Health Monitoring](#system-health-monitoring)
-- [Emergency Response Procedures](#emergency-response-procedures)
-- [Diagnostic Tools and Utilities](#diagnostic-tools-and-utilities)
-- [Log Analysis Guide](#log-analysis-guide)
-- [Performance Troubleshooting](#performance-troubleshooting)
-- [Network Connectivity Issues](#network-connectivity-issues)
-- [Database Troubleshooting](#database-troubleshooting)
-- [Broker Connection Issues](#broker-connection-issues)
-- [Strategy Execution Problems](#strategy-execution-problems)
-- [Risk Management Alerts](#risk-management-alerts)
-- [API and WebSocket Issues](#api-and-websocket-issues)
-- [Plugin System Problems](#plugin-system-problems)
-- [UI and Dashboard Issues](#ui-and-dashboard-issues)
-- [Data Feed Problems](#data-feed-problems)
-- [Backtesting Troubleshooting](#backtesting-troubleshooting)
-- [Report Generation Issues](#report-generation-issues)
-- [Automated Testing Problems](#automated-testing-problems)
-- [Deployment and Configuration Issues](#deployment-and-configuration-issues)
-- [Monitoring and Alerting](#monitoring-and-alerting)
-- [Recovery Procedures](#recovery-procedures)
 
-## Quick Diagnostic Procedures
+1. [Getting Started with the Troubleshooting Wizard](#getting-started-with-the-troubleshooting-wizard)
+2. [Quick Diagnostics](#quick-diagnostics)
+3. [Common Issues and Solutions](#common-issues-and-solutions)
+4. [Advanced Troubleshooting](#advanced-troubleshooting)
+5. [System Health Monitoring](#system-health-monitoring)
+6. [Emergency Procedures](#emergency-procedures)
+7. [Support Escalation](#support-escalation)
+8. [Preventive Maintenance](#preventive-maintenance)
 
-### System Health Check
+## Getting Started with the Troubleshooting Wizard
+
+### Accessing the Wizard
+
+1. **From Matrix Command Center**:
+   - Click the "System Health" icon in the main navigation
+   - Select "Run Diagnostics" or "Troubleshooting Wizard"
+   - Choose between Quick Scan or Full System Check
+
+2. **Command Line Access**:
+   ```bash
+   python main.py --troubleshoot
+   python main.py --health-check --detailed
+   ```
+
+3. **API Endpoint**:
+   ```
+   GET /api/v1/system/health/diagnostics
+   ```
+
+### Wizard Interface Overview
+
+The troubleshooting wizard provides:
+- **Interactive Question Flow**: Guided questions to narrow down issues
+- **Automated Diagnostics**: System scans for common problems
+- **Step-by-step Solutions**: Clear instructions for fixing issues
+- **Escalation Paths**: When to contact support
+- **Preventive Recommendations**: How to avoid future issues
+
+### Starting a Diagnostic Session
+
 ```bash
-# Run comprehensive system health check
-./scripts/system-health-check.sh
+# Start the troubleshooting wizard
+python -m day_trading_orchestrator.troubleshoot --interactive
 
-# Check service status
-systemctl status trading-orchestrator
-systemctl status postgres
-systemctl status redis
-systemctl status nginx
-
-# Check disk space
-df -h
-
-# Check memory usage
-free -h
-
-# Check CPU usage
-top -bn1 | head -20
+# Run specific diagnostic category
+python -m day_trading_orchestrator.troubleshoot --category=broker_connection
+python -m day_trading_orchestrator.troubleshoot --category=data_feed
+python -m day_trading_orchestrator.troubleshoot --category=performance
 ```
 
-### Connectivity Test
-```bash
-# Test broker connectivity
-curl -k https://paper-api.alpaca.markets/v2/account
-curl -k https://api.binance.com/api/v3/ping
+## Quick Diagnostics
 
-# Test database connectivity
-psql -h localhost -U trading_user -d trading_db -c "SELECT 1;"
+### 1. System Health Check
 
-# Test Redis connectivity
-redis-cli ping
+The wizard starts with a comprehensive system health assessment:
 
-# Test external APIs
-curl -s https://api.polygon.io/v2/aggs/ticker/AAPL/prev
+```python
+def quick_health_check():
+    """
+    Run quick diagnostic checks across all system components
+    """
+    results = {
+        'system_resources': check_system_resources(),
+        'network_connectivity': check_network_connectivity(),
+        'broker_connections': check_broker_status(),
+        'data_feeds': check_data_feed_status(),
+        'database_health': check_database_connection(),
+        'api_endpoints': check_api_health(),
+        'log_files': check_recent_errors()
+    }
+    
+    return results
+
+def check_system_resources():
+    """
+    Check CPU, memory, and disk usage
+    """
+    import psutil
+    
+    cpu_percent = psutil.cpu_percent(interval=1)
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
+    status = {
+        'cpu_usage': f"{cpu_percent}%",
+        'memory_usage': f"{memory.percent}%",
+        'disk_usage': f"{disk.percent}%",
+        'warnings': []
+    }
+    
+    if cpu_percent > 80:
+        status['warnings'].append("High CPU usage detected")
+    
+    if memory.percent > 85:
+        status['warnings'].append("High memory usage detected")
+    
+    if disk.percent > 90:
+        status['warnings'].append("Low disk space")
+    
+    return status
 ```
 
-### Log Review
-```bash
-# Review recent errors
-grep -i error /var/log/trading-orchestrator/app.log | tail -20
+### 2. Connection Tests
 
-# Check for critical alerts
-grep -i critical /var/log/trading-orchestrator/app.log | tail -10
+#### Broker Connection Test
+```python
+def test_broker_connections():
+    """
+    Test connections to all configured brokers
+    """
+    brokers = ['alpaca', 'binance', 'interactive_brokers', 'degiro']
+    connection_results = {}
+    
+    for broker in brokers:
+        try:
+            # Test connection
+            client = get_broker_client(broker)
+            account_info = client.get_account()
+            
+            connection_results[broker] = {
+                'status': 'CONNECTED',
+                'account_value': account_info.get('equity', 'N/A'),
+                'last_update': datetime.now().isoformat()
+            }
+        except Exception as e:
+            connection_results[broker] = {
+                'status': 'FAILED',
+                'error': str(e),
+                'last_update': datetime.now().isoformat()
+            }
+    
+    return connection_results
+```
 
-# Review broker connection logs
-grep -i "broker\|connection\|alpaca\|binance" /var/log/trading-orchestrator/app.log | tail -15
-
-# Check for performance issues
-grep -i "slow\|timeout\|latency" /var/log/trading-orchestrator/app.log | tail -15
+#### Data Feed Test
+```python
+def test_data_feeds():
+    """
+    Verify market data feeds are working correctly
+    """
+    symbols = ['SPY', 'QQQ', 'AAPL', 'TSLA']
+    feed_results = {}
+    
+    for symbol in symbols:
+        try:
+            # Test real-time data
+            latest_price = get_real_time_price(symbol)
+            historical_data = get_historical_data(symbol, '1d', 5)
+            
+            if latest_price and len(historical_data) == 5:
+                feed_results[symbol] = {
+                    'status': 'ACTIVE',
+                    'latest_price': latest_price,
+                    'data_points': len(historical_data),
+                    'last_update': datetime.now().isoformat()
+                }
+            else:
+                feed_results[symbol] = {
+                    'status': 'INTERMITTENT',
+                    'last_update': datetime.now().isoformat()
+                }
+        except Exception as e:
+            feed_results[symbol] = {
+                'status': 'FAILED',
+                'error': str(e),
+                'last_update': datetime.now().isoformat()
+            }
+    
+    return feed_results
 ```
 
 ## Common Issues and Solutions
 
-### Issue: System Won't Start
+### 1. Connection Issues
+
+#### Problem: Broker Connection Failed
 
 **Symptoms:**
-- Service fails to start
-- Port already in use errors
-- Configuration file errors
-
-**Diagnostic Steps:**
-1. Check system requirements
-2. Verify configuration files
-3. Check port availability
-4. Review startup logs
-
-**Solutions:**
-```bash
-# Check port availability
-netstat -tulpn | grep :8080
-
-# Kill processes on required ports
-sudo kill -9 $(lsof -ti:8080)
-
-# Validate configuration files
-./scripts/validate-config.sh
-
-# Start with debug logging
-LOG_LEVEL=DEBUG ./bin/trading-orchestrator
-```
-
-### Issue: High CPU/Memory Usage
-
-**Symptoms:**
-- System performance degradation
-- High resource consumption alerts
-- Slow response times
-
-**Diagnostic Steps:**
-1. Identify resource-intensive processes
-2. Check for memory leaks
-3. Review thread/connection pools
-4. Analyze performance metrics
-
-**Solutions:**
-```bash
-# Monitor system resources
-top -o %CPU
-top -o %MEM
-
-# Check for memory leaks
-ps aux --sort=-%mem | head -10
-
-# Restart service to clear memory
-systemctl restart trading-orchestrator
-
-# Optimize configuration
-./scripts/optimize-performance.sh
-```
-
-### Issue: Database Connection Failures
-
-**Symptoms:**
-- "Connection refused" errors
-- Timeout errors
+- "Connection timeout" errors
 - Authentication failures
+- No account data retrieved
 
-**Diagnostic Steps:**
-1. Test database connectivity
-2. Check authentication credentials
-3. Review connection pool settings
-4. Examine network connectivity
+**Diagnostic Questions:**
+1. When did this issue start?
+2. Can you log into the broker's website manually?
+3. Are you using the correct API credentials?
+4. Is your internet connection stable?
 
-**Solutions:**
-```bash
-# Test database connection
-psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "SELECT version();"
+**Step-by-Step Solution:**
 
-# Check database status
-sudo systemctl status postgresql
-
-# Test connection with detailed output
-psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "\conninfo"
-
-# Restart database service
-sudo systemctl restart postgresql
+```python
+def fix_broker_connection(broker_name):
+    """
+    Step-by-step broker connection repair
+    """
+    solutions = {
+        'check_credentials': [
+            "1. Verify API Key is correctly entered",
+            "2. Verify Secret Key is correctly entered", 
+            "3. Check if keys are active and not expired",
+            "4. Ensure account has sufficient permissions"
+        ],
+        'network_diagnostics': [
+            "1. Test internet connectivity",
+            "2. Check firewall settings",
+            "3. Verify proxy settings if applicable",
+            "4. Try connecting from different network"
+        ],
+        'broker_status': [
+            "1. Check broker's status page",
+            "2. Verify market hours",
+            "3. Check for maintenance announcements",
+            "4. Contact broker support if needed"
+        ]
+    }
+    
+    return solutions
 ```
 
-### Issue: Broker Connection Problems
+#### Problem: Data Feed Interruptions
 
 **Symptoms:**
-- Authentication failures
-- Rate limit errors
-- Market data issues
-- Order execution failures
+- Missing or stale price data
+- Delayed updates
+- Data feed disconnections
 
-**Diagnostic Steps:**
-1. Verify API credentials
-2. Check account status
-3. Test API connectivity
-4. Review rate limit usage
+**Solution Steps:**
+```python
+def troubleshoot_data_feed():
+    """
+    Systematic data feed troubleshooting
+    """
+    checks = {
+        'data_provider_status': {
+            'action': 'Check provider status page',
+            'url': 'https://status.dataprovider.com'
+        },
+        'api_limits': {
+            'action': 'Verify rate limits not exceeded',
+            'check': 'api_usage vs rate_limit'
+        },
+        'subscription_status': {
+            'action': 'Confirm subscription is active',
+            'verify': 'payment_status and subscription_expiry'
+        },
+        'network_latency': {
+            'action': 'Test connection speed to data provider',
+            'threshold': '< 100ms latency required'
+        }
+    }
+    
+    return checks
+```
 
-**Solutions:**
-```bash
-# Test Alpaca connection
-curl -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-     -H "APCA-API-SECRET-KEY: $ALPACA_SECRET" \
-     https://paper-api.alpaca.markets/v2/account
+### 2. Performance Issues
 
-# Test Binance connection
-curl -H "X-MBX-APIKEY: $BINANCE_API_KEY" \
-     https://api.binance.com/api/v3/account
+#### Problem: Slow System Response
 
-# Check rate limit headers
-curl -I https://paper-api.alpaca.markets/v2/account
+**Symptoms:**
+- Delayed trade executions
+- Slow UI updates
+- High CPU/memory usage
+
+**Diagnostic Process:**
+```python
+def diagnose_performance_issues():
+    """
+    Identify performance bottlenecks
+    """
+    diagnostics = {
+        'system_resources': {
+            'cpu_usage': 'Check CPU utilization',
+            'memory_usage': 'Monitor RAM usage',
+            'disk_io': 'Check disk read/write speeds',
+            'network_io': 'Monitor network bandwidth'
+        },
+        'application_metrics': {
+            'api_response_times': 'Average API call duration',
+            'database_queries': 'Query execution times',
+            'cache_hit_rates': 'Cache efficiency',
+            'concurrent_connections': 'Active connection count'
+        },
+        'trading_performance': {
+            'order_fulfillment_time': 'Time from order to fill',
+            'market_data_latency': 'Delay in price updates',
+            'strategy_calculation_time': 'Strategy processing speed'
+        }
+    }
+    
+    return diagnostics
+```
+
+**Optimization Solutions:**
+```python
+def optimize_system_performance():
+    """
+    Performance optimization recommendations
+    """
+    optimizations = {
+        'database_optimization': [
+            "Enable database connection pooling",
+            "Add indexes to frequently queried columns",
+            "Archive old trade data",
+            "Optimize query structure"
+        ],
+        'caching_strategy': [
+            "Implement Redis for frequently accessed data",
+            "Cache market data with appropriate TTL",
+            "Use memory mapping for large datasets",
+            "Enable response compression"
+        ],
+        'api_optimization': [
+            "Implement request batching",
+            "Use connection keep-alive",
+            "Optimize payload sizes",
+            "Implement request queuing"
+        ],
+        'system_configuration': [
+            "Increase Java heap size if applicable",
+            "Optimize garbage collection settings",
+            "Enable hardware acceleration",
+            "Use SSD storage for databases"
+        ]
+    }
+    
+    return optimizations
+```
+
+### 3. Trading Errors
+
+#### Problem: Order Rejection
+
+**Symptoms:**
+- Orders rejected by broker
+- Insufficient margin errors
+- Invalid symbol errors
+
+**Order Rejection Analysis:**
+```python
+def analyze_order_rejection(order_data, rejection_reason):
+    """
+    Analyze why orders are being rejected
+    """
+    analysis = {
+        'margin_insufficient': {
+            'causes': [
+                "Account balance below minimum margin",
+                "Existing positions consuming margin",
+                "Day trading buying power restrictions"
+            ],
+            'solutions': [
+                "Deposit additional funds",
+                "Close existing positions",
+                "Wait for cash settlement"
+            ]
+        },
+        'symbol_invalid': {
+            'causes': [
+                "Symbol delisted or suspended",
+                "Trading halted for symbol",
+                "Market hours restriction"
+            ],
+            'solutions': [
+                "Verify symbol is actively traded",
+                "Check for trading halts",
+                "Ensure market is open"
+            ]
+        },
+        'quantity_invalid': {
+            'causes': [
+                "Quantity below minimum order size",
+                "Quantity above maximum order size",
+                "Quantity not divisible by lot size"
+            ],
+            'solutions': [
+                "Check broker's minimum quantity requirements",
+                "Adjust quantity to meet lot size requirements",
+                "Verify maximum order limits"
+            ]
+        }
+    }
+    
+    return analysis.get(rejection_reason, {})
+```
+
+### 4. Risk Management Issues
+
+#### Problem: Circuit Breaker Triggered
+
+**Symptoms:**
+- Trading stopped unexpectedly
+- "Risk limit exceeded" messages
+- Positions forcibly closed
+
+**Circuit Breaker Diagnosis:**
+```python
+def diagnose_circuit_breaker(trigger_reason, account_data):
+    """
+    Understand why circuit breaker was triggered
+    """
+    diagnosis = {
+        'max_drawdown_exceeded': {
+            'current_drawdown': account_data.get('current_drawdown', 0),
+            'threshold': account_data.get('max_drawdown_limit', 0.15),
+            'causes': [
+                "Series of losing trades",
+                "High volatility market conditions",
+                "Inadequate stop losses"
+            ],
+            'immediate_actions': [
+                "Stop all trading immediately",
+                "Review open positions",
+                "Assess overall portfolio risk"
+            ],
+            'prevention': [
+                "Implement tighter stop losses",
+                "Reduce position sizes",
+                "Diversify across strategies"
+            ]
+        },
+        'position_limit_exceeded': {
+            'current_exposure': account_data.get('total_position_value', 0),
+            'limit': account_data.get('position_limit', 0.10),
+            'causes': [
+                "Position sizes too large",
+                "Multiple correlated positions",
+                "Concentrated sector exposure"
+            ],
+            'immediate_actions': [
+                "Reduce position sizes",
+                "Close weakest positions",
+                "Implement diversification"
+            ]
+        }
+    }
+    
+    return diagnosis.get(trigger_reason, {})
+```
+
+## Advanced Troubleshooting
+
+### 1. Log Analysis
+
+#### Centralized Log Access
+```python
+def analyze_system_logs(log_level='ERROR', hours_back=24):
+    """
+    Analyze system logs for error patterns
+    """
+    import glob
+    from datetime import datetime, timedelta
+    
+    log_files = glob.glob('logs/*.log')
+    cutoff_time = datetime.now() - timedelta(hours=hours_back)
+    errors = []
+    
+    for log_file in log_files:
+        with open(log_file, 'r') as f:
+            for line in f:
+                if log_level in line.upper():
+                    timestamp_str = extract_timestamp_from_log(line)
+                    if timestamp_str and parse_timestamp(timestamp_str) > cutoff_time:
+                        errors.append({
+                            'file': log_file,
+                            'timestamp': timestamp_str,
+                            'message': line.strip(),
+                            'severity': log_level
+                        })
+    
+    # Group similar errors
+    error_patterns = group_similar_errors(errors)
+    
+    return {
+        'total_errors': len(errors),
+        'unique_errors': len(error_patterns),
+        'patterns': error_patterns,
+        'recommendations': generate_recommendations(error_patterns)
+    }
+
+def group_similar_errors(errors):
+    """
+    Group errors by similarity to identify patterns
+    """
+    from collections import defaultdict
+    import difflib
+    
+    error_groups = defaultdict(list)
+    
+    for error in errors:
+        error_message = error['message']
+        
+        # Find similar errors using string similarity
+        found_group = False
+        for group_key in error_groups.keys():
+            similarity = difflib.SequenceMatcher(None, error_message, group_key).ratio()
+            if similarity > 0.8:  # 80% similarity threshold
+                error_groups[group_key].append(error)
+                found_group = True
+                break
+        
+        if not found_group:
+            error_groups[error_message].append(error)
+    
+    return dict(error_groups)
+```
+
+#### Error Pattern Recognition
+```python
+def recognize_error_patterns(log_analysis):
+    """
+    Identify common error patterns and their solutions
+    """
+    patterns = {
+        'connection_timeouts': {
+            'pattern': 'Connection timeout',
+            'frequency': log_analysis['patterns'].get('timeout', {}).get('count', 0),
+            'likely_causes': [
+                "Network connectivity issues",
+                "Broker server overload",
+                "Rate limiting",
+                "Firewall blocking"
+            ],
+            'investigation_steps': [
+                "Test network connectivity",
+                "Check broker status",
+                "Verify API rate limits",
+                "Review firewall rules"
+            ],
+            'solutions': [
+                "Implement exponential backoff",
+                "Use multiple broker connections",
+                "Optimize request frequency",
+                "Check network configuration"
+            ]
+        },
+        'authentication_failures': {
+            'pattern': 'Authentication failed',
+            'frequency': log_analysis['patterns'].get('auth', {}).get('count', 0),
+            'likely_causes': [
+                "Expired API keys",
+                "Incorrect credentials",
+                "Account permissions changed",
+                "IP address restrictions"
+            ],
+            'investigation_steps': [
+                "Verify API key validity",
+                "Check account permissions",
+                "Confirm IP whitelist",
+                "Test credentials manually"
+            ],
+            'solutions': [
+                "Regenerate API keys",
+                "Update configuration file",
+                "Contact broker support",
+                "Update IP whitelist"
+            ]
+        }
+    }
+    
+    return patterns
+```
+
+### 2. Database Issues
+
+#### Database Health Check
+```python
+def check_database_health():
+    """
+    Comprehensive database health assessment
+    """
+    import sqlite3
+    import psycopg2
+    
+    health_status = {
+        'connection': test_database_connection(),
+        'integrity': check_data_integrity(),
+        'performance': assess_query_performance(),
+        'backup_status': verify_backup_status(),
+        'storage_usage': check_storage_usage()
+    }
+    
+    return health_status
+
+def test_database_connection():
+    """
+    Test database connectivity and responsiveness
+    """
+    try:
+        # Test connection
+        if config.DATABASE_TYPE == 'sqlite':
+            conn = sqlite3.connect(config.DATABASE_PATH)
+        else:  # PostgreSQL
+            conn = psycopg2.connect(config.DATABASE_URL)
+        
+        cursor = conn.cursor()
+        
+        # Test basic query
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        
+        conn.close()
+        
+        return {
+            'status': 'HEALTHY',
+            'response_time': '< 100ms',
+            'query_result': result[0] == 1
+        }
+    except Exception as e:
+        return {
+            'status': 'FAILED',
+            'error': str(e)
+        }
+
+def check_data_integrity():
+    """
+    Verify database integrity and detect corruption
+    """
+    try:
+        conn = sqlite3.connect(config.DATABASE_PATH)
+        
+        # Run integrity check
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA integrity_check")
+        result = cursor.fetchone()
+        
+        conn.close()
+        
+        if result[0] == 'ok':
+            return {
+                'status': 'INTEGRITY_OK',
+                'message': 'Database integrity verified'
+            }
+        else:
+            return {
+                'status': 'INTEGRITY_FAILED',
+                'message': result[0]
+            }
+    except Exception as e:
+        return {
+            'status': 'ERROR',
+            'error': str(e)
+        }
+```
+
+#### Database Performance Issues
+```python
+def diagnose_database_performance():
+    """
+    Identify and resolve database performance issues
+    """
+    performance_issues = {
+        'slow_queries': identify_slow_queries(),
+        'missing_indexes': detect_missing_indexes(),
+        'table_fragmentation': check_table_fragmentation(),
+        'connection_pooling': verify_connection_pooling()
+    }
+    
+    return performance_issues
+
+def identify_slow_queries():
+    """
+    Find queries that are taking too long
+    """
+    # Enable query logging
+    # This would typically be done through database configuration
+    slow_queries = []
+    
+    try:
+        # Example for PostgreSQL
+        query = """
+        SELECT query, mean_time, calls 
+        FROM pg_stat_statements 
+        WHERE mean_time > 1000 
+        ORDER BY mean_time DESC 
+        LIMIT 10;
+        """
+        # Execute query to get slow query statistics
+        # slow_queries = execute_slow_query_analysis(query)
+        
+        return {
+            'status': 'ANALYZED',
+            'slow_queries': slow_queries,
+            'recommendations': generate_query_optimization_suggestions(slow_queries)
+        }
+    except Exception as e:
+        return {
+            'status': 'ERROR',
+            'error': str(e)
+        }
+```
+
+### 3. API and Integration Issues
+
+#### API Rate Limiting Problems
+```python
+def diagnose_api_rate_limits():
+    """
+    Diagnose API rate limiting issues
+    """
+    rate_limit_status = {}
+    
+    for broker in config.BROKERS:
+        try:
+            broker_client = get_broker_client(broker)
+            
+            # Get current usage
+            current_usage = get_api_usage(broker)
+            rate_limit = get_rate_limit(broker)
+            
+            usage_percentage = (current_usage / rate_limit) * 100
+            
+            rate_limit_status[broker] = {
+                'current_usage': current_usage,
+                'rate_limit': rate_limit,
+                'usage_percentage': usage_percentage,
+                'status': 'OK' if usage_percentage < 80 else 'WARNING'
+            }
+            
+        except Exception as e:
+            rate_limit_status[broker] = {
+                'status': 'ERROR',
+                'error': str(e)
+            }
+    
+    return rate_limit_status
+
+def implement_rate_limit_optimization():
+    """
+    Implement strategies to optimize API rate usage
+    """
+    optimizations = {
+        'request_batching': {
+            'description': 'Combine multiple requests into single calls',
+            'implementation': 'Use bulk endpoints when available',
+            'benefit': 'Reduces API calls by 50-80%'
+        },
+        'intelligent_caching': {
+            'description': 'Cache frequently accessed data',
+            'implementation': 'Redis with appropriate TTL',
+            'benefit': 'Eliminates redundant API calls'
+        },
+        'priority_queuing': {
+            'description': 'Queue non-critical requests',
+            'implementation': 'Separate high/low priority queues',
+            'benefit': 'Ensures critical requests get through'
+        },
+        'exponential_backoff': {
+            'description': 'Gradually increase wait time on rate limit',
+            'implementation': 'Implement retry with exponential backoff',
+            'benefit': 'Prevents hard rate limit blocks'
+        }
+    }
+    
+    return optimizations
 ```
 
 ## System Health Monitoring
 
-### Real-time Monitoring
-
-**CPU and Memory Usage:**
-```bash
-# Monitor CPU usage continuously
-watch -n 1 'top -bn1 | head -20'
-
-# Monitor memory usage
-watch -n 1 'free -h'
-
-# Monitor disk I/O
-watch -n 1 'iostat -x 1'
-```
-
-**Network Connectivity:**
-```bash
-# Monitor network connections
-watch -n 1 'ss -tuln'
-
-# Monitor bandwidth usage
-ifconfig eth0
-
-# Test latency to key endpoints
-for host in api.alpaca.markets api.binance.com api.polygon.io; do
-    ping -c 3 $host
-done
-```
-
-**Database Health:**
-```bash
-# Monitor database connections
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT count(*) as active_connections 
-    FROM pg_stat_activity 
-    WHERE state = 'active';
-"
-
-# Check database performance
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT query, mean_time, calls 
-    FROM pg_stat_statements 
-    ORDER BY mean_time DESC 
-    LIMIT 10;
-"
-```
-
-### Automated Health Checks
-
-**Create health check script:**
-```bash
-#!/bin/bash
-# /opt/trading-orchestrator/scripts/health-check.sh
-
-echo "=== Trading Orchestrator Health Check ==="
-echo "Timestamp: $(date)"
-echo
-
-# Check service status
-echo "--- Service Status ---"
-systemctl is-active trading-orchestrator || echo "Service not running"
-systemctl is-active postgresql || echo "PostgreSQL not running"
-systemctl is-active redis || echo "Redis not running"
-systemctl is-active nginx || echo "Nginx not running"
-
-echo
-
-# Check system resources
-echo "--- System Resources ---"
-echo "CPU Usage: $(top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1)%"
-echo "Memory Usage: $(free | grep Mem | awk '{printf("%.1f%%"), $3/$2 * 100.0}')"
-echo "Disk Usage: $(df -h / | awk 'NR==2{printf "%s", $5}')"
-
-echo
-
-# Check network connectivity
-echo "--- Network Connectivity ---"
-for endpoint in "https://paper-api.alpaca.markets" "https://api.binance.com" "https://api.polygon.io"; do
-    if curl -s --connect-timeout 5 "$endpoint" > /dev/null; then
-        echo "✓ $endpoint"
-    else
-        echo "✗ $endpoint"
-    fi
-done
-
-echo
-
-# Check database connectivity
-echo "--- Database Connectivity ---"
-if psql -h localhost -U trading_user -d trading_db -c "SELECT 1;" > /dev/null 2>&1; then
-    echo "✓ Database connection successful"
-else
-    echo "✗ Database connection failed"
-fi
-
-echo
-
-# Check recent errors
-echo "--- Recent Errors (Last 10 minutes) ---"
-find /var/log/trading-orchestrator -name "*.log" -mmin -10 -exec grep -i error {} \; | wc -l
-```
-
-**Schedule health checks:**
-```bash
-# Add to crontab
-*/5 * * * * /opt/trading-orchestrator/scripts/health-check.sh >> /var/log/trading-orchestrator/health-check.log 2>&1
-```
-
-## Emergency Response Procedures
-
-### System Failure Response
-
-**Immediate Actions:**
-1. Stop all trading activities
-2. Cancel pending orders
-3. Close open positions if necessary
-4. Document the incident
-5. Notify stakeholders
-
-**Emergency Commands:**
-```bash
-# Emergency stop all trading
-curl -X POST http://localhost:8080/api/v1/emergency/stop
-
-# Cancel all pending orders
-curl -X POST http://localhost:8080/api/v1/orders/cancel/all
-
-# Close all positions (use with caution)
-curl -X POST http://localhost:8080/api/v1/positions/close/all
-
-# Check system status
-curl http://localhost:8080/api/v1/status
-```
-
-### Data Loss Recovery
-
-**Database Backup Restoration:**
-```bash
-# Stop the application
-sudo systemctl stop trading-orchestrator
-
-# Restore from latest backup
-sudo -u postgres pg_restore -d trading_db /backups/trading_db_$(date +%Y%m%d_%H%M%S).backup
-
-# Verify restoration
-psql -h localhost -U trading_user -d trading_db -c "SELECT count(*) FROM trades;"
-
-# Start the application
-sudo systemctl start trading-orchestrator
-```
-
-### Security Incident Response
-
-**Compromised Credentials:**
-```bash
-# Immediately revoke API keys (via broker dashboard)
-# Change all passwords
-# Review access logs
-# Enable additional authentication
-
-# Review system access
-last -n 20
-who
-ps aux | grep -E 'ssh|scp|sftp'
-
-# Check for unauthorized processes
-ps aux --sort=-%cpu | head -20
-netstat -tulpn
-```
-
-## Diagnostic Tools and Utilities
-
-### Custom Diagnostic Scripts
-
-**System Information Script:**
-```bash
-#!/bin/bash
-# /opt/trading-orchestrator/scripts/system-info.sh
-
-echo "=== Trading Orchestrator System Information ==="
-echo "Hostname: $(hostname)"
-echo "OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
-echo "Kernel: $(uname -r)"
-echo "Uptime: $(uptime)"
-echo
-
-echo "--- System Resources ---"
-echo "CPU: $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
-echo "Memory: $(free -h | grep Mem | awk '{print $2}')"
-echo "Disk: $(df -h / | awk 'NR==2{print $2}')"
-echo
-
-echo "--- Network Configuration ---"
-ip addr show | grep -E 'inet ' | awk '{print $2}' | head -5
-echo
-
-echo "--- Service Status ---"
-systemctl list-units --type=service --state=active | grep trading
-```
-
-**Performance Analysis Script:**
-```bash
-#!/bin/bash
-# /opt/trading-orchestrator/scripts/performance-analysis.sh
-
-echo "=== Performance Analysis ==="
-echo "Timestamp: $(date)"
-echo
-
-# CPU analysis
-echo "--- CPU Analysis ---"
-echo "CPU Usage: $(top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1)%"
-echo "Load Average: $(uptime | awk -F'load average:' '{print $2}')"
-
-# Memory analysis
-echo "--- Memory Analysis ---"
-free -h
-
-# Disk analysis
-echo "--- Disk Analysis ---"
-df -h
-
-# Network analysis
-echo "--- Network Analysis ---"
-ss -tuln | wc -l | xargs echo "Total Network Connections:"
-netstat -i | tail -n +3 | awk '{print $1 " RX bytes:" $3 " TX bytes:" $9}'
-
-# Process analysis
-echo "--- Process Analysis ---"
-echo "Top 5 CPU consumers:"
-ps aux --sort=-%cpu | head -6
-echo
-echo "Top 5 Memory consumers:"
-ps aux --sort=-%mem | head -6
-```
-
-**Database Diagnostic Script:**
-```bash
-#!/bin/bash
-# /opt/trading-orchestrator/scripts/database-diagnostics.sh
-
-echo "=== Database Diagnostics ==="
-echo "Timestamp: $(date)"
-echo
-
-# Connection info
-echo "--- Connection Information ---"
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT 
-        count(*) as total_connections,
-        count(*) FILTER (WHERE state = 'active') as active_connections,
-        count(*) FILTER (WHERE state = 'idle') as idle_connections
-    FROM pg_stat_activity;
-"
-
-# Database size
-echo "--- Database Size ---"
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT 
-        pg_size_pretty(pg_database_size(current_database())) as db_size;
-"
-
-# Table sizes
-echo "--- Table Sizes ---"
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT 
-        schemaname,
-        tablename,
-        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
-    FROM pg_tables 
-    WHERE schemaname = 'public'
-    ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
-"
-
-# Slow queries
-echo "--- Slow Queries (if pg_stat_statements enabled) ---"
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT 
-        query,
-        calls,
-        total_time,
-        mean_time
-    FROM pg_stat_statements 
-    ORDER BY mean_time DESC 
-    LIMIT 5;
-" 2>/dev/null || echo "pg_stat_statements not enabled"
-```
-
-### Log Analysis Tools
-
-**Error Trend Analysis:**
-```bash
-#!/bin/bash
-# /opt/trading-orchestrator/scripts/error-analysis.sh
-
-LOG_FILE="/var/log/trading-orchestrator/app.log"
-
-if [ ! -f "$LOG_FILE" ]; then
-    echo "Log file not found: $LOG_FILE"
-    exit 1
-fi
-
-echo "=== Error Analysis ==="
-echo "Time range: $(head -1 "$LOG_FILE") to $(tail -1 "$LOG_FILE")"
-echo
-
-# Count errors by type
-echo "--- Error Count by Type ---"
-grep -i error "$LOG_FILE" | cut -d' ' -f1-3 | sort | uniq -c | sort -rn | head -10
-echo
-
-# Count errors by severity
-echo "--- Error Count by Severity ---"
-grep -i 'CRITICAL\|ERROR\|WARNING\|INFO' "$LOG_FILE" | cut -d' ' -f1-4 | sort | uniq -c
-echo
-
-# Recent error patterns
-echo "--- Recent Error Patterns (Last 100 lines) ---"
-tail -100 "$LOG_FILE" | grep -i error | cut -d' ' -f1-6 | sort | uniq -c | sort -rn | head -10
-echo
-
-# Broker-related errors
-echo "--- Broker-Related Errors ---"
-grep -i "broker\|alpaca\|binance" "$LOG_FILE" | grep -i error | tail -10
-echo
-
-# Database-related errors
-echo "--- Database-Related Errors ---"
-grep -i "database\|postgres\|sql" "$LOG_FILE" | grep -i error | tail -10
-```
-
-## Performance Troubleshooting
-
-### Performance Metrics
-
-**Key Performance Indicators:**
-- Order execution latency
-- API response times
-- Database query performance
-- Memory usage patterns
-- CPU utilization
-- Network latency
-
-**Performance Monitoring Commands:**
-```bash
-# Monitor order execution latency
-tail -f /var/log/trading-orchestrator/app.log | grep -E "order_executed|execution_time"
-
-# Monitor API response times
-for i in {1..10}; do
-    time curl -s https://paper-api.alpaca.markets/v2/account > /dev/null
-    sleep 1
-done
-
-# Monitor database performance
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT 
-        query,
-        mean_time,
-        calls
-    FROM pg_stat_statements 
-    WHERE mean_time > 100
-    ORDER BY mean_time DESC;
-"
-```
-
-### Performance Optimization
-
-**Database Optimization:**
-```sql
--- Analyze query performance
-EXPLAIN ANALYZE SELECT * FROM trades WHERE symbol = 'AAPL';
-
--- Add indexes for frequently queried columns
-CREATE INDEX idx_trades_symbol ON trades(symbol);
-CREATE INDEX idx_trades_timestamp ON trades(timestamp);
-
--- Vacuum and analyze tables
-VACUUM ANALYZE trades;
-VACUUM ANALYZE orders;
-```
-
-**Application Optimization:**
-```bash
-# Tune JVM settings for better performance
-export JAVA_OPTS="-Xmx4g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-
-# Tune connection pool settings
-export DB_POOL_SIZE=20
-export DB_POOL_MAX_WAIT=5000
-
-# Monitor GC performance
-jstat -gc $(pgrep -f trading-orchestrator) 5s
-```
-
-## Network Connectivity Issues
-
-### Network Diagnostics
-
-**Basic Connectivity Tests:**
-```bash
-# Test DNS resolution
-nslookup api.alpaca.markets
-nslookup api.binance.com
-
-# Test network connectivity
-ping -c 5 api.alpaca.markets
-ping -c 5 api.binance.com
-
-# Test specific ports
-nc -zv api.alpaca.markets 443
-nc -zv api.binance.com 443
-```
-
-**Advanced Network Analysis:**
-```bash
-# Monitor network traffic
-iftop -i eth0
-
-# Analyze connection states
-ss -tuln
-
-# Check firewall rules
-sudo iptables -L
-
-# Test TLS/SSL connectivity
-openssl s_client -connect api.alpaca.markets:443
-```
-
-### Network Performance Issues
-
-**High Latency Solutions:**
-```bash
-# Test latency to different endpoints
-for host in api.alpaca.markets api.binance.com api.polygon.io; do
-    echo "Testing $host..."
-    time curl -s https://$host > /dev/null
-done
-
-# Optimize network configuration
-# Check MTU settings
-ip link show | grep mtu
-
-# Optimize TCP settings
-sudo sysctl -w net.core.rmem_max=134217728
-sudo sysctl -w net.core.wmem_max=134217728
-```
-
-## Database Troubleshooting
-
-### Connection Issues
-
-**Database Connection Problems:**
-```bash
-# Test basic connectivity
-psql -h localhost -U trading_user -d trading_db
-
-# Check authentication
-psql -h localhost -U trading_user -d trading_db -c "\conninfo"
-
-# Check connection limits
-psql -h localhost -U trading_user -d trading_db -c "
-    SHOW max_connections;
-"
-
-# Check current connections
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT count(*) FROM pg_stat_activity;
-"
-```
-
-**Performance Issues:**
-```sql
--- Identify slow queries
-SELECT query, mean_time, calls 
-FROM pg_stat_statements 
-ORDER BY mean_time DESC 
-LIMIT 10;
-
--- Check for locks
-SELECT * FROM pg_locks WHERE NOT granted;
-
--- Analyze table statistics
-SELECT schemaname, tablename, n_tup_ins, n_tup_upd, n_tup_del 
-FROM pg_stat_user_tables 
-ORDER BY n_tup_ins DESC;
-```
-
-### Database Maintenance
-
-**Regular Maintenance Tasks:**
-```bash
-#!/bin/bash
-# /opt/trading-orchestrator/scripts/db-maintenance.sh
-
-echo "Starting database maintenance..."
-
-# Vacuum and analyze
-sudo -u postgres psql -d trading_db << EOF
-VACUUM ANALYZE;
-REINDEX DATABASE trading_db;
-EOF
-
-# Update table statistics
-sudo -u postgres psql -d trading_db << EOF
-ANALYZE;
-EOF
-
-# Check database integrity
-sudo -u postgres pg_dump trading_db > /dev/null
-echo "Database integrity check passed"
-
-echo "Database maintenance completed"
-```
-
-## Broker Connection Issues
-
-### Alpaca Connection Problems
-
-**API Authentication Issues:**
-```bash
-# Test API key validity
-curl -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-     -H "APCA-API-SECRET-KEY: $ALPACA_SECRET" \
-     https://paper-api.alpaca.markets/v2/account
-
-# Check account status
-curl -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-     -H "APCA-API-SECRET-KEY: $ALPACA_SECRET" \
-     https://paper-api.alpaca.markets/v2/account
-
-# Test paper trading vs live trading
-curl -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-     -H "APCA-API-SECRET-KEY: $ALPACA_SECRET" \
-     https://api.alpaca.markets/v2/account
-```
-
-**Rate Limiting Issues:**
-```bash
-# Check rate limit headers
-curl -I -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-     -H "APCA-API-SECRET-KEY: $ALPACA_SECRET" \
-     https://paper-api.alpaca.markets/v2/account
-
-# Implement exponential backoff
-for i in {1..5}; do
-    response=$(curl -s -w "%{http_code}" -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-             -H "APCA-API-SECRET-KEY: $ALPACA_SECRET" \
-             https://paper-api.alpaca.markets/v2/account)
+### 1. Real-Time Health Dashboard
+
+#### Health Metrics Collection
+```python
+class HealthMonitor:
+    def __init__(self):
+        self.metrics = {}
+        self.thresholds = {
+            'cpu_usage': 80,
+            'memory_usage': 85,
+            'disk_usage': 90,
+            'api_response_time': 5000,  # milliseconds
+            'error_rate': 0.05  # 5% error rate
+        }
     
-    status_code=${response: -3}
+    def collect_metrics(self):
+        """
+        Collect real-time system health metrics
+        """
+        import psutil
+        import time
+        
+        self.metrics = {
+            'timestamp': datetime.now().isoformat(),
+            'system': {
+                'cpu_usage': psutil.cpu_percent(interval=1),
+                'memory_usage': psutil.virtual_memory().percent,
+                'disk_usage': psutil.disk_usage('/').percent,
+                'network_io': psutil.net_io_counters()._asdict()
+            },
+            'application': {
+                'active_connections': self.get_active_connections(),
+                'api_response_time': self.measure_api_response_time(),
+                'error_rate': self.calculate_error_rate(),
+                'throughput': self.calculate_throughput()
+            },
+            'trading': {
+                'open_positions': self.get_open_positions_count(),
+                'pending_orders': self.get_pending_orders_count(),
+                'daily_pnl': self.get_daily_pnl(),
+                'risk_utilization': self.get_risk_utilization()
+            }
+        }
+        
+        return self.metrics
     
-    if [ "$status_code" = "200" ]; then
-        echo "Request successful"
-        break
-    else
-        echo "Rate limited, waiting $((2**i)) seconds..."
-        sleep $((2**i))
-    fi
-done
+    def check_health_status(self):
+        """
+        Evaluate system health against thresholds
+        """
+        issues = []
+        
+        # Check system metrics
+        for metric, value in self.metrics['system'].items():
+            if metric in self.thresholds and value > self.thresholds[metric]:
+                issues.append({
+                    'category': 'SYSTEM',
+                    'metric': metric,
+                    'value': value,
+                    'threshold': self.thresholds[metric],
+                    'severity': 'HIGH' if value > self.thresholds[metric] * 1.2 else 'MEDIUM'
+                })
+        
+        # Check application metrics
+        for metric, value in self.metrics['application'].items():
+            if metric in self.thresholds and value > self.thresholds[metric]:
+                issues.append({
+                    'category': 'APPLICATION',
+                    'metric': metric,
+                    'value': value,
+                    'threshold': self.thresholds[metric],
+                    'severity': 'HIGH' if value > self.thresholds[metric] * 1.5 else 'MEDIUM'
+                })
+        
+        return {
+            'overall_status': 'HEALTHY' if len(issues) == 0 else 'DEGRADED',
+            'issues_count': len(issues),
+            'issues': issues,
+            'recommendations': self.generate_recommendations(issues)
+        }
 ```
 
-### Binance Connection Problems
+### 2. Automated Alert System
 
-**API Key Issues:**
-```bash
-# Test Binance API key
-curl -H "X-MBX-APIKEY: $BINANCE_API_KEY" \
-     https://api.binance.com/api/v3/account
-
-# Check server time (required for trading)
-curl https://api.binance.com/api/v3/time
-
-# Test with different environments
-export BINANCE_BASE_URL="https://testnet.binance.vision"  # For testing
-export BINANCE_BASE_URL="https://api.binance.com"  # For production
+#### Alert Configuration
+```python
+class AlertSystem:
+    def __init__(self):
+        self.alert_rules = [
+            {
+                'name': 'high_cpu_usage',
+                'condition': 'cpu_usage > 90',
+                'action': 'email',
+                'severity': 'HIGH',
+                'cooldown': 300  # 5 minutes
+            },
+            {
+                'name': 'trading_error_spike',
+                'condition': 'error_rate > 0.10',
+                'action': 'sms,email',
+                'severity': 'CRITICAL',
+                'cooldown': 60  # 1 minute
+            },
+            {
+                'name': 'broker_connection_lost',
+                'condition': 'broker_status == DISCONNECTED',
+                'action': 'sms,email,webhook',
+                'severity': 'CRITICAL',
+                'cooldown': 30  # 30 seconds
+            }
+        ]
+    
+    def check_alerts(self, metrics):
+        """
+        Check if any alert conditions are met
+        """
+        triggered_alerts = []
+        
+        for rule in self.alert_rules:
+            if self.evaluate_condition(rule['condition'], metrics):
+                alert = {
+                    'rule': rule['name'],
+                    'severity': rule['severity'],
+                    'timestamp': datetime.now().isoformat(),
+                    'message': self.generate_alert_message(rule, metrics),
+                    'actions': rule['action'].split(',')
+                }
+                triggered_alerts.append(alert)
+                
+                # Execute alert actions
+                self.execute_alert_actions(alert)
+        
+        return triggered_alerts
 ```
 
-**Symbol and Trading Issues:**
-```bash
-# Check symbol availability
-curl "https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT"
+## Emergency Procedures
 
-# Test minimum trade amounts
-curl -H "X-MBX-APIKEY: $BINANCE_API_KEY" \
-     -X POST \
-     -d 'symbol=BTCUSDT&side=BUY&type=MARKET&quantity=0.001' \
-     https://api.binance.com/api/v3/order/test
+### 1. System Failure Response
+
+#### Emergency Shutdown Procedure
+```python
+def emergency_shutdown():
+    """
+    Emergency shutdown protocol for system failures
+    """
+    print("⚠️  EMERGENCY SHUTDOWN INITIATED ⚠️")
+    
+    shutdown_steps = [
+        {
+            'step': 1,
+            'action': 'Cancel all pending orders',
+            'priority': 'CRITICAL',
+            'timeout': 30
+        },
+        {
+            'step': 2,
+            'action': 'Close all open positions',
+            'priority': 'CRITICAL', 
+            'timeout': 60
+        },
+        {
+            'step': 3,
+            'action': 'Disconnect from all brokers',
+            'priority': 'HIGH',
+            'timeout': 30
+        },
+        {
+            'step': 4,
+            'action': 'Stop all trading strategies',
+            'priority': 'HIGH',
+            'timeout': 15
+        },
+        {
+            'step': 5,
+            'action': 'Save system state',
+            'priority': 'MEDIUM',
+            'timeout': 30
+        },
+        {
+            'step': 6,
+            'action': 'Send emergency notifications',
+            'priority': 'MEDIUM',
+            'timeout': 10
+        }
+    ]
+    
+    results = []
+    for step_info in shutdown_steps:
+        try:
+            print(f"Executing Step {step_info['step']}: {step_info['action']}")
+            
+            if step_info['action'] == 'Cancel all pending orders':
+                result = cancel_all_pending_orders()
+            elif step_info['action'] == 'Close all open positions':
+                result = close_all_positions()
+            elif step_info['action'] == 'Disconnect from all brokers':
+                result = disconnect_all_brokers()
+            elif step_info['action'] == 'Stop all trading strategies':
+                result = stop_all_strategies()
+            elif step_info['action'] == 'Save system state':
+                result = save_system_state()
+            elif step_info['action'] == 'Send emergency notifications':
+                result = send_emergency_notifications()
+            
+            results.append({
+                'step': step_info['step'],
+                'action': step_info['action'],
+                'status': 'SUCCESS',
+                'result': result
+            })
+            
+        except Exception as e:
+            results.append({
+                'step': step_info['step'],
+                'action': step_info['action'],
+                'status': 'FAILED',
+                'error': str(e)
+            })
+    
+    print("\nEmergency shutdown completed.")
+    return results
 ```
 
-## Strategy Execution Problems
+### 2. Data Recovery Procedures
 
-### Strategy Logic Issues
-
-**Debug Strategy Execution:**
-```bash
-# Enable debug logging for strategies
-export LOG_LEVEL=DEBUG
-
-# Monitor strategy performance
-tail -f /var/log/trading-orchestrator/app.log | grep -E "strategy|signal"
-
-# Check strategy configuration
-grep -A 20 "strategy" /etc/trading-orchestrator/config.yaml
-
-# Test strategy logic manually
-./scripts/test-strategy.sh --strategy=moving_average_crossover --symbol=AAPL
+#### Backup Restoration
+```python
+def restore_from_backup(backup_timestamp):
+    """
+    Restore system from backup
+    """
+    backup_dir = f"backups/{backup_timestamp}"
+    
+    restoration_steps = [
+        {
+            'step': 1,
+            'action': 'Verify backup integrity',
+            'command': f'ls -la {backup_dir}'
+        },
+        {
+            'step': 2,
+            'action': 'Stop all services',
+            'command': 'systemctl stop day-trading-orchestrator'
+        },
+        {
+            'step': 3,
+            'action': 'Restore database',
+            'command': f'sqlite3 database.db < {backup_dir}/database.sql'
+        },
+        {
+            'step': 4,
+            'action': 'Restore configuration',
+            'command': f'cp {backup_dir}/config.json config/config.json'
+        },
+        {
+            'step': 5,
+            'action': 'Restore user data',
+            'command': f'cp -r {backup_dir}/user_data/* data/'
+        },
+        {
+            'step': 6,
+            'action': 'Restart services',
+            'command': 'systemctl start day-trading-orchestrator'
+        },
+        {
+            'step': 7,
+            'action': 'Verify system health',
+            'command': 'python main.py --health-check'
+        }
+    ]
+    
+    return restoration_steps
 ```
 
-**Signal Generation Issues:**
-```bash
-# Monitor signal generation
-tail -f /var/log/trading-orchestrator/app.log | grep "signal generated"
+### 3. Communication Protocols
 
-# Check data feed issues
-grep -i "data\|market_data\|price" /var/log/trading-orchestrator/app.log | tail -20
-
-# Verify indicators calculation
-grep -i "indicator\|calculation" /var/log/trading-orchestrator/app.log | tail -10
+#### Crisis Communication Template
+```python
+def generate_crisis_communication(issue_type, severity):
+    """
+    Generate appropriate communication for crisis situations
+    """
+    templates = {
+        'SYSTEM_FAILURE': {
+            'CRITICAL': {
+                'subject': 'URGENT: Trading System Failure - Immediate Action Required',
+                'message': '''
+                CRITICAL SYSTEM ALERT
+                
+                The trading system has experienced a critical failure.
+                
+                Time: {timestamp}
+                Issue: {issue_description}
+                Impact: Trading operations suspended
+                
+                Actions Taken:
+                - Emergency shutdown initiated
+                - All positions secured
+                - Investigation underway
+                
+                Next Steps:
+                - Technical team engaged
+                - ETA for resolution: {eta}
+                - Updates will follow every 30 minutes
+                
+                Contact: {emergency_contact}
+                '''
+            },
+            'HIGH': {
+                'subject': 'Alert: Trading System Performance Degradation',
+                'message': '''
+                SYSTEM ALERT
+                
+                The trading system is experiencing performance issues.
+                
+                Time: {timestamp}
+                Issue: {issue_description}
+                Impact: Reduced system responsiveness
+                
+                Actions Being Taken:
+                - Performance optimization in progress
+                - Monitoring increased
+                
+                Expected Resolution: {eta}
+                '''
+            }
+        },
+        'BROKER_CONNECTION': {
+            'CRITICAL': {
+                'subject': 'CRITICAL: Broker Connection Lost',
+                'message': '''
+                BROKER CONNECTION ALERT
+                
+                Connection to {broker_name} has been lost.
+                
+                Time: {timestamp}
+                Impact: Unable to execute trades with {broker_name}
+                
+                Current Status:
+                - Alternative connections: {alternative_status}
+                - Manual intervention: {manual_status}
+                
+                Resolution ETA: {eta}
+                '''
+            }
+        }
+    }
+    
+    return templates.get(issue_type, {}).get(severity, {})
 ```
 
-### Backtesting Issues
+## Support Escalation
 
-**Backtest Performance Problems:**
-```bash
-# Check backtest configuration
-./scripts/run-backtest.sh --help
+### 1. When to Escalate
 
-# Monitor backtest progress
-tail -f /var/log/trading-orchestrator/backtest.log
-
-# Analyze backtest results
-grep -i "performance\|return\|sharpe" /var/log/trading-orchestrator/backtest.log
-
-# Check for data quality issues
-grep -i "missing\|null\|invalid" /var/log/trading-orchestrator/backtest.log
+#### Escalation Criteria
+```python
+def determine_escalation_level(issue_severity, issue_duration, business_impact):
+    """
+    Determine appropriate escalation level
+    """
+    escalation_matrix = {
+        ('LOW', '< 1 hour', 'MINIMAL'): 'SELF_SERVICE',
+        ('MEDIUM', '< 4 hours', 'LOW'): 'TIER_1_SUPPORT',
+        ('HIGH', '< 2 hours', 'MEDIUM'): 'TIER_2_SUPPORT',
+        ('CRITICAL', '< 1 hour', 'HIGH'): 'TIER_3_SUPPORT',
+        ('CRITICAL', '> 1 hour', 'HIGH'): 'EXECUTIVE_ESCALATION'
+    }
+    
+    return escalation_matrix.get((issue_severity, issue_duration, business_impact), 'TIER_1_SUPPORT')
 ```
 
-## Risk Management Alerts
+### 2. Escalation Process
 
-### Risk Limit Violations
+#### Tier 1 Support (Initial Contact)
+**Self-Service Resources:**
+- Troubleshooting wizard
+- Knowledge base articles
+- Video tutorials
+- Community forums
 
-**Position Size Limits:**
-```bash
-# Check current positions
-curl http://localhost:8080/api/v1/positions
+**Contact Methods:**
+- In-app help chat
+- Email: support@daytradingorchestrator.com
+- Response time: 2-4 hours
 
-# Check position limits
-grep -i "position.*limit" /etc/trading-orchestrator/config.yaml
+#### Tier 2 Support (Technical Issues)
+**Escalation Criteria:**
+- Complex technical problems
+- Integration issues
+- Performance problems
+- API-related issues
 
-# Monitor risk metrics
-grep -i "risk\|exposure" /var/log/trading-orchestrator/app.log | tail -20
+**Contact Methods:**
+- Priority email: urgent@daytradingorchestrator.com
+- Phone: +1-800-TRADING (business hours)
+- Video call: Scheduled appointment
+- Response time: 1-2 hours
+
+#### Tier 3 Support (Critical Issues)
+**Escalation Criteria:**
+- System outages
+- Data corruption
+- Security incidents
+- Financial impact
+
+**Contact Methods:**
+- Emergency hotline: +1-800-URGENT-1
+- Emergency email: critical@daytradingorchestrator.com
+- 24/7 monitoring
+- Response time: 15-30 minutes
+
+### 3. Information to Provide
+
+#### Problem Report Template
+```python
+def generate_problem_report():
+    """
+    Template for comprehensive problem reporting
+    """
+    report_template = {
+        'user_information': {
+            'user_id': 'user_12345',
+            'account_type': 'PREMIUM',
+            'subscription_status': 'ACTIVE',
+            'contact_preference': 'email'
+        },
+        'problem_details': {
+            'problem_id': 'PROB-2024-001',
+            'title': 'Broker connection timeout',
+            'description': 'Detailed problem description',
+            'reproduction_steps': [
+                'Step 1: Login to system',
+                'Step 2: Connect to Alpaca broker',
+                'Step 3: Observe connection timeout'
+            ],
+            'expected_behavior': 'Successful broker connection',
+            'actual_behavior': 'Connection timeout after 30 seconds'
+        },
+        'system_information': {
+            'system_version': 'v2.1.0',
+            'operating_system': 'Ubuntu 20.04',
+            'python_version': '3.9.7',
+            'browser': 'Chrome 95.0.4638.69',
+            'timestamp': datetime.now().isoformat()
+        },
+        'environmental_information': {
+            'network_type': 'WIFI',
+            'internet_speed': '50 Mbps',
+            'firewall': 'Enabled',
+            'proxy': 'None',
+            'antivirus': 'Active'
+        },
+        'logs_and_attachments': {
+            'log_files': ['system.log', 'trading.log', 'error.log'],
+            'screenshots': ['connection_error.png'],
+            'configuration': 'config.json',
+            'database': 'trading.db'
+        },
+        'business_impact': {
+            'affected_features': ['Broker connection', 'Order execution'],
+            'trading_disruption': 'HIGH',
+            'financial_impact': 'Unable to execute trades',
+            'workaround_available': False
+        }
+    }
+    
+    return report_template
 ```
 
-**Daily Loss Limits:**
-```bash
-# Check daily P&L
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT 
-        DATE(timestamp) as trade_date,
-        SUM(CASE WHEN side = 'sell' THEN quantity * price - fees 
-                 WHEN side = 'buy' THEN -(quantity * price + fees) 
-                 ELSE 0 END) as daily_pnl
-    FROM trades 
-    WHERE DATE(timestamp) = CURRENT_DATE
-    GROUP BY DATE(timestamp);
-"
+## Preventive Maintenance
 
-# Check loss limits configuration
-grep -i "daily.*loss\|stop.*loss" /etc/trading-orchestrator/config.yaml
+### 1. Regular Health Checks
+
+#### Automated Maintenance Schedule
+```python
+def setup_maintenance_schedule():
+    """
+    Establish regular maintenance routine
+    """
+    maintenance_schedule = {
+        'daily': {
+            'tasks': [
+                'Check system resource usage',
+                'Review error logs',
+                'Verify data feed status',
+                'Update security patches'
+            ],
+            'time': '02:00',
+            'duration': '15 minutes'
+        },
+        'weekly': {
+            'tasks': [
+                'Database optimization',
+                'Performance analysis',
+                'Security audit',
+                'Backup verification',
+                'Strategy performance review'
+            ],
+            'time': 'Sunday 03:00',
+            'duration': '1 hour'
+        },
+        'monthly': {
+            'tasks': [
+                'Complete system health audit',
+                'Update dependencies',
+                'Capacity planning review',
+                'Disaster recovery test',
+                'User training and updates'
+            ],
+            'time': 'First Sunday 04:00',
+            'duration': '2 hours'
+        },
+        'quarterly': {
+            'tasks': [
+                'Security penetration testing',
+                'Complete backup restoration test',
+                'Performance optimization review',
+                'Disaster recovery drill',
+                'Business continuity planning update'
+            ],
+            'time': 'First Sunday 05:00',
+            'duration': '4 hours'
+        }
+    }
+    
+    return maintenance_schedule
 ```
 
-## API and WebSocket Issues
+### 2. Performance Monitoring
 
-### REST API Problems
-
-**API Response Issues:**
-```bash
-# Test API endpoints
-curl -v http://localhost:8080/api/v1/status
-curl -v http://localhost:8080/api/v1/positions
-curl -v http://localhost:8080/api/v1/orders
-
-# Check API error responses
-curl -s http://localhost:8080/api/v1/invalid-endpoint | jq .
-
-# Monitor API request/response times
-time curl http://localhost:8080/api/v1/status
+#### Key Performance Indicators
+```python
+def define_kpis():
+    """
+    Define key performance indicators for system health
+    """
+    kpis = {
+        'system_performance': {
+            'cpu_utilization': {'target': '< 70%', 'alert': '> 85%'},
+            'memory_usage': {'target': '< 75%', 'alert': '> 90%'},
+            'disk_usage': {'target': '< 80%', 'alert': '> 95%'},
+            'api_response_time': {'target': '< 500ms', 'alert': '> 2000ms'},
+            'database_query_time': {'target': '< 100ms', 'alert': '> 500ms'}
+        },
+        'trading_performance': {
+            'order_fulfillment_rate': {'target': '> 95%', 'alert': '< 90%'},
+            'execution_latency': {'target': '< 100ms', 'alert': '> 500ms'},
+            'data_feed_uptime': {'target': '> 99.9%', 'alert': '< 99%'},
+            'strategy_success_rate': {'target': '> 60%', 'alert': '< 40%'},
+            'risk_limit_violations': {'target': '0', 'alert': '> 1'}
+        },
+        'business_metrics': {
+            'system_availability': {'target': '> 99.5%', 'alert': '< 99%'},
+            'user_satisfaction': {'target': '> 4.5/5', 'alert': '< 4.0/5'},
+            'support_ticket_resolution': {'target': '< 24 hours', 'alert': '> 48 hours'},
+            'feature_adoption_rate': {'target': '> 80%', 'alert': '< 60%'}
+        }
+    }
+    
+    return kpis
 ```
 
-**Authentication Issues:**
-```bash
-# Test API authentication
-curl -H "Authorization: Bearer $API_TOKEN" \
-     http://localhost:8080/api/v1/status
+### 3. Proactive Issue Prevention
 
-# Check token expiration
-grep -i "token\|expiration" /var/log/trading-orchestrator/app.log | tail -10
+#### Preventive Measures
+```python
+def implement_preventive_measures():
+    """
+    Proactive measures to prevent common issues
+    """
+    preventive_measures = {
+        'connection_management': {
+            'heartbeat_monitoring': 'Monitor all broker connections every 30 seconds',
+            'connection_pooling': 'Maintain connection pools for efficiency',
+            'redundancy': 'Multiple connection paths to critical services',
+            'auto_recovery': 'Automatic reconnection with exponential backoff'
+        },
+        'data_quality': {
+            'data_validation': 'Validate all market data before processing',
+            'redundant_feeds': 'Multiple data sources for critical symbols',
+            'data_freshness': 'Alert on stale data (> 5 seconds old)',
+            'backup_providers': 'Switch to backup data provider on failure'
+        },
+        'resource_management': {
+            'auto_scaling': 'Scale resources based on demand',
+            'load_balancing': 'Distribute load across multiple servers',
+            'resource_monitoring': 'Continuous monitoring of CPU, memory, disk',
+            'predictive_alerting': 'Alert before resource limits reached'
+        },
+        'security_measures': {
+            'encryption': 'Encrypt all data in transit and at rest',
+            'access_control': 'Multi-factor authentication and role-based access',
+            'audit_logging': 'Comprehensive logging of all system activities',
+            'regular_updates': 'Automatically apply security patches'
+        }
+    }
+    
+    return preventive_measures
 ```
 
-### WebSocket Connection Problems
-
-**Market Data Streaming Issues:**
-```bash
-# Test WebSocket connection
-wscat -c "wss://stream.data.alpaca.markets/v2/iex" \
-      -H "APCA-API-KEY-ID: $ALPACA_KEY" \
-      -H "APCA-API-SECRET-KEY: $ALPACA_SECRET"
-
-# Monitor WebSocket logs
-grep -i "websocket\|stream" /var/log/trading-orchestrator/app.log | tail -20
-
-# Check connection quality
-grep -i "ping\|pong\|disconnect" /var/log/trading-orchestrator/app.log | tail -15
-```
-
-## Plugin System Problems
-
-### Plugin Loading Issues
-
-**Plugin Discovery Problems:**
-```bash
-# List available plugins
-ls -la /opt/trading-orchestrator/plugins/
-
-# Check plugin dependencies
-pip list | grep -E "plugin|strategy"
-
-# Verify plugin signatures
-grep -i "signature\|verify" /var/log/trading-orchestrator/app.log | tail -10
-
-# Test plugin loading manually
-./scripts/test-plugin-loader.sh --plugin=strategy_plugins
-```
-
-**Plugin Execution Issues:**
-```bash
-# Monitor plugin execution
-grep -i "plugin.*execute\|strategy.*execute" /var/log/trading-orchestrator/app.log | tail -20
-
-# Check plugin resource usage
-ps aux | grep -E "plugin|strategy" | head -10
-
-# Validate plugin configuration
-grep -A 10 "plugins:" /etc/trading-orchestrator/config.yaml
-```
-
-## UI and Dashboard Issues
-
-### Web Interface Problems
-
-**Dashboard Loading Issues:**
-```bash
-# Check web server status
-systemctl status nginx
-
-# Test web interface accessibility
-curl -I http://localhost:8080
-curl -I http://localhost:8080/dashboard
-
-# Check frontend build
-ls -la /opt/trading-orchestrator/frontend/dist/
-
-# Monitor web server logs
-tail -f /var/log/nginx/access.log
-tail -f /var/log/nginx/error.log
-```
-
-**Real-time Updates Not Working:**
-```bash
-# Check WebSocket connections
-ss -tuln | grep 8080
-
-# Monitor WebSocket logs
-grep -i "websocket\|socket" /var/log/trading-orchestrator/app.log | tail -20
-
-# Test WebSocket endpoint
-wscat -c "ws://localhost:8080/ws" 2>/dev/null || echo "WebSocket not available"
-```
-
-## Data Feed Problems
-
-### Market Data Issues
-
-**Data Quality Problems:**
-```bash
-# Check data feed status
-grep -i "data.*feed\|market.*data" /var/log/trading-orchestrator/app.log | tail -20
-
-# Verify data integrity
-grep -i "missing.*data\|gap\|hole" /var/log/trading-orchestrator/app.log | tail -10
-
-# Check data vendor status
-curl -s https://status.polygon.io/ | head -10
-```
-
-**Historical Data Issues:**
-```bash
-# Check data availability
-psql -h localhost -U trading_user -d trading_db -c "
-    SELECT 
-        symbol,
-        COUNT(*) as records,
-        MIN(timestamp) as earliest,
-        MAX(timestamp) as latest
-    FROM market_data 
-    GROUP BY symbol 
-    ORDER BY records DESC 
-    LIMIT 10;
-"
-
-# Check for data gaps
-grep -i "data.*gap\|missing.*period" /var/log/trading-orchestrator/app.log | tail -10
-```
-
-## Report Generation Issues
-
-### Performance Reports
-
-**Report Generation Problems:**
-```bash
-# Test report generation manually
-./scripts/generate-report.sh --type=performance --period=daily
-
-# Check report templates
-ls -la /opt/trading-orchestrator/reports/templates/
-
-# Monitor report generation logs
-grep -i "report\|export" /var/log/trading-orchestrator/app.log | tail -20
-
-# Check file permissions
-ls -la /opt/trading-orchestrator/reports/output/
-```
-
-**Email Report Issues:**
-```bash
-# Test email configuration
-./scripts/test-email.sh
-
-# Check email logs
-grep -i "email\|smtp" /var/log/trading-orchestrator/app.log | tail -10
-
-# Verify SMTP settings
-grep -i "smtp\|email" /etc/trading-orchestrator/config.yaml
-```
-
-## Automated Testing Problems
-
-### Test Execution Issues
-
-**Unit Test Failures:**
-```bash
-# Run specific test suites
-python -m pytest tests/test_strategies.py -v
-python -m pytest tests/test_brokers.py -v
-python -m pytest tests/test_risk_management.py -v
-
-# Check test configuration
-cat pytest.ini
-
-# Monitor test results
-grep -i "test.*failed\|error" /tmp/test-results.log
-```
-
-**Integration Test Issues:**
-```bash
-# Run integration tests
-./scripts/run-integration-tests.sh
-
-# Check broker integration
-./scripts/test-broker-integration.sh
-
-# Monitor test environment
-grep -i "test.*environment" /var/log/trading-orchestrator/app.log | tail -10
-```
-
-## Deployment and Configuration Issues
-
-### Configuration Problems
-
-**Configuration File Issues:**
-```bash
-# Validate configuration files
-./scripts/validate-config.sh
-
-# Check configuration syntax
-grep -i "yaml\|json" /etc/trading-orchestrator/config.yaml | head -5
-
-# Compare configuration with defaults
-diff /etc/trading-orchestrator/config.yaml /opt/trading-orchestrator/config/default.yaml
-
-# Test configuration reload
-grep -i "reload\|config.*change" /var/log/trading-orchestrator/app.log | tail -10
-```
-
-**Environment Variable Issues:**
-```bash
-# Check environment variables
-env | grep -E "ALPACA|BINANCE|DB_|REDIS"
-
-# Test environment variable loading
-export $(cat /opt/trading-orchestrator/.env | xargs)
-
-# Validate critical environment variables
-./scripts/validate-env.sh
-```
-
-### Deployment Issues
-
-**Service Deployment Problems:**
-```bash
-# Check service installation
-systemctl list-unit-files | grep trading
-
-# Verify service configuration
-systemctl cat trading-orchestrator
-
-# Test service start/stop
-systemctl stop trading-orchestrator
-systemctl start trading-orchestrator
-systemctl status trading-orchestrator
-```
-
-**Docker Deployment Issues:**
-```bash
-# Check Docker containers
-docker ps -a | grep trading
-
-# Check Docker logs
-docker logs trading-orchestrator-container
-
-# Test Docker network
-docker network ls
-docker network inspect trading-network
-
-# Check volume mounts
-docker inspect trading-orchestrator-container | grep -A 10 Mounts
-```
-
-## Monitoring and Alerting
-
-### Alert Configuration
-
-**Alert System Issues:**
-```bash
-# Check alert configuration
-grep -i "alert\|notification" /etc/trading-orchestrator/config.yaml
-
-# Test alert system
-./scripts/test-alerts.sh
-
-# Monitor alert logs
-grep -i "alert\|notification" /var/log/trading-orchestrator/app.log | tail -20
-
-# Check email/SMS configuration
-grep -i "smtp\|webhook" /etc/trading-orchestrator/config.yaml
-```
-
-**Monitoring Dashboard Issues:**
-```bash
-# Check monitoring service status
-systemctl status prometheus
-systemctl status grafana
-
-# Test monitoring endpoints
-curl http://localhost:9090/api/v1/query?query=up
-curl http://localhost:3000/api/health
-
-# Check monitoring configuration
-cat /etc/prometheus/prometheus.yml
-```
-
-## Recovery Procedures
-
-### System Recovery
-
-**Complete System Recovery:**
-```bash
-#!/bin/bash
-# /opt/trading-orchestrator/scripts/emergency-recovery.sh
-
-echo "Starting emergency recovery procedure..."
-
-# Stop all trading activities
-echo "Stopping all trading activities..."
-curl -X POST http://localhost:8080/api/v1/emergency/stop
-
-# Cancel all pending orders
-echo "Canceling all pending orders..."
-curl -X POST http://localhost:8080/api/v1/orders/cancel/all
-
-# Backup current state
-echo "Creating emergency backup..."
-./scripts/create-emergency-backup.sh
-
-# Restore from last known good state
-echo "Restoring from backup..."
-./scripts/restore-from-backup.sh --latest
-
-# Restart services
-echo "Restarting services..."
-systemctl restart trading-orchestrator
-
-# Verify system health
-echo "Verifying system health..."
-./scripts/health-check.sh
-
-echo "Emergency recovery completed"
-```
-
-**Database Recovery:**
-```bash
-# Stop application
-sudo systemctl stop trading-orchestrator
-
-# Restore database from backup
-sudo -u postgres dropdb trading_db
-sudo -u postgres createdb trading_db
-sudo -u postgres pg_restore -d trading_db /backups/trading_db_latest.backup
-
-# Start application
-sudo systemctl start trading-orchestrator
-
-# Verify data integrity
-./scripts/verify-data-integrity.sh
-```
-
-**Configuration Recovery:**
-```bash
-# Restore configuration files
-cp /backups/config/trading-orchestrator.config.yaml /etc/trading-orchestrator/config.yaml
-cp /backups/config/.env /opt/trading-orchestrator/.env
-
-# Restart services
-systemctl restart trading-orchestrator
-
-# Verify configuration
-./scripts/validate-config.sh
-```
+## Conclusion
+
+The Troubleshooting Wizard is your primary tool for quickly identifying and resolving issues with the Day Trading Orchestrator. By following the systematic approach outlined in this guide, you can:
+
+1. **Quickly Identify Problems**: Use automated diagnostics to pinpoint issues
+2. **Follow Structured Solutions**: Step-by-step guides for common problems
+3. **Prevent Future Issues**: Implement proactive monitoring and maintenance
+4. **Know When to Escalate**: Understand when professional support is needed
+5. **Maintain System Health**: Regular preventive maintenance and monitoring
+
+### Quick Reference Card
+
+**Emergency Contacts:**
+- Tier 1 Support: support@daytradingorchestrator.com
+- Tier 2 Support: urgent@daytradingorchestrator.com
+- Critical Issues: critical@daytradingorchestrator.com
+- Emergency Hotline: +1-800-URGENT-1
+
+**Common Solutions:**
+- Connection Issues: Check credentials, test network, verify broker status
+- Performance Issues: Monitor resources, optimize queries, implement caching
+- Trading Errors: Verify account status, check margin, confirm market hours
+- System Crashes: Run diagnostics, check logs, restart services if safe
+
+**Prevention Tips:**
+- Keep system updated
+- Monitor resource usage
+- Maintain backup procedures
+- Test emergency procedures regularly
+- Keep contact information current
+
+Remember: When in doubt, it's always better to seek help than to risk trading with a compromised system.
 
 ---
 
-This troubleshooting wizard provides comprehensive guidance for diagnosing and resolving common issues in the Day Trading Orchestrator system. Use the diagnostic procedures and tools systematically to identify and fix problems efficiently.
+**Need More Help?** Use the Interactive Tutorial System to practice troubleshooting scenarios or contact support through the Matrix Command Center.
