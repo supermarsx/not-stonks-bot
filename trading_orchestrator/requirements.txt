@@ -1,0 +1,97 @@
+# Day Trading Orchestrator System Requirements
+# Python 3.11+ required
+
+# Core Framework
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Database
+sqlalchemy>=2.0.23
+alembic>=1.12.1
+aiosqlite>=0.19.0
+psycopg2-binary>=2.9.9
+
+# Async Support
+aiohttp>=3.9.1
+websockets>=12.0
+
+# Broker APIs - Official SDKs
+python-binance>=1.0.19
+ibapi>=10.19.3  # Interactive Brokers TWS API
+ib-insync>=0.9.86  # Alternative async wrapper for IBKR
+alpaca-py>=0.21.0
+
+# Security & Authentication
+cryptography>=41.0.7
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+
+# Terminal UI
+rich>=13.7.0
+textual>=0.44.1
+blessed>=1.20.0
+prompt-toolkit>=3.0.43
+
+# AI/LLM Integration
+openai>=1.3.7
+anthropic>=0.7.7
+langchain>=0.1.0
+langchain-community>=0.0.10
+
+# Data Processing
+pandas>=2.1.4
+numpy>=1.26.2
+pyarrow>=14.0.1
+TA-Lib>=0.4.25  # Technical Analysis
+
+# Utilities
+python-dotenv>=1.0.0
+httpx>=0.25.2
+tenacity>=8.2.3
+arrow>=1.3.0
+pytz>=2023.3
+click>=8.1.7  # CLI commands
+colorama>=0.4.6  # Cross-platform colored terminal text
+
+# Logging & Monitoring
+loguru>=0.7.2
+prometheus-client>=0.19.0
+
+# Configuration
+pyyaml>=6.0.1
+toml>=0.10.2
+
+# Development Dependencies
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
+black>=23.12.0
+isort>=5.13.2
+flake8>=6.1.0
+mypy>=1.7.1
+pre-commit>=3.6.0
+
+# Optional Broker Dependencies
+trading212-api>=1.2.0  # Trading 212 API wrapper
+degiro-unofficial-api>=1.1.0  # DEGIRO unofficial API
+
+# Market Data and Charting
+yfinance>=0.2.18  # Yahoo Finance data
+plotly>=5.17.0  # Interactive charts
+matplotlib>=3.8.2  # Basic plotting
+
+# Additional Risk Management
+scipy>=1.11.4  # Scientific computing
+scikit-learn>=1.3.2  # Machine learning utilities
+
+# Date and Time Utilities
+dateutil>=2.8.2  # Powerful datetime extensions
+
+# Perpetual Operations Dependencies
+psutil>=5.9.6  # System and process utilities for monitoring
+jinja2>=3.1.2  # Template engine for dynamic content
+python-multipart>=0.0.6  # File upload support for dashboards
