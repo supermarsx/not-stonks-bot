@@ -1,3 +1,67 @@
-# Alpaca Configuration Example
-
-[Previous content of config.alpaca.example.json - omitted for brevity]
+{
+  "alpaca": {
+    "api_key": "your_alpaca_api_key_here",
+    "secret_key": "your_alpaca_secret_key_here",
+    "paper_trading": true,
+    "base_url": "https://paper-api.alpaca.markets",
+    "stream_url": "wss://stream.data.alpaca.markets/v2",
+    "headers": {
+      "APCA-API-KEY-ID": "your_alpaca_api_key_here",
+      "APCA-API-SECRET-KEY": "your_alpaca_secret_key_here"
+    },
+    "rate_limits": {
+      "max_requests_per_minute": 200,
+      "max_requests_per_day": 10000
+    },
+    "supported_assets": {
+      "stocks": true,
+      "etfs": true,
+      "crypto": true,
+      "bonds": false,
+      "options": true
+    },
+    "market_hours": {
+      "trading_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "trading_hours": {
+        "market_open": "09:30",
+        "market_close": "16:00",
+        "extended_hours": {
+          "pre_market_start": "04:00",
+          "pre_market_end": "09:30",
+          "after_hours_start": "16:00",
+          "after_hours_end": "20:00"
+        }
+      },
+      "timezone": "America/New_York",
+      "holidays": []
+    },
+    "order_types": {
+      "market": true,
+      "limit": true,
+      "stop": true,
+      "stop_limit": true,
+      "trailing_stop": true,
+      "trailing_stop_percent": true,
+      "bracket": true,
+      "oco": true
+    },
+    "fractions": {
+      "supported": true,
+      "minimum_quantity": 0.001,
+      "maximum_quantity": 1000000
+    },
+    "shorting": {
+      "allowed": true,
+      "locate_required": true
+    },
+    "margin": {
+      "allowed": true,
+      "margin_multiplier": 4.0
+    },
+    "webhooks": {
+      "enabled": true,
+      "base_url": "https://your-domain.com/webhooks/alpaca",
+      "events": ["trade", "order", "account", "position"]
+    }
+  }
+}

@@ -1,3 +1,50 @@
-# Binance Configuration Example
-
-[Previous content of config.binance.example.json - omitted for brevity]
+{
+  "binance": {
+    "api_key": "your_binance_api_key_here",
+    "secret_key": "your_binance_secret_key_here",
+    "testnet": true,
+    "base_url": "https://testnet.binance.vision",
+    "stream_url": "wss://testnet.binance.vision/ws",
+    "headers": {
+      "X-MBX-APIKEY": "your_binance_api_key_here"
+    },
+    "rate_limits": {
+      "max_requests_per_minute": 1200,
+      "max_requests_per_second": 10
+    },
+    "supported_assets": {
+      "spot": true,
+      "futures": true,
+      "options": false,
+      "margin": true
+    },
+    "market_hours": {
+      "24_7": true,
+      "trading_days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    },
+    "order_types": {
+      "market": true,
+      "limit": true,
+      "stop_loss": true,
+      "stop_loss_limit": true,
+      "take_profit": true,
+      "take_profit_limit": true,
+      "limit_maker": true
+    },
+    "time_in_force": {
+      "GTC": true,
+      "IOC": true,
+      "FOK": true
+    },
+    "webhooks": {
+      "enabled": true,
+      "base_url": "https://your-domain.com/webhooks/binance",
+      "events": ["executionReport", "outboundAccountPosition"]
+    },
+    "security": {
+      "require_binding": true,
+      "api_trading": true,
+      "withdrawals": false
+    }
+  }
+}

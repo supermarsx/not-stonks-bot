@@ -1,3 +1,84 @@
-# Interactive Brokers Configuration Example
-
-[Previous content of config.ibkr.example.json - omitted for brevity]
+{
+  "interactive_brokers": {
+    "host": "127.0.0.1",
+    "port": 7497,
+    "client_id": 1,
+    "paper_trading": true,
+    "tws_timeout": 60,
+    "api_timeout": 30,
+    "retry_attempts": 3,
+    "retry_delay": 5,
+    "supported_assets": {
+      "stocks": true,
+      "etfs": true,
+      "options": true,
+      "futures": true,
+      "forex": true,
+      "bonds": true,
+      "commodities": true
+    },
+    "market_hours": {
+      "trading_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "trading_hours": {
+        "market_open": "09:30",
+        "market_close": "16:00"
+      },
+      "timezone": "America/New_York",
+      "ext_hours": {
+        "pre_market": true,
+        "after_hours": true
+      }
+    },
+    "order_types": {
+      "market": true,
+      "limit": true,
+      "stop": true,
+      "stop_limit": true,
+      "trailing_stop": true,
+      "trailing_stop_percent": true,
+      "bracket": true,
+      "oco": true,
+      "iceberg": true
+    },
+    "routing": {
+      "SMART": true,
+      "DARK_POOL": true,
+      "specific_exchanges": true
+    },
+    "data_feeds": {
+      "real_time": {
+        "stocks": "ib_insync",
+        "options": "ib_insync",
+        "futures": "ib_insync",
+        "forex": "ib_insync"
+      },
+      "historical": {
+        "stocks": "ib_insync",
+        "options": "ib_insync",
+        "futures": "ib_insync",
+        "forex": "ib_insync"
+      },
+      "streaming": {
+        "enabled": true,
+        "market_data": "market_data_stream",
+        "account_updates": "account_updates_stream"
+      }
+    },
+    "account": {
+      "portfolio": {
+        "real_time_pnl": true,
+        "unrealized_pnl": true,
+        "daily_pnl": true
+      },
+      "orders": {
+        "real_time_updates": true,
+        "status_changes": true
+      }
+    },
+    "risk_management": {
+      "position_limits": true,
+      "order_size_limits": true,
+      "concentration_limits": true
+    }
+  }
+}
