@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Filter, Star, TrendingUp, TrendingDown } from 'lucide-react';
-import { MatrixButton } from '../MatrixButton';
-import { MatrixInput } from '../MatrixInput';
+import { Search, Star, Plus, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { MatrixButton } from '../ui/MatrixButton';
+import { MatrixInput } from '../ui/MatrixInput';
+import { MatrixCard } from '../ui/MatrixCard';
+import { Badge } from '../ui/Badge';
+import { useDebounce } from '../../hooks/useDebounce';
 
-interface Symbol {
+export interface Symbol {
   symbol: string;
   name: string;
   exchange: string;
@@ -13,312 +16,351 @@ interface Symbol {
   changePercent?: number;
   isWatched?: boolean;
   isFavorite?: boolean;
+  marketCap?: number;
+  volume?: number;
 }
 
 interface SymbolSearchProps {
   onSymbolSelect: (symbol: Symbol) => void;
-  onWatchlistToggle?: (symbol: string) => void;
-  onFavoritesToggle?: (symbol: string) => void;
+  watchlist?: Symbol[];
+  favorites?: Symbol[];
+  onWatchlistToggle?: (symbol: Symbol) => void;
+  onFavoriteToggle?: (symbol: Symbol) => void;
   placeholder?: string;
-  className?: string;
-  showFilters?: boolean;
-  showWatchlist?: boolean;
-  showFavorites?: boolean;
-  initialValue?: string;
-  disabled?: boolean;
+  allowMultiple?: boolean;
+  selectedSymbols?: string[];
 }
 
-export const SymbolSearch: React.FC<SymbolSearchProps> = ({
+const SymbolSearch: React.FC<SymbolSearchProps> = ({
   onSymbolSelect,
+  watchlist = [],
+  favorites = [],
   onWatchlistToggle,
-  onFavoritesToggle,
-  placeholder = "Search symbols...",
-  className = "",
-  showFilters = true,
-  showWatchlist = true,
-  showFavorites = true,
-  initialValue = "",
-  disabled = false,
+  onFavoriteToggle,
+  placeholder = "Search for symbols...",
+  allowMultiple = false,
+  selectedSymbols = []
 }) => {
-  const [searchTerm, setSearchTerm] = useState(initialValue);
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedSymbol, setSelectedSymbol] = useState<Symbol | null>(null);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [watchlistOnly, setWatchlistOnly] = useState(false);
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Symbol[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<'all' | Symbol['type']>('all');
+  const searchRef = useRef<HTMLDivElement>(null);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Mock data - in real app, this would come from an API
+  // Mock data for demonstration
   const mockSymbols: Symbol[] = [
-    { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', type: 'stock', price: 175.50, change: 2.30, changePercent: 1.33, isWatched: true, isFavorite: true },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.', exchange: 'NASDAQ', type: 'stock', price: 142.80, change: -1.20, changePercent: -0.83, isWatched: true, isFavorite: false },
-    { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NASDAQ', type: 'stock', price: 378.90, change: 5.20, changePercent: 1.39, isWatched: false, isFavorite: true },
-    { symbol: 'TSLA', name: 'Tesla, Inc.', exchange: 'NASDAQ', type: 'stock', price: 248.75, change: -3.45, changePercent: -1.37, isWatched: true, isFavorite: false },
-    { symbol: 'SPY', name: 'SPDR S&P 500 ETF', exchange: 'NYSE', type: 'etf', price: 456.80, change: 1.80, changePercent: 0.40, isWatched: false, isFavorite: false },
-    { symbol: 'QQQ', name: 'Invesco QQQ Trust', exchange: 'NASDAQ', type: 'etf', price: 389.25, change: 2.15, changePercent: 0.56, isWatched: true, isFavorite: true },
-    { symbol: 'BTC-USD', name: 'Bitcoin USD', exchange: 'COINBASE', type: 'crypto', price: 42850.75, change: 1250.30, changePercent: 3.01, isWatched: true, isFavorite: false },
-    { symbol: 'ETH-USD', name: 'Ethereum USD', exchange: 'COINBASE', type: 'crypto', price: 2580.40, change: -45.20, changePercent: -1.72, isWatched: false, isFavorite: false },
-    { symbol: 'EUR/USD', name: 'Euro to US Dollar', exchange: 'FOREX', type: 'forex', price: 1.0875, change: 0.0025, changePercent: 0.23, isWatched: false, isFavorite: false },
-    { symbol: 'GLD', name: 'SPDR Gold Shares', exchange: 'NYSE', type: 'commodity', price: 189.45, change: -1.25, changePercent: -0.66, isWatched: false, isFavorite: true },
+    {
+      symbol: 'AAPL',
+      name: 'Apple Inc.',
+      exchange: 'NASDAQ',
+      type: 'stock',
+      price: 150.25,
+      change: 2.15,
+      changePercent: 1.45,
+      isWatched: true,
+      isFavorite: false,
+      marketCap: 2500000000000,
+      volume: 65000000
+    },
+    {
+      symbol: 'GOOGL',
+      name: 'Alphabet Inc.',
+      exchange: 'NASDAQ',
+      type: 'stock',
+      price: 2750.80,
+      change: -15.20,
+      changePercent: -0.55,
+      isWatched: false,
+      isFavorite: true,
+      marketCap: 1800000000000,
+      volume: 1200000
+    },
+    {
+      symbol: 'BTC-USD',
+      name: 'Bitcoin',
+      exchange: 'BINANCE',
+      type: 'crypto',
+      price: 43250.75,
+      change: 1250.30,
+      changePercent: 2.98,
+      isWatched: true,
+      isFavorite: true,
+      volume: 28000000000
+    },
+    {
+      symbol: 'EURUSD=X',
+      name: 'Euro / US Dollar',
+      exchange: 'FX',
+      type: 'forex',
+      price: 1.0850,
+      change: -0.0025,
+      changePercent: -0.23,
+      isWatched: false,
+      isFavorite: false
+    },
+    {
+      symbol: 'GLD',
+      name: 'SPDR Gold Trust',
+      exchange: 'NYSEARCA',
+      type: 'etf',
+      price: 180.45,
+      change: 1.25,
+      changePercent: 0.70,
+      isWatched: false,
+      isFavorite: false,
+      volume: 8500000
+    },
+    {
+      symbol: 'XAUUSD',
+      name: 'Gold Spot',
+      exchange: 'COMEX',
+      type: 'commodity',
+      price: 2015.50,
+      change: -12.75,
+      changePercent: -0.63,
+      isWatched: true,
+      isFavorite: false
+    }
   ];
 
-  // Filter symbols based on search term and filters
-  const filterSymbols = (symbols: Symbol[], term: string, filter: string, watchlistOnly: boolean, favoritesOnly: boolean) => {
-    return symbols.filter(symbol => {
-      const matchesSearch = term === "" || 
-        symbol.symbol.toLowerCase().includes(term.toLowerCase()) ||
-        symbol.name.toLowerCase().includes(term.toLowerCase());
-      
-      const matchesFilter = filter === 'all' || symbol.type === filter;
-      
-      const matchesWatchlist = !watchlistOnly || symbol.isWatched;
-      
-      const matchesFavorites = !favoritesOnly || symbol.isFavorite;
-
-      return matchesSearch && matchesFilter && matchesWatchlist && matchesFavorites;
-    });
-  };
-
-  // Handle search
   useEffect(() => {
-    const results = filterSymbols(mockSymbols, searchTerm, activeFilter, watchlistOnly, favoritesOnly);
-    setSearchResults(results);
-  }, [searchTerm, activeFilter, watchlistOnly, favoritesOnly]);
-
-  // Handle input focus
-  const handleInputFocus = () => {
-    setIsOpen(true);
-    setIsLoading(false);
-  };
-
-  // Handle input blur
-  const handleInputBlur = (e: React.FocusEvent) => {
-    // Delay closing to allow for result clicks
-    setTimeout(() => {
-      if (!resultsRef.current?.contains(document.activeElement)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
-    }, 200);
-  };
-
-  // Handle symbol selection
-  const handleSymbolSelect = (symbol: Symbol) => {
-    setSelectedSymbol(symbol);
-    setSearchTerm(symbol.symbol);
-    setIsOpen(false);
-    onSymbolSelect(symbol);
-  };
-
-  // Handle watchlist toggle
-  const handleWatchlistToggle = (e: React.MouseEvent, symbol: string) => {
-    e.stopPropagation();
-    onWatchlistToggle?.(symbol);
-  };
-
-  // Handle favorites toggle
-  const handleFavoritesToggle = (e: React.MouseEvent, symbol: string) => {
-    e.stopPropagation();
-    onFavoritesToggle?.(symbol);
-  };
-
-  // Clear search
-  const clearSearch = () => {
-    setSearchTerm('');
-    setSelectedSymbol(null);
-    inputRef.current?.focus();
-  };
-
-  // Get symbol type color
-  const getTypeColor = (type: Symbol['type']) => {
-    const colors = {
-      stock: '#00ff00',
-      etf: '#00cc00',
-      crypto: '#ffff00',
-      forex: '#ff9900',
-      commodity: '#ff6600',
     };
-    return colors[type] || '#00ff00';
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      setIsLoading(true);
+      // Simulate API call
+      setTimeout(() => {
+        const filtered = mockSymbols.filter(symbol =>
+          symbol.symbol.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          symbol.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+        ).filter(symbol => selectedFilter === 'all' || symbol.type === selectedFilter);
+        setSearchResults(filtered);
+        setIsLoading(false);
+        setIsOpen(true);
+      }, 200);
+    } else {
+      setSearchResults([]);
+      setIsOpen(false);
+    }
+  }, [debouncedSearchTerm, selectedFilter]);
+
+  const handleSymbolClick = (symbol: Symbol) => {
+    onSymbolSelect(symbol);
+    if (!allowMultiple) {
+      setSearchTerm('');
+      setIsOpen(false);
+    }
+  };
+
+  const formatPrice = (price?: number) => {
+    if (!price) return '-';
+    if (price < 1) return price.toFixed(4);
+    if (price < 100) return price.toFixed(2);
+    return price.toFixed(2);
+  };
+
+  const formatChange = (change?: number, changePercent?: number) => {
+    if (!change || !changePercent) return { value: '-', isPositive: false };
+    return {
+      value: `${change > 0 ? '+' : ''}${change.toFixed(2)} (${changePercent > 0 ? '+' : ''}${changePercent.toFixed(2)}%)`,
+      isPositive: change > 0
+    };
+  };
+
+  const formatMarketCap = (marketCap?: number) => {
+    if (!marketCap) return '-';
+    if (marketCap >= 1e12) return `$${(marketCap / 1e12).toFixed(2)}T`;
+    if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
+    if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
+    return `$${marketCap.toLocaleString()}`;
+  };
+
+  const getTypeColor = (type: Symbol['type']) => {
+    switch (type) {
+      case 'stock': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'etf': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'crypto': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'forex': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'commodity': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+    }
+  };
+
+  const getSymbolFromMockData = (symbol: string): Symbol | undefined => {
+    return mockSymbols.find(s => s.symbol === symbol);
+  };
+
+  const isSymbolWatched = (symbol: string): boolean => {
+    const mockSymbol = getSymbolFromMockData(symbol);
+    return mockSymbol?.isWatched || watchlist.some(w => w.symbol === symbol);
+  };
+
+  const isSymbolFavorite = (symbol: string): boolean => {
+    const mockSymbol = getSymbolFromMockData(symbol);
+    return mockSymbol?.isFavorite || favorites.some(f => f.symbol === symbol);
   };
 
   return (
-    <div className={`relative ${className}`}>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-matrix-green" />
+    <div ref={searchRef} className="relative w-full max-w-2xl">
+      <div className="flex gap-2 mb-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-matrix-green w-4 h-4" />
+          <MatrixInput
+            type="text"
+            placeholder={placeholder}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-4 py-2 w-full"
+            onFocus={() => searchTerm && setIsOpen(true)}
+          />
         </div>
-        
-        <MatrixInput
-          ref={inputRef}
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="pl-10 pr-10"
-        />
-
-        {searchTerm && (
-          <button
-            onClick={clearSearch}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-          >
-            <X className="h-4 w-4 text-matrix-green hover:text-matrix-green/70" />
-          </button>
-        )}
+        <select
+          value={selectedFilter}
+          onChange={(e) => setSelectedFilter(e.target.value as typeof selectedFilter)}
+          className="bg-matrix-darker border border-matrix-green/30 rounded px-3 py-2 text-matrix-green text-sm"
+        >
+          <option value="all">All Types</option>
+          <option value="stock">Stocks</option>
+          <option value="etf">ETFs</option>
+          <option value="crypto">Crypto</option>
+          <option value="forex">Forex</option>
+          <option value="commodity">Commodities</option>
+        </select>
       </div>
 
-      {/* Filters */}
-      {showFilters && isOpen && (
-        <div className="mt-2 flex flex-wrap gap-2 p-3 bg-matrix-black border border-matrix-green/30 rounded-lg">
-          {/* Type Filter */}
-          <div className="flex gap-1">
-            {['all', 'stock', 'etf', 'crypto', 'forex', 'commodity'].map((filter) => (
-              <MatrixButton
-                key={filter}
-                size="sm"
-                variant={activeFilter === filter ? 'primary' : 'secondary'}
-                onClick={() => setActiveFilter(filter)}
-              >
-                {filter.toUpperCase()}
-              </MatrixButton>
-            ))}
-          </div>
-
-          {/* Toggle Filters */}
-          {showWatchlist && (
-            <MatrixButton
-              size="sm"
-              variant={watchlistOnly ? 'primary' : 'secondary'}
-              onClick={() => setWatchlistOnly(!watchlistOnly)}
-            >
-              <Star className="w-3 h-3 mr-1" />
-              WATCHLIST
-            </MatrixButton>
-          )}
-
-          {showFavorites && (
-            <MatrixButton
-              size="sm"
-              variant={favoritesOnly ? 'primary' : 'secondary'}
-              onClick={() => setFavoritesOnly(!favoritesOnly)}
-            >
-              <Filter className="w-3 h-3 mr-1" />
-              FAVORITES
-            </MatrixButton>
-          )}
-        </div>
-      )}
-
-      {/* Search Results */}
       {isOpen && (
-        <div
-          ref={resultsRef}
-          className="absolute top-full left-0 right-0 mt-1 bg-matrix-black border border-matrix-green rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto"
-        >
+        <MatrixCard className="absolute top-full left-0 right-0 z-50 mt-1 max-h-96 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 text-center text-matrix-green font-mono">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-matrix-green mx-auto"></div>
-              <p className="mt-2">Searching...</p>
+            <div className="p-4 text-center text-matrix-green">
+              <div className="animate-spin w-6 h-6 border-2 border-matrix-green border-t-transparent rounded-full mx-auto mb-2"></div>
+              Searching...
             </div>
           ) : searchResults.length > 0 ? (
             <div className="py-2">
-              {searchResults.map((symbol) => (
-                <div
-                  key={symbol.symbol}
-                  onClick={() => handleSymbolSelect(symbol)}
-                  className="px-4 py-3 hover:bg-matrix-green/10 cursor-pointer border-b border-matrix-green/10 last:border-b-0"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
+              {searchResults.map((symbol) => {
+                const change = formatChange(symbol.change, symbol.changePercent);
+                const isSelected = selectedSymbols.includes(symbol.symbol);
+                
+                return (
+                  <div
+                    key={symbol.symbol}
+                    className={`px-4 py-3 hover:bg-matrix-green/10 cursor-pointer transition-colors ${
+                      isSelected ? 'bg-matrix-green/20' : ''
+                    }`}
+                    onClick={() => handleSymbolClick(symbol)}
+                  >
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div>
-                          <span className="text-matrix-green font-mono font-bold">
-                            {symbol.symbol}
-                          </span>
-                          <span
-                            className="ml-2 text-xs px-2 py-1 rounded font-mono"
-                            style={{ 
-                              backgroundColor: `${getTypeColor(symbol.type)}22`,
-                              color: getTypeColor(symbol.type)
-                            }}
-                          >
-                            {symbol.type.toUpperCase()}
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-matrix-green font-medium">
+                              {symbol.symbol}
+                            </span>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${getTypeColor(symbol.type)}`}
+                            >
+                              {symbol.type.toUpperCase()}
+                            </Badge>
+                            {isSymbolFavorite(symbol.symbol) && (
+                              <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                            )}
+                            {isSymbolWatched(symbol.symbol) && (
+                              <Plus className="w-3 h-3 text-matrix-green" />
+                            )}
+                          </div>
+                          <span className="text-xs text-matrix-green/70">
+                            {symbol.name} • {symbol.exchange}
                           </span>
                         </div>
-                        {symbol.price && (
-                          <div className="text-right">
-                            <p className="text-matrix-green font-mono">
-                              ${symbol.price.toFixed(2)}
-                            </p>
-                            {symbol.change && (
-                              <div className={`flex items-center gap-1 text-xs ${
-                                symbol.change >= 0 ? 'text-green-400' : 'text-red-400'
-                              }`}>
-                                {symbol.change >= 0 ? (
-                                  <TrendingUp className="w-3 h-3" />
-                                ) : (
-                                  <TrendingDown className="w-3 h-3" />
-                                )}
-                                {symbol.changePercent?.toFixed(2)}%
-                              </div>
-                            )}
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="font-mono text-matrix-green">
+                          ${formatPrice(symbol.price)}
+                        </div>
+                        <div className={`text-xs flex items-center gap-1 ${
+                          change.isPositive ? 'text-matrix-green' : 'text-red-400'
+                        }`}>
+                          {change.isPositive ? (
+                            <TrendingUp className="w-3 h-3" />
+                          ) : change.value === '-' ? (
+                            <Minus className="w-3 h-3" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3" />
+                          )}
+                          {change.value}
+                        </div>
+                        {symbol.marketCap && (
+                          <div className="text-xs text-matrix-green/70">
+                            {formatMarketCap(symbol.marketCap)}
                           </div>
                         )}
                       </div>
-                      <p className="text-matrix-green/70 text-sm font-mono mt-1">
-                        {symbol.name} • {symbol.exchange}
-                      </p>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-1 ml-4">
-                      {showWatchlist && (
-                        <button
-                          onClick={(e) => handleWatchlistToggle(e, symbol.symbol)}
-                          className={`p-1 rounded ${
-                            symbol.isWatched 
-                              ? 'text-yellow-400 hover:text-yellow-300' 
-                              : 'text-matrix-green/50 hover:text-matrix-green'
-                          }`}
-                        >
-                          <Star className="w-4 h-4" fill={symbol.isWatched ? 'currentColor' : 'none'} />
-                        </button>
-                      )}
-                      
-                      {showFavorites && (
-                        <button
-                          onClick={(e) => handleFavoritesToggle(e, symbol.symbol)}
-                          className={`p-1 rounded ${
-                            symbol.isFavorite 
-                              ? 'text-matrix-green hover:text-matrix-green/70' 
-                              : 'text-matrix-green/50 hover:text-matrix-green'
-                          }`}
-                        >
-                          <Filter className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+                    
+                    {(onWatchlistToggle || onFavoriteToggle) && (
+                      <div className="flex gap-2 mt-2">
+                        {onWatchlistToggle && (
+                          <MatrixButton
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onWatchlistToggle(symbol);
+                            }}
+                            className={`text-xs ${
+                              isSymbolWatched(symbol.symbol)
+                                ? 'bg-matrix-green/20 border-matrix-green text-matrix-green'
+                                : 'border-matrix-green/30 text-matrix-green/70 hover:border-matrix-green/50'
+                            }`}
+                          >
+                            {isSymbolWatched(symbol.symbol) ? 'Watched' : 'Watch'}
+                          </MatrixButton>
+                        )}
+                        {onFavoriteToggle && (
+                          <MatrixButton
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onFavoriteToggle(symbol);
+                            }}
+                            className={`text-xs ${
+                              isSymbolFavorite(symbol.symbol)
+                                ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
+                                : 'border-matrix-green/30 text-matrix-green/70 hover:border-matrix-green/50'
+                            }`}
+                          >
+                            <Star className={`w-3 h-3 mr-1 ${
+                              isSymbolFavorite(symbol.symbol) ? 'fill-current' : ''
+                            }`} />
+                            {isSymbolFavorite(symbol.symbol) ? 'Favorited' : 'Favorite'}
+                          </MatrixButton>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : searchTerm ? (
-            <div className="p-4 text-center text-matrix-green/70 font-mono">
-              <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>No symbols found for "{searchTerm}"</p>
+            <div className="p-4 text-center text-matrix-green/70">
+              No symbols found for "{searchTerm}"
             </div>
-          ) : (
-            <div className="p-4 text-center text-matrix-green/70 font-mono">
-              <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>Type to search symbols...</p>
-            </div>
-          )}
-        </div>
+          ) : null}
+        </MatrixCard>
       )}
     </div>
   );
