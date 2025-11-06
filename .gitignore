@@ -1,8 +1,5 @@
-# ==============================================================================
-# COMPREHENSIVE .GITIGNORE TEMPLATE
-# ==============================================================================
-# This template covers most common development scenarios and tools
-# Generated patterns use ** to match any subdirectory depth
+# Comprehensive .gitignore for not-stonks-bot
+# Covers Python, Node.js, databases, IDEs, and trading-specific files
 
 # ==============================================================================
 # PYTHON
@@ -34,10 +31,6 @@
 **/*.manifest
 **/*.spec
 
-# Installer logs
-**/pip-log.txt
-**/pip-delete-this-directory.txt
-
 # Unit test / coverage reports
 **/htmlcov/
 **/.tox/
@@ -57,17 +50,17 @@
 **/*.mo
 **/*.pot
 
-# Django stuff:
+# Django
 **/*.log
 **/local_settings.py
 **/db.sqlite3
 **/db.sqlite3-journal
 
-# Flask stuff:
+# Flask
 **/instance/
 **/.webassets-cache
 
-# Scrapy stuff:
+# Scrapy
 **/.scrapy
 
 # Sphinx documentation
@@ -90,23 +83,13 @@
 # pipenv
 **/Pipfile.lock
 
-# poetry
+# Poetry
 **/poetry.lock
 
 # pdm
 **/.pdm.toml
 **/.pdm-python
 **/.pdm-build/
-
-# PEP 582
-**/__pypackages__/
-
-# Celery stuff
-**/celerybeat-schedule
-**/celerybeat.pid
-
-# SageMath parsed files
-**/*.sage.py
 
 # Environments
 **/.env
@@ -116,6 +99,7 @@
 **/ENV/
 **/env.bak/
 **/venv.bak/
+**/environment.yml
 
 # Spyder project settings
 **/.spyderproject
@@ -138,12 +122,6 @@
 # pytype static type analyzer
 **/.pytype/
 
-# Cython debug symbols
-**/cython_debug/
-
-# PyCharm
-**/.idea/
-
 # ==============================================================================
 # NODE.JS / JAVASCRIPT / TYPESCRIPT
 # ==============================================================================
@@ -160,17 +138,17 @@
 **/*.seed
 **/*.pid.lock
 
-# Coverage directory used by tools like istanbul
+# Coverage directory
 **/coverage/
 **/.nyc_output
 
-# Grunt intermediate storage
+# Grunt
 **/.grunt
 
-# Bower dependency directory
+# Bower
 **/bower_components
 
-# node-waf configuration
+# node-waf
 **/.lock-wscript
 
 # Compiled binary addons
@@ -178,14 +156,12 @@
 
 # Dependency directories
 **/jspm_packages/
-
-# Snowpack dependency directory
 **/web_modules/
 
 # TypeScript cache
 **/*.tsbuildinfo
 
-# Optional npm cache directory
+# Optional npm cache
 **/.npm
 
 # Optional eslint cache
@@ -210,7 +186,6 @@
 **/.yarn-integrity
 
 # dotenv environment variable files
-**/.env
 **/.env.development.local
 **/.env.test.local
 **/.env.production.local
@@ -220,15 +195,15 @@
 **/.cache
 **/.parcel-cache
 
-# Next.js build output
+# Next.js
 **/.next
 **/out/
 
-# Nuxt.js build / generate output
+# Nuxt.js
 **/.nuxt
 **/dist
 
-# Gatsby files
+# Gatsby
 **/.cache/
 **/public
 
@@ -237,22 +212,22 @@
 **/.tmp
 **/.cache
 
-# Vuepress build output
+# Vuepress
 **/.vuepress/dist
 
-# Serverless directories
+# Serverless
 **/.serverless/
 
 # FuseBox cache
 **/.fusebox/
 
-# DynamoDB Local files
+# DynamoDB Local
 **/.dynamodb/
 
 # TernJS port file
 **/.tern-port
 
-# Stores VSCode versions used for testing VSCode extensions
+# VSCode
 **/.vscode-test
 
 # yarn v2
@@ -262,374 +237,124 @@
 **/.yarn/install-state.gz
 **/.pnp.*
 
-# Storybook
-**/.storybook-out
-**/storybook-static
-
-# Angular
-**/e2e/
-**/.angular/
-
-# React Native
-**/ios/Pods/
-**/android/app/build/
-
-# Expo
-**/.expo/
-**/dist/
-**/npm-debug.*
-**/yarn-error.*
-**/.expo-shared
-
 # ==============================================================================
-# JAVA
-# ==============================================================================
-**/*.class
-**/*.log
-**/*.ctxt
-**/.mtj.tmp/
-**/*.jar
-**/*.war
-**/*.nar
-**/*.ear
-**/*.zip
-**/*.tar.gz
-**/*.rar
-**/hs_err_pid*
-**/replay_pid*
-
-# Maven
-**/target/
-**/pom.xml.tag
-**/pom.xml.releaseBackup
-**/pom.xml.versionsBackup
-**/pom.xml.next
-**/release.properties
-**/dependency-reduced-pom.xml
-**/buildNumber.properties
-**/.mvn/timing.properties
-**/.mvn/wrapper/maven-wrapper.jar
-
-# Gradle
-**/.gradle/
-**/build/
-**/.gradletasknamecache
-**/gradle-app.setting
-
-# IntelliJ IDEA
-**/.idea/
-**/*.iws
-**/*.iml
-**/*.ipr
-**/out/
-
-# Eclipse
-**/.apt_generated
-**/.classpath
-**/.factorypath
-**/.project
-**/.settings
-**/.springBeans
-**/.sts4-cache
-**/bin/
-**/tmp/
-**/*.tmp
-**/*.bak
-**/*.swp
-**/*~.nib
-**/local.properties
-**/.metadata
-**/.loadpath
-**/.recommenders
-
-# NetBeans
-**/nbproject/private/
-**/.nbbuild/
-**/dist/
-**/nbdist/
-**/.nb-gradle/
-
-# VS Code
-**/.vscode/
-
-# ==============================================================================
-# C / C++
-# ==============================================================================
-# Prerequisites
-**/*.d
-
-# Object files
-**/*.o
-**/*.ko
-**/*.obj
-**/*.elf
-
-# Linker output
-**/*.ilk
-**/*.map
-**/*.exp
-
-# Precompiled Headers
-**/*.gch
-**/*.pch
-
-# Libraries
-**/*.lib
-**/*.a
-**/*.la
-**/*.lo
-
-# Shared objects (inc. Windows DLLs)
-**/*.dll
-**/*.so
-**/*.so.*
-**/*.dylib
-
-# Executables
-**/*.exe
-**/*.out
-**/*.app
-**/*.i*86
-**/*.x86_64
-**/*.hex
-
-# Debug files
-**/*.dSYM/
-**/*.su
-**/*.idb
-**/*.pdb
-
-# Kernel Module Compile Results
-**/*.mod*
-**/*.cmd
-**/.tmp_versions/
-**/modules.order
-**/Module.symvers
-**/Mkfile.old
-**/dkms.conf
-
-# CMake
-**/CMakeLists.txt.user
-**/CMakeCache.txt
-**/CMakeFiles
-**/CMakeScripts
-**/Testing
-**/Makefile
-**/cmake_install.cmake
-**/install_manifest.txt
-**/compile_commands.json
-**/CTestTestfile.cmake
-**/_deps
-
-# Conan
-**/conanfile.txt
-**/conandata.yml
-**/conan.lock
-**/.conan/
-
-# ==============================================================================
-# C# / .NET
-# ==============================================================================
-**/bin/
-**/obj/
-**/out/
-**/*.user
-**/*.suo
-**/*.sln.docstates
-**/*.userprefs
-**/*.pidb
-**/*.booproj
-**/.vs/
-**/packages/
-**/TestResults/
-**/*.Cache
-**/ClientBin/
-**/*_i.c
-**/*_p.c
-**/*_h.h
-**/*.ilk
-**/*.meta
-**/*.obj
-**/*.iobj
-**/*.pch
-**/*.pdb
-**/*.ipdb
-**/*.pgc
-**/*.pgd
-**/*.rsp
-**/*.sbr
-**/*.tlb
-**/*.tli
-**/*.tlh
-**/*.tmp
-**/*.tmp_proj
-**/*_wpftmp.csproj
-**/*.log
-**/*.vspscc
-**/*.vssscc
-**/.builds
-**/*.pidb
-**/*.svclog
-**/*.scc
-
-# ==============================================================================
-# GO
-# ==============================================================================
-# Binaries for programs and plugins
-**/*.exe
-**/*.exe~
-**/*.dll
-**/*.so
-**/*.dylib
-
-# Test binary, built with `go test -c`
-**/*.test
-
-# Output of the go coverage tool
-**/*.out
-
-# Dependency directories
-**/vendor/
-
-# Go workspace file
-**/go.work
-
-# ==============================================================================
-# RUST
-# ==============================================================================
-# Generated by Cargo
-**/target/
-
-# Remove Cargo.lock from gitignore if creating an executable
-# Cargo.lock
-
-# These are backup files generated by rustfmt
-**/*.rs.bk
-
-# MSVC Windows builds of rustc
-**/*.pdb
-
-# ==============================================================================
-# PHP
-# ==============================================================================
-**/vendor/
-**/node_modules/
-**/npm-debug.log
-**/yarn-error.log
-
-# Laravel specific
-**/.env
-**/storage/*.key
-**/Homestead.yaml
-**/Homestead.json
-**/.vagrant
-**/.phpunit.result.cache
-
-# Symfony specific
-**/.env.local
-**/.env.local.php
-**/.env.*.local
-**/config/secrets/prod/prod.decrypt.private.php
-**/public/bundles/
-**/var/
-**/vendor/
-
-# Composer
-**/composer.phar
-**/composer.lock
-
-# ==============================================================================
-# RUBY
-# ==============================================================================
-**/*.gem
-**/*.rbc
-**/.config
-**/coverage/
-**/InstalledFiles
-**/pkg/
-**/spec/reports/
-**/spec/examples.txt
-**/test/tmp/
-**/test/version_tmp/
-**/tmp/
-**/.yardoc/
-**/_yardoc/
-**/doc/
-**/.bundle/
-**/vendor/bundle
-**/lib/bundler/man/
-**/.rbenv-version
-**/.rvmrc
-**/.ruby-version
-**/.ruby-gemset
-**/Gemfile.lock
-
-# Rails
-**/log/
-**/tmp/
-**/db/*.sqlite3
-**/db/*.sqlite3-journal
-**/db/*.sqlite3-*
-**/public/system/
-**/coverage/
-**/spec/tmp/
-**/.sass-cache/
-**/capybara-*.html
-**/.rspec
-**/.generators
-**/.rakeTasks
-
-# ==============================================================================
-# DATABASES
+# DATABASES & DATA FILES
 # ==============================================================================
 **/*.db
 **/*.sqlite
 **/*.sqlite3
 **/*.db-shm
 **/*.db-wal
+**/*.db-journal
 
-# MySQL
-**/mysql-bin.*
+# Trading data files
+**/data/market_data.db
+**/data/trading_history.db
+**/data/analytics.db
+**/data/*.csv
+**/data/*.json
+**/data/*.parquet
+**/data/*.h5
+**/data/*.hdf5
 
-# PostgreSQL
+# Log files
+**/logs/
+**/*.log
+**/log/
+**/debug.log
+**/error.log
+**/access.log
+**/trading.log
+**/performance.log
+**/audit.log
+
+# Backup files
+**/backups/
 **/*.backup
-**/*.sql
-
-# MongoDB
-**/dump/
-
-# Redis
-**/dump.rdb
+**/*.bak
+**/archive/
+**/old/
 
 # ==============================================================================
-# DEVOPS & CONTAINERS
+# TRADING & FINANCIAL DATA
 # ==============================================================================
-# Docker
-**/Dockerfile*
-**/.dockerignore
-**/docker-compose*.yml
-**/.docker/
+**/market_data/
+**/historical_data/
+**/price_data/
+**/order_history/
+**/trade_logs/
+**/portfolio_history/
+**/performance_reports/
+**/risk_reports/
 
-# Kubernetes
-**/*.kubeconfig
+# API keys and credentials (NEVER commit these)
+**/.env*
+!**/.env.example
+**/secrets/
+**/credentials/
+**/.secrets/
+**/.credentials/
+**/auth.json
+**/service-account*.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
 
-# Terraform
-**/*.tfstate
-**/*.tfstate.*
-**/.terraform/
-**/.terraform.lock.hcl
-**/terraform.tfvars
-**/terraform.tfvars.json
-**/*.tfplan
-**/*.tfstate.backup
+# Broker-specific files
+**/alpaca_credentials.json
+**/binance_credentials.json
+**/ibkr_credentials.json
+**/broker_cache/
+**/market_data_cache/
+**/order_cache/
 
-# Vagrant
-**/.vagrant/
-**/*.box
+# ==============================================================================
+# IDEs & EDITORS
+# ==============================================================================
+# VSCode
+**/.vscode/
+**/*.code-workspace
+**/.history/
 
-# Ansible
-**/retry files
-**/*.retry
+# JetBrains IDEs
+**/.idea/
+**/*.iml
+**/*.iws
+**/*.ipr
+**/out/
+
+# Sublime Text
+**/*.sublime-workspace
+**/*.sublime-project
+
+# Vim
+**/*.swp
+**/*.swo
+**/*~
+**/.netrwhist
+**/tags
+
+# Emacs
+**/*~
+**/#*#
+**/.#*
+**/.emacs.desktop
+**/.emacs.desktop.lock
+**/*.elc
+**/auto-save-list
+**/tramp
+**/.org-id-locations
+**/*_archive
+**/*_flymake.*
+**/flycheck_*.el
+**/.dir-locals.el
+**/.projectile
+
+# Atom
+**/.atom/
 
 # ==============================================================================
 # OPERATING SYSTEMS
@@ -669,149 +394,6 @@
 **/.nfs*
 
 # ==============================================================================
-# IDEs & EDITORS
-# ==============================================================================
-# Visual Studio Code
-**/.vscode/
-**/*.code-workspace
-**/.history/
-
-# Visual Studio
-**/.vs/
-**/bin/
-**/obj/
-**/*.user
-**/*.suo
-
-# IntelliJ IDEA
-**/.idea/
-**/*.iws
-**/*.iml
-**/*.ipr
-
-# Eclipse
-**/.metadata
-**/bin/
-**/tmp/
-**/*.tmp
-**/*.bak
-**/*.swp
-**/*~.nib
-**/local.properties
-**/.settings/
-**/.loadpath
-**/.recommenders
-**/.apt_generated/
-**/.apt_generated_test/
-**/.cache-main
-**/.scala_dependencies
-**/.worksheet
-
-# NetBeans
-**/nbproject/private/
-**/.nbbuild/
-**/dist/
-**/nbdist/
-**/.nb-gradle/
-**/build/
-
-# Sublime Text
-**/*.sublime-workspace
-**/*.sublime-project
-
-# Vim
-**/*.swp
-**/*.swo
-**/*~
-**/.netrwhist
-**/tags
-
-# Emacs
-**/*~
-**/#*#
-**/.#*
-**/.emacs.desktop
-**/.emacs.desktop.lock
-**/*.elc
-**/auto-save-list
-**/tramp
-**/.org-id-locations
-**/*_archive
-**/*_flymake.*
-**/flycheck_*.el
-**/.dir-locals.el
-**/.projectile
-
-# Atom
-**/.atom/
-
-# ==============================================================================
-# LOGS & TEMPORARY FILES
-# ==============================================================================
-**/logs/
-**/*.log
-**/log/
-**/debug/
-**/tmp/
-**/temp/
-**/.tmp/
-**/.temp/
-**/crash.log
-**/error.log
-**/access.log
-**/combined.log
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
-# ==============================================================================
-# SECURITY & CREDENTIALS
-# ==============================================================================
-**/.env*
-!**/.env.example
-!**/.env.template
-**/*.pem
-**/*.key
-**/*.p12
-**/*.pfx
-**/*.jks
-**/*.keystore
-**/secrets/
-**/credentials/
-**/.secrets/
-**/.credentials/
-**/auth.json
-**/service-account*.json
-**/.gcloud/
-**/.aws/
-**/.azure/
-
-# ==============================================================================
-# BACKUP & ARCHIVE FILES
-# ==============================================================================
-**/*.bak
-**/*.backup
-**/*.old
-**/*.orig
-**/*.rej
-**/*.swp
-**/*.swo
-**/*~
-**/*.tmp
-**/*.temp
-**/.DS_Store?
-**/._*
-**/*.zip
-**/*.rar
-**/*.7z
-**/*.tar
-**/*.gz
-**/*.tgz
-**/*.tar.gz
-**/*.tar.bz2
-**/*.tar.xz
-
-# ==============================================================================
 # CACHE & BUILD ARTIFACTS
 # ==============================================================================
 **/.cache/
@@ -829,11 +411,72 @@
 **/storage/*.key
 **/bootstrap/cache/
 
+# Trading system specific
+**/compiled_strategies/
+**/model_cache/
+**/analysis_cache/
+**/temp_files/
+**/scratch/
+**/.tmp/
+**/temp/
+
+# ==============================================================================
+# TESTING & DEVELOPMENT
+# ==============================================================================
+**/.pytest_cache/
+**/test_cache/
+**/coverage/
+**/.coverage
+**/htmlcov/
+**/test_output/
+**/benchmark_results/
+**/performance_test_results/
+
+# Development files
+**/dev_config/
+**/local_settings/
+**/debug_config/
+**/test_config/
+**/*.debug
+**/debug.log
+
+# ==============================================================================
+# DOCKER & CONTAINERS
+# ==============================================================================
+**/Dockerfile*
+**/.dockerignore
+**/docker-compose*.yml
+**/.docker/
+**/docker-data/
+
+# ==============================================================================
+# CLOUD & DEPLOYMENT
+# ==============================================================================
+**/*.kubeconfig
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfvars
+**/terraform.tfvars.json
+**/*.tfplan
+**/*.tfstate.backup
+
+# AWS
+**/.aws/
+**/aws-credentials
+
+# Google Cloud
+**/.gcloud/
+**/gcloud-credentials
+
+# Azure
+**/.azure/
+**/azure-credentials
+
 # ==============================================================================
 # PACKAGE MANAGERS
 # ==============================================================================
 # npm
-**/node_modules/
 **/package-lock.json
 **/.npm/
 
@@ -846,38 +489,10 @@
 **/pnpm-lock.yaml
 **/.pnpm-store/
 
-# Bower
-**/bower_components/
-
-# Composer (PHP)
-**/vendor/
-**/composer.lock
-
-# Bundler (Ruby)
-**/vendor/bundle/
-**/Gemfile.lock
-
-# Maven (Java)
-**/target/
-
-# Gradle (Java/Android)
-**/.gradle/
-**/build/
-
-# Cargo (Rust)
-**/target/
-**/Cargo.lock
-
 # ==============================================================================
-# MISC
+# MISCELLANEOUS
 # ==============================================================================
-# Thumbnails
-**/*.jpg:large
-**/*.jpeg:large
-**/*.png:large
-**/*.gif:large
-
-# Archive files
+# Archives
 **/*.7z
 **/*.dmg
 **/*.iso
@@ -885,13 +500,70 @@
 **/*.rar
 **/*.tar
 **/*.zip
+**/*.tar.gz
+**/*.tar.bz2
+**/*.tar.xz
+
+# Thumbnails
+**/*.jpg:large
+**/*.jpeg:large
+**/*.png:large
+**/*.gif:large
+
+# Runtime files
+**/*.pid
+**/*.seed
+**/*.pid.lock
+**/*.rnd
+**/*.rng
+
+# Performance and profiling
+**/*.prof
+**/*.pstats
+**/*.trace
+**/profiles/
+**/profiling/
 
 # ==============================================================================
 # PROJECT SPECIFIC
 # ==============================================================================
-# Add your project-specific ignores here
-# workspace/
-# data/
-# uploads/
-# downloads/
+# Add your project-specific ignores below this line
+# Trading system specific files
+**/user_data/
+**/session_data/
+**/auth_tokens/
+**/api_cache/
+**/data_exports/
+**/report_exports/
+**/chart_exports/
 
+# Backtesting outputs
+**/backtest_results/
+**/optimization_results/
+**/strategy_performance/
+**/portfolio_analysis/
+
+# Research and analysis
+**/research_data/
+**/analysis_outputs/
+**/model_outputs/
+**/prediction_outputs/
+
+# Monitoring and alerts
+**/alerts/
+**/notifications/
+**/monitoring_data/
+
+# Temporary directories
+**/tmp/
+**/temp/
+**/.temp/
+**/scratch/
+**/working/
+
+# User generated content
+**/user_uploads/
+**/user_files/
+**/custom_strategies/
+**/user_configurations/
+**/personal_data/
