@@ -66,7 +66,7 @@ class AIModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<AIModel(id={self.id}, name='{self.model_name}', provider='{self.provider}', tier='{self.tier}')>"
+        return f"<AIModel(id={self.id}, name='{self.model_name}', provider='{self.provider}', tier='{self.tier}')"
 
 
 class AIPrompt(Base):
@@ -97,7 +97,7 @@ class AIPrompt(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<AIPrompt(id={self.id}, name='{self.prompt_name}', type='{self.prompt_type}')>"
+        return f"<AIPrompt(id={self.id}, name='{self.prompt_name}', type='{self.prompt_type}')"
 
 
 class AIToolCall(Base):
@@ -137,7 +137,7 @@ class AIToolCall(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     def __repr__(self):
-        return f"<AIToolCall(id={self.id}, tool='{self.tool_name}', status='{self.status}')>"
+        return f"<AIToolCall(id={self.id}, tool='{self.tool_name}', status='{self.status}')"
 
 
 class TradingStrategy(Base):
@@ -188,7 +188,7 @@ class TradingStrategy(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<TradingStrategy(id={self.id}, name='{self.strategy_name}', type='{self.strategy_type}', active={self.is_active})>"
+        return f"<TradingStrategy(id={self.id}, name='{self.strategy_name}', type='{self.strategy_type}', active={self.is_active})"
 
 
 class BacktestResult(Base):

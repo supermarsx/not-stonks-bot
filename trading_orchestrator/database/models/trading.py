@@ -88,7 +88,7 @@ class Position(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     def __repr__(self):
-        return f"<Position(id={self.id}, symbol='{self.symbol}', side='{self.side}', qty={self.quantity})>"
+        return f"<Position(id={self.id}, symbol='{self.symbol}', side='{self.side}', qty={self.quantity})"
 
 
 class Order(Base):
@@ -147,7 +147,7 @@ class Order(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<Order(id={self.id}, symbol='{self.symbol}', type='{self.order_type}', status='{self.status}')>"
+        return f"<Order(id={self.id}, symbol='{self.symbol}', type='{self.order_type}', status='{self.status}')"
 
 
 class Trade(Base):
@@ -185,7 +185,7 @@ class Trade(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     def __repr__(self):
-        return f"<Trade(id={self.id}, symbol='{self.symbol}', side='{self.side}', qty={self.quantity}, price={self.price})>"
+        return f"<Trade(id={self.id}, symbol='{self.symbol}', side='{self.side}', qty={self.quantity}, price={self.price})"
 
 
 class MarketData(Base):
@@ -219,4 +219,4 @@ class MarketData(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     def __repr__(self):
-        return f"<MarketData(symbol='{self.symbol}', timeframe='{self.timeframe}', timestamp='{self.timestamp}')>"
+        return f"<MarketData(symbol='{self.symbol}', timeframe='{self.timeframe}', timestamp='{self.timestamp}')"
