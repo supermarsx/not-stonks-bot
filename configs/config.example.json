@@ -1,0 +1,52 @@
+# Main Configuration Template
+# Copy this file to config.json and update with your settings
+{
+  "database": {
+    "url": "sqlite:///not_stonks_bot.db",
+    "echo": false
+  },
+  "ai": {
+    "trading_mode": "PAPER",
+    "default_model_tier": "fast",
+    "openai_api_key": null,
+    "anthropic_api_key": null,
+    "local_models": {
+      "enabled": false,
+      "model_path": "./models/local"
+    }
+  },
+  "brokers": {
+    "alpaca": {
+      "enabled": false,
+      "api_key": null,
+      "secret_key": null,
+      "paper": true
+    },
+    "binance": {
+      "enabled": false,
+      "api_key": null,
+      "secret_key": null,
+      "testnet": true
+    },
+    "ibkr": {
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 7497,
+      "paper": true
+    }
+  },
+  "risk": {
+    "max_position_size": 10000,
+    "max_daily_loss": 5000,
+    "max_orders_per_minute": 60,
+    "circuit_breaker": {
+      "enabled": true,
+      "daily_loss_limit": 10000,
+      "consecutive_loss_limit": 3
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/not_stonks_bot.log"
+  }
+}

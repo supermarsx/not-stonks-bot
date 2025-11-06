@@ -1,0 +1,88 @@
+# Alpaca Trading Configuration
+# Copy this file and update with your Alpaca API credentials
+
+{
+  "broker": "alpaca",
+  "name": "Alpaca Trading",
+  "enabled": false,
+  "description": "Commission-free US stocks and crypto trading",
+  
+  "api": {
+    "base_url": "https://paper-api.alpaca.markets",  // Use https://api.alpaca.markets for live
+    "api_key": null,  // Set via ALPACA_API_KEY environment variable
+    "secret_key": null,  // Set via ALPACA_SECRET_KEY environment variable
+    "version": "v2",
+    "timeout": 30,
+    "rate_limit": 200  // requests per minute
+  },
+  
+  "trading": {
+    "paper_trading": true,  // Set to false for live trading
+    "allow_fractional_shares": true,
+    "allow_crypto_trading": true,
+    "supported_assets": ["stocks", "crypto"],
+    "supported_operations": ["buy", "sell"]
+  },
+  
+  "order_types": {
+    "market": true,
+    "limit": true,
+    "stop": true,
+    "stop_limit": true,
+    "trailing_stop": true
+  },
+  
+  "data": {
+    "free_data": true,
+    "real_time_data": true,
+    "historical_data": true,
+    "max_bars_per_request": 1000
+  },
+  
+  "risk_management": {
+    "max_position_size": 10000,
+    "max_daily_loss": 5000,
+    "max_orders_per_minute": 10
+  },
+  
+  "validation": {
+    "enable_api_validation": true,
+    "validate_account_before_trading": true,
+    "validate_order_size": true,
+    "validate_market_hours": true
+  },
+  
+  "features": {
+    "webhook_support": true,
+    "streaming_data": true,
+    "portfolio_history": true,
+    "account_analysis": true
+  },
+  
+  "timezones": {
+    "market_hours": "America/New_York",
+    "data_timezone": "America/New_York"
+  },
+  
+  "endpoints": {
+    "account": "/v2/account",
+    "orders": "/v2/orders",
+    "positions": "/v2/positions",
+    "assets": "/v2/assets",
+    "watchlists": "/v2/watchlists",
+    "calendar": "/v2/calendar"
+  },
+  
+  "rate_limiting": {
+    "requests_per_minute": 200,
+    "requests_per_day": 50000,
+    "retry_after_limit": true,
+    "backoff_strategy": "exponential"
+  },
+  
+  "testing": {
+    "mock_responses": false,
+    "test_account_available": true,
+    "test_symbols": ["AAPL", "MSFT", "GOOGL", "TSLA"]
+  }
+}

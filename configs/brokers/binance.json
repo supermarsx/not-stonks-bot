@@ -1,0 +1,105 @@
+# Binance Trading Configuration
+# Copy this file and update with your Binance API credentials
+
+{
+  "broker": "binance",
+  "name": "Binance Trading",
+  "enabled": false,
+  "description": "Global cryptocurrency exchange with advanced trading features",
+  
+  "api": {
+    "base_url": "https://testnet.binance.vision",  // Use https://api.binance.com for live
+    "api_key": null,  // Set via BINANCE_API_KEY environment variable
+    "secret_key": null,  // Set via BINANCE_SECRET_KEY environment variable
+    "version": "v3",
+    "timeout": 30,
+    "rate_limit": 1200  // requests per minute
+  },
+  
+  "trading": {
+    "paper_trading": true,  // Set to false for live trading
+    "allow_spot_trading": true,
+    "allow_futures_trading": false,
+    "allow_margin_trading": false,
+    "supported_assets": ["crypto"],
+    "supported_operations": ["buy", "sell"]
+  },
+  
+  "order_types": {
+    "market": true,
+    "limit": true,
+    "stop": true,
+    "stop_limit": true,
+    "take_profit": true,
+    "take_profit_limit": true
+  },
+  
+  "data": {
+    "real_time_data": true,
+    "historical_data": true,
+    "kline_data": true,
+    "ticker_data": true,
+    "order_book_data": true
+  },
+  
+  "risk_management": {
+    "max_position_size": 10000,
+    "max_daily_loss": 5000,
+    "max_orders_per_minute": 20,
+    "max_leverage": 1.0
+  },
+  
+  "validation": {
+    "enable_api_validation": true,
+    "validate_account_before_trading": true,
+    "validate_order_size": true,
+    "validate_market_status": true
+  },
+  
+  "features": {
+    "webhook_support": true,
+    "streaming_data": true,
+    "portfolio_history": true,
+    "account_analysis": true,
+    "futures_support": false,
+    "spot_support": true
+  },
+  
+  "symbols": {
+    "base_assets": ["BTC", "ETH", "USDT", "BNB"],
+    "quote_assets": ["USDT", "BTC", "BUSD", "EUR"],
+    "trading_pairs": ["BTCUSDT", "ETHUSDT", "ADAUSDT", "DOTUSDT"]
+  },
+  
+  "timeframes": {
+    "1m": "1 minute",
+    "5m": "5 minutes",
+    "15m": "15 minutes",
+    "1h": "1 hour",
+    "4h": "4 hours",
+    "1d": "1 day"
+  },
+  
+  "endpoints": {
+    "account": "/api/v3/account",
+    "orders": "/api/v3/order",
+    "all_orders": "/api/v3/allOrders",
+    "trades": "/api/v3/myTrades",
+    "ticker_24hr": "/api/v3/ticker/24hr",
+    "klines": "/api/v3/klines"
+  },
+  
+  "rate_limiting": {
+    "requests_per_minute": 1200,
+    "requests_per_second": 10,
+    "weight_per_request": 1,
+    "retry_after_limit": true,
+    "backoff_strategy": "exponential"
+  },
+  
+  "testing": {
+    "mock_responses": false,
+    "testnet_available": true,
+    "test_symbols": ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
+  }
+}
