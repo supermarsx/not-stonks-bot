@@ -1,0 +1,284 @@
+{
+  "$schema": "https://schema.trading-orchestrator.dev/broker/interactive-brokers/v1",
+  "brokers": {
+    "enabled": ["interactive_brokers"],
+    "interactive_brokers": {
+      "name": "Interactive Brokers",
+      "type": "interactive_brokers",
+      "host": "${IB_HOST}",
+      "port": ${IB_PORT},
+      "client_id": ${IB_CLIENT_ID},
+      "enabled": false,
+      "tws_path": "${IB_TWS_PATH}",
+      "ibgateway_path": "${IB_GATEWAY_PATH}",
+      "rate_limit": {
+        "requests_per_second": 50,
+        "requests_per_minute": 3000,
+        "orders_per_second": 9,
+        "orders_per_minute": 300
+      },
+      "order_types": [
+        "market",
+        "limit",
+        "stop",
+        "stop_limit",
+        "trailing_stop",
+        "bracket_order"
+      ],
+      "time_in_force": [
+        "DAY",
+        "GTC",
+        "IOC",
+        "FOK",
+        "GTD"
+      ],
+      "supported_assets": [
+        "stocks",
+        "etfs",
+        "options",
+        "futures",
+        "forex",
+        "bonds",
+        "cFDs"
+      ],
+      "account": {
+        "account_id": "${IB_ACCOUNT_ID}",
+        "base_currency": "USD",
+        "supported_currencies": [
+          "USD",
+          "EUR",
+          "GBP",
+          "JPY",
+          "CAD",
+          "CHF",
+          "AUD",
+          "HKD",
+          "SGD",
+          "SEK",
+          "NOK",
+          "DKK",
+          "PLN",
+          "CZK",
+          "HUF",
+          "ILS",
+          "ZAR",
+          "MXN"
+        ],
+        "account_type": "INDIVIDUAL",
+        "regulatory_type": "SEC"
+      },
+      "connection": {
+        "connection_timeout": 10,
+        "read_timeout": 30,
+        "socket_timeout": 0,
+        "max_retries": 3,
+        "retry_delay": 1.0,
+        "auto_reconnect": true,
+        "reconnect_attempts": 5,
+        "reconnect_delay": 5
+      },
+      "market_data": {
+        "enabled": true,
+        "subscription_type": "REAL_TIME",
+        "market_data_type": 1,
+        "fields": [
+          "BID",
+          "ASK",
+          "LAST",
+          "OPEN",
+          "HIGH",
+          "LOW",
+          "CLOSE",
+          "VOLUME",
+          "BID_SIZE",
+          "ASK_SIZE",
+          "LAST_SIZE",
+          "MARKET_CAP",
+          "DIVIDEND_YIELD",
+          "PE_RATIO",
+          "EPS"
+        ],
+        "conid_fields": [
+          "CONID",
+          "SYMBOL",
+          "SECID",
+          "SECTYPE",
+          "EXCHANGE",
+          "CURRENCY",
+          "TRADINGCLASS",
+          "STRIKE",
+          "RIGHT",
+          "MULTIPLIER",
+          "BONDVALUEM",
+          "COMBOLEGSDESCRIPTION",
+          "COMBOLEGPRICE",
+          "EV_MULTIPLIER"
+        ]
+      },
+      "contracts": {
+        "stocks": {
+          "enabled": true,
+          "exchanges": [
+            "SMART",
+            "NYSE",
+            "NASDAQ",
+            "ARCA",
+            "BATS",
+            "IEX"
+          ],
+          "sec_types": [
+            "STK"
+          ]
+        },
+        "etfs": {
+          "enabled": true,
+          "exchanges": [
+            "SMART",
+            "NYSE",
+            "NASDAQ",
+            "ARCA"
+          ],
+          "sec_types": [
+            "ETF"
+          ]
+        },
+        "options": {
+          "enabled": false,
+          "exchanges": [
+            "SMART",
+            "CBOE",
+            "PHLX",
+            "ISE",
+            "BOX",
+            "MIAX"
+          ],
+          "sec_types": [
+            "OPT"
+          ],
+          "rights": [
+            "P",
+            "C"
+          ]
+        },
+        "futures": {
+          "enabled": false,
+          "exchanges": [
+            "CME",
+            "ICE",
+            "CBOT",
+            "NYMEX",
+            "EUREX",
+            "LIFFE",
+            "SGX",
+            "HKFE"
+          ],
+          "sec_types": [
+            "FUT"
+          ]
+        },
+        "forex": {
+          "enabled": false,
+          "exchanges": [
+            "IDEALPRO"
+          ],
+          "sec_types": [
+            "CASH"
+          ]
+        },
+        "bonds": {
+          "enabled": false,
+          "exchanges": [
+            "SMART"
+          ],
+          "sec_types": [
+            "BOND",
+            "BILL"
+          ]
+        }
+      },
+      "order_settings": {
+        "default_quantity": 100,
+        "min_order_size": 1,
+        "max_order_size": 1000000,
+        "lot_size_multiplier": 1,
+        "tick_size": 0.01,
+        "price_market_order": 0,
+        "price_precision": 2,
+        "quantity_precision": 0
+      },
+      "commission_schedule": {
+        "stocks": {
+          "min_commission": 1.0,
+          "commission_per_share": 0.005,
+          "commission_currency": "USD"
+        },
+        "etfs": {
+          "min_commission": 1.0,
+          "commission_per_share": 0.005,
+          "commission_currency": "USD"
+        },
+        "options": {
+          "min_commission": 1.0,
+          "commission_per_contract": 0.65,
+          "commission_currency": "USD"
+        },
+        "futures": {
+          "min_commission": 1.0,
+          "commission_per_contract": 2.25,
+          "commission_currency": "USD"
+        },
+        "forex": {
+          "min_commission": 2.5,
+          "commission_per_100k": 10.0,
+          "commission_currency": "USD"
+        }
+      },
+      "risk_management": {
+        "enabled": true,
+        "position_limits": {
+          "max_position_size": 10000,
+          "max_position_value": 1000000
+        },
+        "concentration_limits": {
+          "max_symbol_weight": 0.1,
+          "max_sector_weight": 0.25
+        },
+        "margin_requirements": {
+          "initial_margin": 0.25,
+          "maintenance_margin": 0.15
+        }
+      },
+      "features": {
+        "bracketed_orders": true,
+        "complex_orders": true,
+        "one_cancels_other": true,
+        "one_triggers_other": true,
+        "primary_exchanges": true,
+        "smart_routing": true,
+        "extended_hours": true,
+        "pre_post_market": true
+      },
+      "compliance": {
+        "pattern_day_trader": {
+          "enabled": true,
+          "min_account_value": 25000,
+          "min_trade_count": 3
+        },
+        " PDT protection": true,
+        "wash_sale_detection": true,
+        "restricted_securities": true,
+        "firm_compliance": true
+      }
+    }
+  },
+  "database": {
+    "path": "./data/ib_trading.db",
+    "backup_enabled": true,
+    "backup_interval_hours": 6,
+    "backup_retention_days": 30
+  },
+  "system": {
+    "log_level": "INFO",
+    "debug_mode": false
+  }
+}
