@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2024 not-stonks-bot
+Copyright (c) 2025 not-stonks-bot contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,52 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## Trading Disclaimer
+
+**IMPORTANT: This software is for educational and research purposes only.**
+
+Trading and investing involve substantial risk of loss and is not suitable for all investors. Past performance is not indicative of future results. You are responsible for your own trading decisions and should consult with a qualified financial advisor before making any investment decisions.
+
+The authors and contributors of this software are not responsible for any financial losses incurred through the use of this software. By using this software, you acknowledge that:
+
+1. **No Financial Advice**: This software does not provide financial advice
+2. **Risk Awareness**: Trading involves substantial risk of loss
+3. **Educational Purpose**: This software is for learning and research
+4. **No Guarantees**: No guarantees about profits or system reliability
+5. **User Responsibility**: Users are solely responsible for their trading decisions
+
+## Broker Integration Disclaimer
+
+This software integrates with third-party broker APIs. The authors are not responsible for:
+
+- Broker service availability or reliability
+- Changes in broker API terms or functionality
+- Financial losses from broker system failures
+- Compliance issues in any jurisdiction
+- Data security at broker platforms
+
+Please review each broker's terms of service and comply with all applicable regulations.
+
+## AI and Machine Learning Disclaimer
+
+The AI features in this software are based on machine learning models that:
+
+- May contain biases or make incorrect predictions
+- Are not guaranteed to perform in all market conditions
+- Should not be used as the sole basis for trading decisions
+- Require proper supervision and risk management
+
+Users should validate AI recommendations and understand the underlying models.
+
+## Data Accuracy Disclaimer
+
+Market data and other information provided through this software may contain inaccuracies or delays. The authors make no warranty about the accuracy or timeliness of market data.
+
+Users should verify all information independently before making trading decisions.
+
+---
+
+For questions about this license, please contact: team@not-stonks-bot.com
