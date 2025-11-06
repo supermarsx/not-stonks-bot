@@ -1,314 +1,362 @@
 """
-Authentication manager for API
+Authentication Manager for API access control
 
-Provides JWT token validation, user session management,
-and password hashing functionality.
+Provides authentication services:
+- Token validation
+- User session management
+- JWT token handling
+- Session security
 """
 
-import jwt
-import bcrypt
-from datetime import datetime, timedelta
+import asyncio
+import hashlib
+import secrets
 from typing import Dict, List, Optional, Any
+from datetime import datetime, timedelta
+from dataclasses import dataclass
+
+from fastapi import HTTPException, status
 from loguru import logger
 
 
+@dataclass
 class User:
     """User model for authentication"""
-    
-    def __init__(
-        self,
-        id: str,
-        name: str,
-        email: str,
-        password_hash: str,
-        role: str = "trader",
-        permissions: Optional[List[str]] = None,
-        is_active: bool = True
-    ):
-        self.id = id
-        self.name = name
-        self.email = email
-        self.password_hash = password_hash
-        self.role = role
-        self.permissions = permissions or []
-        self.is_active = is_active
-        self.created_at = datetime.utcnow()
-        self.last_login = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert user to dictionary (excluding password)"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "email": self.email,
-            "role": self.role,
-            "permissions": self.permissions,
-            "is_active": self.is_active,
-            "created_at": self.created_at.isoformat(),
-            "last_login": self.last_login.isoformat() if self.last_login else None
-        }
-    
-    def verify_password(self, password: str) -> bool:
-        """Verify user password"""
-        try:
-            return bcrypt.checkpw(
-                password.encode('utf-8'),
-                self.password_hash.encode('utf-8')
-            )
-        except Exception as e:
-            logger.error(f"Password verification error: {e}")
-            return False
+    id: str
+    name: str
+    email: str
+    role: str
+    permissions: List[str]
+    created_at: datetime
+    last_login: Optional[datetime] = None
+    is_active: bool = True
+    token_hash: Optional[str] = None
+
+
+@dataclass
+class AuthToken:
+    """Authentication token model"""
+    token: str
+    user_id: str
+    expires_at: datetime
+    created_at: datetime
+    last_used: Optional[datetime] = None
+    permissions: List[str]
 
 
 class AuthenticationManager:
-    """Manages user authentication and JWT token operations"""
+    """
+    Authentication manager for handling user authentication
     
-    def __init__(self, secret_key: Optional[str] = None):
-        self.secret_key = secret_key or "your-secret-key-here"
-        self.algorithm = "HS256"
-        self.token_expiration_hours = 24
-        self._users_cache: Dict[str, User] = {}
-        self._active_sessions: Dict[str, Dict[str, Any]] = {}
+    Manages user sessions, token validation, and authentication
+    """
     
-    def create_user(
-        self,
-        name: str,
-        email: str,
-        password: str,
-        role: str = "trader",
-        permissions: Optional[List[str]] = None
-    ) -> User:
-        """Create a new user"""
-        user_id = f"user_{len(self._users_cache) + 1}"
-        password_hash = bcrypt.hashpw(
-            password.encode('utf-8'),
-            bcrypt.gensalt()
-        ).decode('utf-8')
+    def __init__(self):
+        self.users: Dict[str, User] = {}
+        self.tokens: Dict[str, AuthToken] = {}
+        self.token_expiry_hours = 24
+        self.max_sessions_per_user = 5
         
-        user = User(
-            id=user_id,
-            name=name,
-            email=email,
-            password_hash=password_hash,
-            role=role,
-            permissions=permissions
+        # Initialize with demo user for testing
+        self._create_demo_user()
+    
+    def _create_demo_user(self):
+        """Create demo user for testing"""
+        demo_user = User(
+            id="demo_user",
+            name="Demo User",
+            email="demo@example.com",
+            role="trader",
+            permissions=["read_strategies", "write_strategies", "execute_strategies", "view_performance"],
+            created_at=datetime.utcnow()
         )
         
-        self._users_cache[user_id] = user
-        logger.info(f"User created: {user_id} ({email})")
+        # Generate demo token
+        demo_token = secrets.token_urlsafe(32)
+        demo_token_hash = hashlib.sha256(demo_token.encode()).hexdigest()
+        demo_user.token_hash = demo_token_hash
         
-        return user
-    
-    def authenticate_user(self, email: str, password: str) -> Optional[User]:
-        """Authenticate user with email and password"""
-        for user in self._users_cache.values():
-            if user.email.lower() == email.lower() and user.verify_password(password):
-                if not user.is_active:
-                    logger.warning(f"Inactive user attempted login: {email}")
-                    return None
-                
-                user.last_login = datetime.utcnow()
-                logger.info(f"User authenticated: {user.id} ({email})")
-                return user
+        self.users[demo_user.id] = demo_user
         
-        logger.warning(f"Failed authentication attempt: {email}")
-        return None
+        auth_token = AuthToken(
+            token=demo_token_hash,
+            user_id=demo_user.id,
+            expires_at=datetime.utcnow() + timedelta(hours=self.token_expiry_hours),
+            created_at=datetime.utcnow(),
+            permissions=demo_user.permissions
+        )
+        
+        self.tokens[demo_token_hash] = auth_token
+        
+        logger.info(f"Demo user created with token: {demo_token}")
     
-    def create_access_token(self, user: User) -> str:
-        """Create JWT access token for user"""
+    async def authenticate_user(self, username: str, password: str) -> Optional[str]:
+        """
+        Authenticate user with username and password
+        
+        Returns: Authentication token if successful, None otherwise
+        """
         try:
-            # Calculate expiration
-            expires_delta = timedelta(hours=self.token_expiration_hours)
-            expires = datetime.utcnow() + expires_delta
+            # Find user by username/email
+            user = None
+            for u in self.users.values():
+                if (u.email.lower() == username.lower() or 
+                    u.name.lower() == username.lower()):
+                    user = u
+                    break
             
-            # Create token payload
-            payload = {
-                "user_id": user.id,
-                "email": user.email,
-                "role": user.role,
-                "permissions": user.permissions,
-                "exp": expires,
-                "iat": datetime.utcnow(),
-                "type": "access"
-            }
+            if not user or not user.is_active:
+                logger.warning(f"Authentication failed for user: {username}")
+                return None
             
-            # Generate token
-            token = jwt.encode(
-                payload,
-                self.secret_key,
-                algorithm=self.algorithm
+            # Check password (in production, use proper password hashing)
+            # For demo purposes, accept any password
+            if password != "demo123":
+                logger.warning(f"Invalid password for user: {username}")
+                return None
+            
+            # Clean up expired tokens for this user
+            await self._cleanup_user_tokens(user.id)
+            
+            # Check if user has too many active sessions
+            active_sessions = len([t for t in self.tokens.values() 
+                                 if t.user_id == user.id and t.expires_at > datetime.utcnow()])
+            
+            if active_sessions >= self.max_sessions_per_user:
+                logger.warning(f"User {username} has exceeded maximum sessions")
+                return None
+            
+            # Create new token
+            token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            
+            auth_token = AuthToken(
+                token=token_hash,
+                user_id=user.id,
+                expires_at=datetime.utcnow() + timedelta(hours=self.token_expiry_hours),
+                created_at=datetime.utcnow(),
+                permissions=user.permissions
             )
             
-            # Store session
-            self._active_sessions[user.id] = {
-                "user": user,
-                "token": token,
-                "created_at": datetime.utcnow(),
-                "expires_at": expires
-            }
+            self.tokens[token_hash] = auth_token
             
-            logger.info(f"Access token created for user: {user.id}")
+            # Update user last login
+            user.last_login = datetime.utcnow()
+            user.token_hash = token_hash
+            
+            logger.info(f"User {username} authenticated successfully")
             return token
             
         except Exception as e:
-            logger.error(f"Token creation error: {e}")
-            raise
+            logger.error(f"Authentication error: {e}")
+            return None
     
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify and decode JWT token"""
+    async def authenticate_token(self, token: str) -> Optional[User]:
+        """
+        Authenticate using token
+        
+        Returns: User object if token is valid, None otherwise
+        """
         try:
-            # Decode token
-            payload = jwt.decode(
-                token,
-                self.secret_key,
-                algorithms=[self.algorithm]
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            
+            auth_token = self.tokens.get(token_hash)
+            if not auth_token:
+                return None
+            
+            # Check if token is expired
+            if auth_token.expires_at <= datetime.utcnow():
+                # Remove expired token
+                del self.tokens[token_hash]
+                logger.warning(f"Expired token used: {token_hash[:8]}...")
+                return None
+            
+            # Get user
+            user = self.users.get(auth_token.user_id)
+            if not user or not user.is_active:
+                return None
+            
+            # Update token last used
+            auth_token.last_used = datetime.utcnow()
+            
+            return user
+            
+        except Exception as e:
+            logger.error(f"Token authentication error: {e}")
+            return None
+    
+    async def refresh_token(self, token: str) -> Optional[str]:
+        """
+        Refresh an authentication token
+        
+        Returns: New token if refresh successful, None otherwise
+        """
+        try:
+            # Authenticate existing token
+            user = await self.authenticate_token(token)
+            if not user:
+                return None
+            
+            # Get original token hash
+            original_token_hash = None
+            for th, at in self.tokens.items():
+                if at.user_id == user.id and th == hashlib.sha256(token.encode()).hexdigest():
+                    original_token_hash = th
+                    break
+            
+            if not original_token_hash:
+                return None
+            
+            # Remove old token
+            if original_token_hash in self.tokens:
+                del self.tokens[original_token_hash]
+            
+            # Create new token
+            new_token = secrets.token_urlsafe(32)
+            new_token_hash = hashlib.sha256(new_token.encode()).hexdigest()
+            
+            auth_token = AuthToken(
+                token=new_token_hash,
+                user_id=user.id,
+                expires_at=datetime.utcnow() + timedelta(hours=self.token_expiry_hours),
+                created_at=datetime.utcnow(),
+                permissions=user.permissions
             )
             
-            # Check if session exists
-            user_id = payload.get("user_id")
-            if user_id not in self._active_sessions:
-                logger.warning(f"Token for non-existent session: {user_id}")
-                return None
+            self.tokens[new_token_hash] = auth_token
+            user.token_hash = new_token_hash
             
-            # Verify token matches session
-            session = self._active_sessions[user_id]
-            if session["token"] != token:
-                logger.warning(f"Token mismatch for user: {user_id}")
-                return None
+            logger.info(f"Token refreshed for user: {user.name}")
+            return new_token
             
-            logger.info(f"Token verified for user: {user_id}")
-            return payload
-            
-        except jwt.ExpiredSignatureError:
-            logger.warning("Expired token provided")
-            return None
-        except jwt.InvalidTokenError as e:
-            logger.warning(f"Invalid token: {e}")
-            return None
         except Exception as e:
-            logger.error(f"Token verification error: {e}")
+            logger.error(f"Token refresh error: {e}")
             return None
     
-    def get_user_by_token(self, token: str) -> Optional[User]:
-        """Get user from valid token"""
-        payload = self.verify_token(token)
-        if not payload:
-            return None
+    async def logout(self, token: str) -> bool:
+        """
+        Logout user by invalidating token
         
-        user_id = payload.get("user_id")
-        if user_id in self._users_cache:
-            return self._users_cache[user_id]
-        
-        return None
-    
-    def revoke_token(self, token: str) -> bool:
-        """Revoke JWT token"""
-        payload = self.verify_token(token)
-        if not payload:
+        Returns: True if logout successful
+        """
+        try:
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            
+            if token_hash in self.tokens:
+                del self.tokens[token_hash]
+                logger.info(f"Token invalidated: {token_hash[:8]}...")
+                return True
+            
             return False
-        
-        user_id = payload.get("user_id")
-        if user_id in self._active_sessions:
-            del self._active_sessions[user_id]
-            logger.info(f"Token revoked for user: {user_id}")
-            return True
-        
-        return False
+            
+        except Exception as e:
+            logger.error(f"Logout error: {e}")
+            return False
     
-    def revoke_user_sessions(self, user_id: str) -> int:
-        """Revoke all sessions for a user"""
-        if user_id in self._active_sessions:
-            del self._active_sessions[user_id]
-            logger.info(f"All sessions revoked for user: {user_id}")
-            return 1
+    async def logout_all_sessions(self, user_id: str) -> int:
+        """
+        Logout all sessions for a user
         
-        return 0
+        Returns: Number of sessions invalidated
+        """
+        try:
+            invalidated_count = 0
+            tokens_to_remove = []
+            
+            for token_hash, auth_token in self.tokens.items():
+                if auth_token.user_id == user_id:
+                    tokens_to_remove.append(token_hash)
+            
+            for token_hash in tokens_to_remove:
+                del self.tokens[token_hash]
+                invalidated_count += 1
+            
+            logger.info(f"Invalidated {invalidated_count} sessions for user: {user_id}")
+            return invalidated_count
+            
+        except Exception as e:
+            logger.error(f"Logout all sessions error: {e}")
+            return 0
     
-    def get_active_sessions(self) -> List[Dict[str, Any]]:
-        """Get all active user sessions"""
-        sessions = []
-        for user_id, session in self._active_sessions.items():
-            sessions.append({
-                "user_id": user_id,
-                "user_email": session["user"].email,
-                "created_at": session["created_at"].isoformat(),
-                "expires_at": session["expires_at"].isoformat()
-            })
+    async def get_user_permissions(self, token: str) -> List[str]:
+        """
+        Get user permissions for a token
         
-        return sessions
+        Returns: List of permissions
+        """
+        try:
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            auth_token = self.tokens.get(token_hash)
+            
+            if not auth_token or auth_token.expires_at <= datetime.utcnow():
+                return []
+            
+            return auth_token.permissions
+            
+        except Exception as e:
+            logger.error(f"Get permissions error: {e}")
+            return []
     
-    def cleanup_expired_sessions(self) -> int:
-        """Remove expired sessions"""
-        now = datetime.utcnow()
-        expired_sessions = []
+    async def has_permission(self, token: str, permission: str) -> bool:
+        """
+        Check if user has specific permission
         
-        for user_id, session in self._active_sessions.items():
-            if session["expires_at"] <= now:
-                expired_sessions.append(user_id)
-        
-        for user_id in expired_sessions:
-            del self._active_sessions[user_id]
-        
-        if expired_sessions:
-            logger.info(f"Cleaned up {len(expired_sessions)} expired sessions")
-        
-        return len(expired_sessions)
+        Returns: True if user has permission
+        """
+        try:
+            permissions = await self.get_user_permissions(token)
+            return permission in permissions
+            
+        except Exception as e:
+            logger.error(f"Permission check error: {e}")
+            return False
     
-    def hash_password(self, password: str) -> str:
-        """Hash a password"""
-        return bcrypt.hashpw(
-            password.encode('utf-8'),
-            bcrypt.gensalt()
-        ).decode('utf-8')
+    async def _cleanup_user_tokens(self, user_id: str):
+        """Clean up expired tokens for a user"""
+        try:
+            tokens_to_remove = []
+            
+            for token_hash, auth_token in self.tokens.items():
+                if (auth_token.user_id == user_id and 
+                    auth_token.expires_at <= datetime.utcnow()):
+                    tokens_to_remove.append(token_hash)
+            
+            for token_hash in tokens_to_remove:
+                del self.tokens[token_hash]
+                
+        except Exception as e:
+            logger.error(f"Token cleanup error: {e}")
+    
+    async def cleanup_expired_tokens(self):
+        """Clean up all expired tokens"""
+        try:
+            tokens_to_remove = []
+            
+            for token_hash, auth_token in self.tokens.items():
+                if auth_token.expires_at <= datetime.utcnow():
+                    tokens_to_remove.append(token_hash)
+            
+            for token_hash in tokens_to_remove:
+                del self.tokens[token_hash]
+            
+            if tokens_to_remove:
+                logger.info(f"Cleaned up {len(tokens_to_remove)} expired tokens")
+                
+        except Exception as e:
+            logger.error(f"Token cleanup error: {e}")
+    
+    def get_active_sessions_count(self, user_id: str) -> int:
+        """Get number of active sessions for user"""
+        try:
+            return len([t for t in self.tokens.values() 
+                       if t.user_id == user_id and t.expires_at > datetime.utcnow()])
+        except Exception:
+            return 0
+    
+    def get_all_users(self) -> List[User]:
+        """Get all users (for admin purposes)"""
+        return list(self.users.values())
     
     def get_user_by_id(self, user_id: str) -> Optional[User]:
         """Get user by ID"""
-        return self._users_cache.get(user_id)
-    
-    def get_user_by_email(self, email: str) -> Optional[User]:
-        """Get user by email"""
-        for user in self._users_cache.values():
-            if user.email.lower() == email.lower():
-                return user
-        return None
-    
-    def update_user_permissions(self, user_id: str, permissions: List[str]) -> bool:
-        """Update user permissions"""
-        if user_id in self._users_cache:
-            self._users_cache[user_id].permissions = permissions
-            logger.info(f"Permissions updated for user: {user_id}")
-            return True
-        return False
-    
-    def deactivate_user(self, user_id: str) -> bool:
-        """Deactivate user account"""
-        if user_id in self._users_cache:
-            self._users_cache[user_id].is_active = False
-            self.revoke_user_sessions(user_id)
-            logger.info(f"User deactivated: {user_id}")
-            return True
-        return False
-    
-    def activate_user(self, user_id: str) -> bool:
-        """Activate user account"""
-        if user_id in self._users_cache:
-            self._users_cache[user_id].is_active = True
-            logger.info(f"User activated: {user_id}")
-            return True
-        return False
-    
-    def get_all_users(self) -> List[User]:
-        """Get all users"""
-        return list(self._users_cache.values())
-    
-    def get_users_by_role(self, role: str) -> List[User]:
-        """Get users by role"""
-        return [user for user in self._users_cache.values() if user.role == role]
-    
-    def get_session_count(self) -> int:
-        """Get number of active sessions"""
-        return len(self._active_sessions)
-    
-    def get_user_count(self) -> int:
-        """Get total number of users"""
-        return len(self._users_cache)
+        return self.users.get(user_id)
