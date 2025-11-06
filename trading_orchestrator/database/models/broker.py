@@ -53,7 +53,7 @@ class BrokerConnection(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<BrokerConnection(id={self.id}, broker='{self.broker_name}', status='{self.status}')>"
+        return f"<BrokerConnection(id={self.id}, broker='{self.broker_name}', status='{self.status}')"
 
 
 class BrokerAccount(Base):
@@ -95,7 +95,7 @@ class BrokerAccount(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<BrokerAccount(id={self.id}, broker='{self.broker_name}', account_id='{self.account_id}')>"
+        return f"<BrokerAccount(id={self.id}, broker='{self.broker_name}', account_id='{self.account_id}')"
 
 
 class BrokerSymbol(Base):
@@ -142,7 +142,7 @@ class BrokerSymbol(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self):
-        return f"<BrokerSymbol(id={self.id}, broker='{self.broker_name}', symbol='{self.symbol}', exchange='{self.exchange}')>"
+        return f"<BrokerSymbol(id={self.id}, broker='{self.broker_name}', symbol='{self.symbol}', exchange='{self.exchange}')"
 
 
 # BrokerSymbol class was merged above to avoid duplicate table definitions
