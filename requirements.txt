@@ -1,107 +1,109 @@
-# Core Trading Platform Dependencies
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-websockets==12.0
-sqlalchemy==2.0.23
-alembic==1.13.1
-redis==5.0.1
-celery==5.3.4
-psutil==5.9.6
-requests==2.31.0
-numpy==1.25.2
-pandas==2.1.3
-scipy==1.11.4
-scikit-learn==1.3.2
+# not-stonks-bot Core Requirements
+# Minimum Python version: 3.8+
+# Recommended Python version: 3.11+
 
-# AI/ML Libraries
-openai==1.3.8
-anthropic==0.8.0
-transformers==4.36.0
-torch==2.1.1
-torchvision==0.16.1
-torchaudio==2.1.1
-sentence-transformers==2.2.2
+# Core System Requirements
+-r trading_orchestrator/requirements.txt
 
-# Database
-psycopg2-binary==2.9.9
-sqlalchemy[postgresql]==2.0.23
+# Additional Trading-Specific Dependencies
+tradingview_ta>=1.3.2  # TradingView integration
+ccxt>=4.1.39  # Cryptocurrency exchange integration
+tushare>=1.2.62  # Chinese stock market data
+baostock>=0.8.8  # Chinese A股 data
 
-# Authentication & Security
-passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.3.0
-python-multipart==0.0.6
-cryptography==41.0.8
+# Enhanced UI and Web Framework
+dash>=2.14.2  # Web application framework
+dash-bootstrap-components>=1.5.0  # Bootstrap components for Dash
+dash-extensions>=1.0.4  # Dash extensions
 
-# Data Processing
-pydantic==2.5.2
-pydantic-settings==2.1.0
-python-dotenv==1.0.0
+# Performance and Caching
+redis>=5.0.1  # Redis client for caching
+kcache>=1.0.0  # Fast in-memory caching
 
-# Web Scraping & Crawling
-beautifulsoup4==4.12.2
-selenium==4.15.2
-scrapy==2.11.0
-requests-html==0.10.0
+# Enhanced Data Analysis
+backtrader>=1.9.78.123  # Backtesting framework
+vectorbt>=0.25.9  # Vectorized backtesting
+quantstats>=0.0.25  # Quantitative portfolio analytics
+empyrical>=0.5.5  # Performance and risk analytics
 
-# Financial Data APIs
-alpaca-trade-api==3.1.1
-binance==1.0.18
-ibapi==12.10.0
-yfinance==0.2.28
-alpha-vantage==2.3.1
+# Web Scraping and Data Collection
+beautifulsoup4>=4.12.2  # HTML parsing
+selenium>=4.15.2  # Web automation
+requests>=2.31.0  # HTTP client
+lxml>=4.9.3  # XML/HTML parser
 
-# Technical Analysis
-ta==0.10.2
-pandas-ta==0.3.14b0
-backtrader==1.9.78.124
+# Notification Services
+twilio>=8.10.0  # SMS notifications
+pushbullet>=0.12.2  # Push notifications
+slack_sdk>=3.27.0  # Slack integration
 
-# Monitoring & Logging
-prometheus-client==0.19.0
-opencensus==0.11.3
-structlog==23.2.0
-rich==13.7.0
+# Database Enhancement
+mongoengine>=0.27.0  # MongoDB ODM
+influxdb-client>=1.38.0  # Time series database
+elasticsearch>=8.11.0  # Search and analytics
 
-# Testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-factory-boy==3.3.0
+# Additional Security
+jwt>=1.3.1  # JWT token handling
+oauthlib>=3.2.2  # OAuth implementation
+authlib>=1.2.1  # Authentication library
 
-# Development
-black==23.11.0
-isort==5.12.0
-flake8==6.1.0
-mypy==1.7.1
-pre-commit==3.6.0
+# Cloud and Deployment
+boto3>=1.34.0  # AWS SDK
+google-cloud-storage>=2.11.0  # Google Cloud Storage
+azure-storage-blob>=12.19.0  # Azure Blob Storage
+
+# Monitoring and Alerting
+sentry-sdk>=1.38.0  # Error tracking
+newrelic>=9.6.0  # Application monitoring
+datadog>=0.47.0  # DataDog integration
+
+# Enhanced Testing
+factory-boy>=3.3.0  # Test data factory
+locust>=2.21.0  # Load testing
+hypothesis>=6.94.0  # Property-based testing
 
 # Documentation
-sphinx==7.2.6
-sphinx-rtd-theme==1.3.0
-mkdocs==1.5.3
-mkdocs-material==9.4.8
+sphinx>=7.2.6  # Documentation generator
+sphinx-rtd-theme>=1.3.0  # ReadTheDocs theme
+mkdocs>=1.5.3  # Markdown documentation
+mkdocs-material>=9.4.8  # Material theme for MkDocs
 
-# UI/Frontend
-streamlit==1.28.1
-plotly==5.17.0
-dash==2.14.2
+# Development Tools
+ipython>=8.17.2  # Enhanced Python REPL
+jupyter>=1.0.0  # Jupyter notebook
+jupyterlab>=4.0.9  # JupyterLab IDE
+notebook>=7.0.6  # Classic Jupyter notebook
 
-# Performance
-joblib==1.3.2
-dask==2023.11.0
-ray[default]==2.8.1
+# API Testing
+httpx>=0.25.2  # Modern HTTP client
+fastapi-users>=12.2.0  # FastAPI authentication
+pydantic[email]>=2.5.0  # Email validation
 
-# Rate Limiting & API Management
-slowapi==0.1.9
-requests-ratelimiter==0.4.0
+# Financial Data Providers
+alpha-vantage>=2.3.1  # Alpha Vantage API
+twelve-data>=1.2.6  # Twelve Data API
+finnhub-python>=2.4.17  # Finnhub API
+yahooquery>=2.2.17  # Yahoo Finance API
 
-# Utilities
-click==8.1.7
-typer==0.9.0
-python-dateutil==2.8.2
-tqdm==4.66.1
-pillow==10.1.0
+# Additional Technical Analysis
+pandas-ta>=0.3.14b0  # Technical analysis extensions
+ta>=0.10.2  # Technical Analysis Library
+stockstats>=0.4.0  # Stock statistics
+
+# Enhanced Logging
+structlog>=23.2.0  # Structured logging
+python-json-logger>=2.0.7  # JSON logging
+
+# Async and Concurrency
+asyncio>=3.4.3  # Built-in async support
+aioredis>=2.0.1  # Async Redis client
+asyncpg>=0.29.0  # Async PostgreSQL driver
 
 # Configuration Management
-pyyaml==6.0.1
-toml==0.10.2
-configparser==6.0.0
+dynaconf>=3.2.4  # Dynamic configuration
+configparser>=6.0.0  # Configuration file parser
+
+# Task Queue and Background Jobs
+celery>=5.3.4  # Distributed task queue
+dramatiq>=1.15.0  # Fast and reliable background task processor
+arq>=0.25.0  # Redis-based job queue
