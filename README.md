@@ -1,287 +1,114 @@
-# Day Trading Orchestrator
+# 🚀 not-stonks-bot
 
 <div align="center">
 
-![Day Trading Orchestrator](https://img.shields.io/badge/Day%20Trading%20Orchestrator-v1.0.0-blue?style=for-the-badge&logo=python)
+**AI-Powered Multi-Broker Trading Platform**
+
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/supermarsx/not-stonks-bot.svg)](https://github.com/supermarsx/not-stonks-bot)
+[![GitHub issues](https://img.shields.io/github/issues/supermarsx/not-stonks-bot)](https://github.com/supermarsx/not-stonks-bot/issues)
 
-**Matrix-Themed Multi-Broker AI Trading System**
-
-[🚀 Quick Start](#-quick-start) • [📚 Documentation](#-documentation) • [⚙️ Configuration](#-configuration) • [🛠️ API Reference](#-api-reference) • [❓ Support](#-support)
+[⚡ Quick Start](#-quick-start) • [📚 Documentation](#-documentation) • [🛠️ Setup](#-setup) • [🤝 Contributing](#-contributing) • [❓ Support](#-support)
 
 </div>
 
-## 📋 Table of Contents
-
-- [Overview](#-overview)
-- [✨ Features](#-features)
-- [🏗️ Architecture](#-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [📚 Documentation](#-documentation)
-- [⚙️ Configuration](#-configuration)
-- [🔌 Broker Integration](#-broker-integration)
-- [🤖 AI Features](#-ai-features)
-- [🛡️ Risk Management](#-risk-management)
-- [🛠️ API Reference](#-api-reference)
-- [❓ Support](#-support)
-- [📝 License](#-license)
-
 ## 🎯 Overview
 
-The Day Trading Orchestrator is a comprehensive, AI-powered trading system designed for serious traders who need enterprise-grade risk management and multi-broker integration. Built with a Matrix-themed terminal interface, it provides real-time market analysis, automated strategy execution, and intelligent risk controls.
+not-stonks-bot is a comprehensive, AI-powered trading platform that enables automated trading across multiple brokers. Built with a Matrix-themed terminal interface, it provides real-time market analysis, intelligent strategy execution, and enterprise-grade risk management.
 
-### 🎬 Why This System?
+### ✨ Key Features
 
-- **Multi-Broker Support**: Trade across 7 different brokers from a single interface
-- **AI-Powered Decisions**: Leverage GPT-4 and Claude for market analysis and strategy selection
-- **Enterprise Risk Management**: Advanced circuit breakers and position limits
-- **Real-Time Execution**: Sub-second order execution with smart routing
-- **Matrix Aesthetics**: Stunning terminal interface with real-time visualizations
+- **🤖 AI-Powered Trading**: GPT-4 and Claude integration for market analysis and strategy selection
+- **🔌 Multi-Broker Support**: Trade across 7 different brokers from a single interface
+- **🛡️ Risk Management**: Advanced circuit breakers, position limits, and compliance controls
+- **📊 Real-Time Dashboard**: Live performance metrics and P&L tracking
+- **⚡ Sub-Second Execution**: Smart order routing and execution optimization
+- **🎮 Demo Mode**: Practice trading with simulated data before going live
 
-## ✨ Features
-
-### 🔌 Broker Integration
-- **Alpaca Trading** - US Stocks & Crypto with commission-free trading
-- **Binance** - Global crypto trading with advanced order types
-- **Interactive Brokers** - Global markets access with professional tools
-- **Trading 212** - European stocks with competitive fees
-- **DEGIRO** - European broker (unofficial API integration)
-- **XTB** - Forex & CFDs with advanced charting
-- **Trade Republic** - German broker (unofficial API integration)
-
-### 🤖 AI-Powered Features
-- **Market Analysis** - GPT-4 powered market sentiment analysis
-- **Strategy Selection** - AI-driven strategy selection based on market conditions
-- **Risk Assessment** - Real-time risk evaluation using Claude
-- **Pattern Recognition** - Advanced technical pattern detection
-- **News Analysis** - Real-time news sentiment analysis
-- **Portfolio Optimization** - AI-assisted portfolio rebalancing
-
-### 🛡️ Risk Management
-- **Circuit Breakers** - Automatic trading halt on significant losses
-- **Position Limits** - Configurable maximum position sizes
-- **Correlation Analysis** - Prevent over-concentration in correlated assets
-- **Real-Time Monitoring** - 24/7 system health monitoring
-- **Compliance Controls** - Built-in compliance and regulatory checks
-- **Audit Trail** - Complete trade execution audit trail
-
-### 📊 Analytics & Reporting
-- **Real-Time Dashboard** - Live performance metrics and P&L
-- **Strategy Performance** - Individual strategy analytics
-- **Risk Metrics** - Comprehensive risk analysis reports
-- **Trade History** - Detailed trade execution logs
-- **Backtesting Engine** - Historical strategy validation
-- **Performance Attribution** - Detailed performance breakdown
-
-### 🖥️ User Interface
-- **Matrix Terminal** - Stunning terminal-based trading interface
-- **Real-Time Charts** - Live market data visualization
-- **Command Palette** - Quick access to all trading functions
-- **Hotkeys** - Keyboard shortcuts for rapid execution
-- **Customizable Layout** - Personalized interface configuration
-- **Dark Theme** - Eye-friendly dark interface
-
-## 🏗️ Architecture
+### 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Day Trading Orchestrator                 │
+│                    not-stonks-bot                          │
 ├─────────────────────────────────────────────────────────────┤
-│  UI Layer              │  AI Layer          │  Risk Layer    │
-│  ┌─────────────────┐   │  ┌─────────────┐   │  ┌───────────┐ │
-│  │ Matrix Terminal │   │  │ GPT-4      │   │  │ Circuit   │ │
-│  │ Real-time Charts│   │  │ Claude     │   │  │ Breakers  │ │
-│  │ Command Palette │   │  │ Local LLM  │   │  │ Position  │ │
-│  └─────────────────┘   │  └─────────────┘   │  │ Limits    │ │
-│                        │                    │  │ Compliance│ │
-│  Strategy Layer        │  Broker Layer      │  └───────────┘ │
-│  ┌─────────────────┐   │  ┌─────────────┐   │               │
-│  │ Mean Reversion  │   │  │ Alpaca     │   │               │
-│  │ Trend Following │   │  │ Binance    │   │               │
-│  │ Pairs Trading   │   │  │ IBKR       │   │               │
-│  │ Arbitrage       │   │  │ ...        │   │               │
-│  └─────────────────┘   │  └─────────────┘   │               │
-│                        │                    │               │
-│  Data Layer            │  OMS Layer         │               │
-│  ┌─────────────────┐   │  ┌─────────────┐   │               │
-│  │ Market Data     │   │  │ Order Mgmt  │   │               │
-│  │ Historical Data │   │  │ Trade Exec  │   │               │
-│  │ News Feeds      │   │  │ Settlement  │   │               │
-│  │ Options Data    │   │  │ Reconciliation│ │               │
-│  └─────────────────┘   │  └─────────────┘   │               │
+│  User Interface │  AI Engine      │  Risk Management       │
+│  Matrix Terminal │  GPT-4 + Claude │  Circuit Breakers     │
+│  Web Dashboard   │  Local Models   │  Position Limits      │
+│  API Endpoints   │  Strategy AI    │  Compliance Checks    │
+├─────────────────────────────────────────────────────────────┤
+│  Trading Engine    │  Broker Layer     │  Data Layer         │
+│  Strategy Exec     │  7 Broker APIs    │  Market Data        │
+│  Order Management  │  Smart Routing    │  Historical Data    │
+│  Portfolio Mgmt    │  Risk Validation  │  News Feeds         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+## ⚡ Quick Start
 
-### Prerequisites
-
-- **Python 3.8+** - Required for all core functionality
-- **4GB RAM minimum** - 8GB+ recommended for optimal performance
-- **Internet connection** - Required for market data and broker APIs
-- **Broker accounts** - At least one supported broker account
-
-### Installation
-
-#### 1. Clone the Repository
+### 1. Installation
 
 ```bash
-git clone https://github.com/your-username/day-trading-orchestrator.git
-cd day-trading-orchestrator
-```
-
-#### 2. Install Dependencies
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
+# Clone the repository
+git clone https://github.com/supermarsx/not-stonks-bot.git
+cd not-stonks-bot
 
 # Install dependencies
-pip install -r trading_orchestrator/requirements.txt
+pip install -r requirements.txt
+
+# Set up environment
+cp .env.example .env
 ```
 
-#### 3. Quick Launch Scripts
+### 2. Configuration
 
-**Linux/macOS:**
 ```bash
-# Make executable (Linux/macOS)
-chmod +x start.sh
-
-# Run normal mode
-./start.sh
-
-# Run demo mode
-./start.sh demo
-
-# Create default config
-./start.sh create-config
+# Quick setup with auto-configuration
+./start.sh setup  # Linux/macOS
+start.bat setup   # Windows
 ```
 
-**Windows:**
-```cmd
-# Run normal mode
-start.bat
+### 3. Demo Mode
 
-# Run demo mode
-start.bat demo
-
-# Create default config
-start.bat create-config
-```
-
-**Python (cross-platform):**
 ```bash
-# Run directly with Python
-python run.py
-
-# Run with main module
-python main.py
-
-# Create configuration
-python main.py --create-config
-
-# Run demo
+# Start in demo mode (recommended for first run)
 python main.py --demo
+
+# Or use quick scripts
+./start.sh demo  # Linux/macOS
+start.bat demo   # Windows
 ```
-
-### First Time Setup
-
-1. **Run Configuration Setup**:
-   ```bash
-   python main.py --create-config
-   ```
-
-2. **Configure Your Brokers**:
-   - Edit `config.json` with your broker API keys
-   - Start with paper trading enabled
-   - Set appropriate risk limits
-
-3. **Start in Demo Mode**:
-   ```bash
-   python main.py --demo
-   ```
-
-4. **Verify Installation**:
-   ```bash
-   python health_check.py
-   ```
 
 ## 📚 Documentation
 
-### Core Documentation
-- **[Installation Guide](docs/installation.md)** - Detailed installation instructions
-- **[Usage Guide](docs/usage.md)** - How to use the system effectively
-- **[Broker Integration](docs/brokers.md)** - Detailed broker setup guides
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+### Quick Links
 
-### Advanced Topics
-- **[AI Integration](docs/ai.md)** - AI model configuration and usage
-- **[Risk Management](docs/risk.md)** - Advanced risk controls and settings
-- **[Strategy Development](docs/strategies.md)** - Creating custom trading strategies
-- **[API Reference](docs/api.md)** - Complete API documentation
-- **[Development Guide](docs/development.md)** - Contributing and extending the system
+- **[📖 Installation Guide](docs/getting-started/installation.md)** - Complete setup instructions
+- **[🚀 Quick Start Tutorial](docs/getting-started/quick-start.md)** - Hands-on walkthrough
+- **[⚙️ Configuration Guide](docs/getting-started/configuration.md)** - All configuration options
+- **[🤖 AI Setup](docs/guides/ai-integration.md)** - Configure GPT-4, Claude, and local models
+- **[🔌 Broker Setup](docs/guides/brokers.md)** - Setup guides for each supported broker
+- **[🛡️ Risk Management](docs/guides/risk-management.md)** - Configure risk controls
+- **[📊 API Reference](docs/api/)** - Complete API documentation
 
-### Configuration Examples
-- **[Alpaca Configuration](config.alpaca.example.json)** - Alpaca setup example
-- **[Binance Configuration](config.binance.example.json)** - Binance setup example
-- **[IBKR Configuration](config.ibkr.example.json)** - Interactive Brokers example
+### Detailed Documentation
 
-## ⚙️ Configuration
+| Category | Description |
+|----------|-------------|
+| **[Getting Started](docs/getting-started/)** | Installation, setup, and first steps |
+| **[Guides](docs/guides/)** | Detailed usage guides and tutorials |
+| **[API Reference](docs/api/)** | Complete API documentation with examples |
+| **[Development](docs/development/)** | Contributing guidelines and development setup |
+| **[Architecture](docs/architecture/)** | System design and component documentation |
 
-### Environment Variables
+## 🛠️ Setup
 
-Create a `.env` file based on `.env.example`:
+### Prerequisites
 
-```bash
-# Copy the example
-cp .env.example .env
-
-# Edit with your settings
-nano .env
-```
-
-### Main Configuration
-
-Create `config.json` based on `config.example.json`:
-
-```json
-{
-  "database": {
-    "url": "sqlite:///trading_orchestrator.db"
-  },
-  "brokers": {
-    "alpaca": {
-      "enabled": true,
-      "api_key": "YOUR_ALPACA_API_KEY",
-      "secret_key": "YOUR_ALPACA_SECRET_KEY",
-      "paper": true
-    }
-  },
-  "risk": {
-    "max_position_size": 10000,
-    "max_daily_loss": 5000
-  }
-}
-```
-
-### Security Configuration
-
-**⚠️ IMPORTANT SECURITY NOTES:**
-
-1. **API Keys**: Never commit API keys to version control
-2. **Permissions**: Use least-privilege API permissions
-3. **Environment**: Use separate API keys for paper/live trading
-4. **Rotation**: Regularly rotate API keys
-5. **Monitoring**: Enable audit logging for all activities
-
-## 🔌 Broker Integration
+- **Python 3.8+** (3.11+ recommended)
+- **4GB+ RAM** (8GB+ recommended for optimal performance)
+- **Internet connection** for market data and broker APIs
+- **Broker accounts** (optional for demo mode)
 
 ### Supported Brokers
 
@@ -295,187 +122,87 @@ Create `config.json` based on `config.example.json`:
 | **XTB** | Forex, CFDs | Varies | ✅ | ✅ |
 | **Trade Republic** | German Stocks | €0 | ✅ | ✅ |
 
-### Broker Setup Guides
-
-1. **Alpaca Trading**:
-   - Sign up at [alpaca.markets](https://alpaca.markets)
-   - Generate API keys in your dashboard
-   - Start with paper trading for testing
-
-2. **Binance**:
-   - Create account at [binance.com](https://binance.com)
-   - Enable API access in account settings
-   - Use testnet for development: [testnet.binance.vision](https://testnet.binance.vision)
-
-3. **Interactive Brokers**:
-   - Download TWS or IBKR Gateway
-   - Configure API settings in TWS
-   - Use paper trading account for testing
-
-## 🤖 AI Features
-
-### Supported Models
+### AI Integration
 
 - **OpenAI GPT-4** - Market analysis and strategy generation
 - **Anthropic Claude** - Risk assessment and compliance checks
 - **Local Models** - Ollama, LM Studio, Transformers integration
 
-### AI Capabilities
+## 🤖 AI Features
 
-- **Market Sentiment Analysis** - Real-time news and social media sentiment
-- **Technical Pattern Recognition** - Advanced chart pattern detection
-- **Strategy Optimization** - AI-driven parameter optimization
-- **Risk Assessment** - Real-time risk scoring using multiple models
-- **Portfolio Rebalancing** - Intelligent portfolio optimization
+### Market Analysis
+- **Real-time sentiment analysis** using news and social media
+- **Technical pattern recognition** with advanced chart analysis
+- **Strategy optimization** with AI-driven parameter tuning
+- **Risk assessment** using multiple AI models
 
-### Configuration
-
-```json
-{
-  "ai": {
-    "trading_mode": "PAPER",
-    "openai_api_key": "YOUR_OPENAI_API_KEY",
-    "anthropic_api_key": "YOUR_ANTHROPIC_API_KEY",
-    "local_models": {
-      "enabled": false,
-      "model_path": "./models/local"
-    }
-  }
-}
-```
+### Strategy Selection
+- **Dynamic strategy selection** based on market conditions
+- **Backtesting validation** with historical performance analysis
+- **Performance attribution** with detailed breakdown
 
 ## 🛡️ Risk Management
 
 ### Circuit Breakers
+- **Daily loss limits** with automatic trading halt
+- **Consecutive loss protection** with smart recovery
+- **Drawdown monitoring** with emergency stop mechanisms
+- **Correlation analysis** to prevent over-concentration
 
-- **Daily Loss Limit** - Automatic trading halt on daily loss threshold
-- **Consecutive Losses** - Stop trading after N consecutive losses
-- **Drawdown Protection** - Emergency stop on excessive drawdown
-- **Correlation Limits** - Prevent over-concentration in correlated assets
+### Compliance
+- **Pattern Day Trader (PDT)** rule compliance
+- **Wash sale** prevention for tax optimization
+- **MiFID II** compliance for European markets
+- **Audit trail** with complete trade documentation
 
-### Position Controls
+## 📊 Monitoring & Analytics
 
-- **Maximum Position Size** - Limit individual position exposure
-- **Portfolio Heat** - Total portfolio risk percentage
-- **Sector Limits** - Maximum exposure to single sectors
-- **Geographic Limits** - Regional exposure controls
+### Real-Time Dashboard
+- **Live P&L tracking** with detailed performance metrics
+- **Strategy performance** analysis with individual attribution
+- **Risk metrics** monitoring with threshold alerts
+- **System health** monitoring with uptime tracking
 
-### Compliance Features
-
-- **Pattern Day Trader** - PDT rule compliance (US markets)
-- **Wash Sale** - Wash sale rule prevention (US markets)
-- **Regulation T** - Margin and credit controls
-- **MiFID II** - European regulatory compliance
-
-## 🛠️ API Reference
-
-### REST API
-
-```bash
-# Health check
-GET /health
-
-# System status
-GET /api/status
-
-# Broker connections
-GET /api/brokers
-
-# Create order
-POST /api/orders
-{
-  "symbol": "AAPL",
-  "side": "buy",
-  "quantity": 10,
-  "order_type": "market"
-}
-
-# Get positions
-GET /api/positions
-
-# Get portfolio
-GET /api/portfolio
-```
-
-### WebSocket API
-
-```javascript
-// Connect to real-time data
-const ws = new WebSocket('ws://localhost:8000/ws');
-
-// Subscribe to market data
-ws.send(JSON.stringify({
-  action: 'subscribe',
-  symbol: 'AAPL',
-  data_type: 'price'
-}));
-```
+### Alerts & Notifications
+- **Risk threshold breaches** with immediate alerts
+- **System errors** with detailed error reporting
+- **Performance degradation** with proactive notifications
+- **Trade confirmations** via multiple channels (Slack, email, SMS)
 
 ## 🧪 Testing
 
-### Health Check
-
+### Health Checks
 ```bash
-# Run system health check
-python health_check.py
+# Full system health check
+python health_check.py --full
 
-# Check specific components
-python health_check.py --broker alpaca
-python health_check.py --database
+# Component-specific tests
+python health_check.py --brokers
 python health_check.py --ai
+python health_check.py --database
 ```
 
 ### Integration Testing
-
 ```bash
-# Run integration tests
+# Test all broker integrations
 python test_integration.py
 
-# Test specific broker
-python test_integration.py --broker alpaca --paper
+# Load testing
+python test_integration.py --load-test
 
-# Run demo mode
-python demo.py
+# Demo mode testing
+python main.py --demo
 ```
 
-### Performance Testing
-
-```bash
-# Benchmark system performance
-python benchmark.py
-
-# Load test order execution
-python load_test.py --orders 1000
-```
-
-## 📊 Monitoring
-
-### Performance Metrics
-
-- **Order Execution Time** - Sub-second order execution tracking
-- **System Uptime** - 99.9%+ uptime monitoring
-- **API Response Times** - Real-time latency tracking
-- **Memory Usage** - Resource utilization monitoring
-
-### Alerts
-
-- **Risk Threshold Breaches** - Automated risk alerts
-- **System Errors** - Immediate error notifications
-- **Performance Degradation** - Proactive performance alerts
-- **Compliance Violations** - Regulatory compliance monitoring
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+## 🛠️ Development
 
 ### Development Setup
-
 ```bash
-# Clone repository
-git clone https://github.com/your-username/day-trading-orchestrator.git
-
-# Create development environment
+# Clone and setup development environment
 python setup_dev.py
+
+# Install development dependencies
+pip install -r requirements-dev.txt
 
 # Run tests
 python -m pytest tests/
@@ -484,39 +211,64 @@ python -m pytest tests/
 pre-commit install
 ```
 
-### Code Style
+### Project Structure
+```
+not-stonks-bot/
+├── 📁 trading_orchestrator/     # Core trading system
+├── 📁 trading-command-center/   # Web dashboard
+├── 📁 crawlers/                 # Market data crawlers
+├── 📁 analytics-backend/        # Analytics and reporting
+├── 📁 tests/                    # Test suites
+├── 📁 docs/                     # Documentation
+├── 📁 scripts/                  # Utility and setup scripts
+├── 📁 configs/                  # Configuration files
+├── 📄 main.py                   # Main application entry
+├── 📄 requirements.txt          # Core dependencies
+└── 📄 pyproject.toml           # Project configuration
+```
 
-- **Black** for code formatting
-- **isort** for import sorting
-- **flake8** for linting
-- **mypy** for type checking
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](docs/development/contributing.md) for details.
+
+### How to Contribute
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Development Guidelines
+
+- **Code Style**: Black for formatting, isort for imports, flake8 for linting
+- **Testing**: Write tests for all new features and bug fixes
+- **Documentation**: Update docs for any API changes
+- **Type Safety**: Use type hints for all public interfaces
 
 ## ❓ Support
 
 ### Getting Help
 
-1. **Documentation**: Check our comprehensive docs first
-2. **GitHub Issues**: Report bugs or request features
-3. **Discussions**: Join our community discussions
-4. **Discord**: Real-time support in our Discord server
+- **📚 Documentation**: Check our comprehensive docs first
+- **❓ GitHub Issues**: [Report bugs](https://github.com/supermarsx/not-stonks-bot/issues) or [request features](https://github.com/supermarsx/not-stonks-bot/issues)
+- **💬 Discord**: Join our [Discord server](https://discord.gg/not-stonks-bot)
+- **📧 Email**: Contact us at support@not-stonks-bot.com
 
 ### Common Issues
 
-- **Configuration Errors**: Check `config.json` syntax and broker API keys
-- **Connection Issues**: Verify internet connection and broker credentials
-- **Performance Issues**: Check system resources and database performance
-- **AI Integration**: Verify API keys and model availability
+- **[Configuration Errors](docs/guides/troubleshooting.md#configuration-errors)** - Check config.json syntax and API keys
+- **[Connection Issues](docs/guides/troubleshooting.md#connection-issues)** - Verify internet and broker credentials
+- **[Performance Issues](docs/guides/troubleshooting.md#performance-issues)** - Check system resources and database
+- **[AI Integration](docs/guides/troubleshooting.md#ai-integration)** - Verify API keys and model availability
 
-### Resources
-
-- **[FAQ](docs/faq.md)** - Frequently Asked Questions
-- **[Video Tutorials](https://youtube.com/trading-orchestrator)** - Step-by-step guides
-- **[Blog](https://blog.trading-orchestrator.com)** - Latest updates and tutorials
-- **[Community Forum](https://forum.trading-orchestrator.com)** - Community discussions
-
-## 📝 License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## ⚠️ Disclaimer
+
+**This software is provided for educational and research purposes only. Trading involves substantial risk of loss and is not suitable for all investors. Past performance is not indicative of future results. You are responsible for your own trading decisions and should consult with a qualified financial advisor before making any investment decisions.**
 
 ## 🙏 Acknowledgments
 
@@ -526,18 +278,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Matrix** - For the aesthetic inspiration
 - **Open Source Community** - For all the amazing libraries and tools
 
-## ⚠️ Disclaimer
-
-**This software is provided for educational and research purposes only. Trading involves substantial risk of loss and is not suitable for all investors. Past performance is not indicative of future results. You are responsible for your own trading decisions and should consult with a qualified financial advisor before making any investment decisions.**
-
-The authors and contributors of this software are not responsible for any financial losses incurred through the use of this software.
-
 ---
 
 <div align="center">
 
-**[⬆ Back to Top](#day-trading-orchestrator)**
+**[⬆ Back to Top](#not-stonks-bot)**
 
-Made with ❤️ and ☕ by the Trading Orchestrator Team
+Made with ❤️ and ☕ by the not-stonks-bot Team
 
 </div>
