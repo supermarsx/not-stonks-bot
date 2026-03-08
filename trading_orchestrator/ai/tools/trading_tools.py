@@ -24,6 +24,25 @@ class TradingTools:
     converted to function arguments.
     """
     
+    # Risk limit configuration defaults
+    MAX_PORTFOLIO_CONCENTRATION = 0.10  # 10% max of portfolio in single position
+    MAX_DAILY_TRADES = 50               # Maximum trades per day
+    MAX_SECTOR_CONCENTRATION = 0.25     # 25% max in any single sector
+
+    # Basic sector classification for common symbols
+    SECTOR_MAP = {
+        'AAPL': 'technology', 'MSFT': 'technology', 'GOOGL': 'technology',
+        'GOOG': 'technology', 'META': 'technology', 'AMZN': 'consumer_discretionary',
+        'TSLA': 'consumer_discretionary', 'NVDA': 'technology', 'AMD': 'technology',
+        'INTC': 'technology', 'NFLX': 'communication_services', 'DIS': 'communication_services',
+        'JPM': 'financials', 'BAC': 'financials', 'GS': 'financials',
+        'V': 'financials', 'MA': 'financials', 'WMT': 'consumer_staples',
+        'PG': 'consumer_staples', 'KO': 'consumer_staples', 'PEP': 'consumer_staples',
+        'JNJ': 'healthcare', 'PFE': 'healthcare', 'UNH': 'healthcare',
+        'XOM': 'energy', 'CVX': 'energy', 'COP': 'energy',
+        'NEE': 'utilities', 'DUK': 'utilities', 'SO': 'utilities',
+    }
+
     def __init__(self, broker_manager=None, risk_manager=None):
         """
         Initialize trading tools
@@ -34,6 +53,7 @@ class TradingTools:
         """
         self.broker_manager = broker_manager
         self.risk_manager = risk_manager
+        self._daily_trade_count: Dict[str, int] = {}  # date_str -> count
         
     async def get_market_features(
         self,
@@ -246,13 +266,41 @@ class TradingTools:
                 violations.append(f"Trade value ${trade_value:.2f} exceeds max position size ${max_position_value}")
                 
             # Portfolio concentration limit
-            # TODO: Check against total portfolio value
-            
+            try:
+                portfolio_value = await self._get_portfolio_value()
+                if portfolio_value > 0:
+                    concentration = trade_value / portfolio_value
+                    if concentration > self.MAX_PORTFOLIO_CONCENTRATION:
+                        violations.append(
+                            f"Position concentration {concentration:.1%} exceeds "
+                            f"limit {self.MAX_PORTFOLIO_CONCENTRATION:.0%} of portfolio value ${portfolio_value:.2f}"
+                        )
+            except Exception as e:
+                logger.warning(f"Could not check portfolio concentration: {e}")
+
             # Daily trade limit
-            # TODO: Check against daily trade count
-            
+            today_str = datetime.utcnow().strftime('%Y-%m-%d')
+            trades_today = self._daily_trade_count.get(today_str, 0)
+            if trades_today >= self.MAX_DAILY_TRADES:
+                violations.append(
+                    f"Daily trade count {trades_today} has reached limit of {self.MAX_DAILY_TRADES}"
+                )
+
             # Sector exposure limit
-            # TODO: Check sector concentration
+            sector = self.SECTOR_MAP.get(symbol.upper(), 'unknown')
+            if sector != 'unknown':
+                try:
+                    sector_exposure = await self._get_sector_exposure(sector)
+                    portfolio_value = await self._get_portfolio_value()
+                    if portfolio_value > 0:
+                        new_sector_pct = (sector_exposure + trade_value) / portfolio_value
+                        if new_sector_pct > self.MAX_SECTOR_CONCENTRATION:
+                            violations.append(
+                                f"Sector '{sector}' exposure {new_sector_pct:.1%} would exceed "
+                                f"limit {self.MAX_SECTOR_CONCENTRATION:.0%}"
+                            )
+                except Exception as e:
+                    logger.warning(f"Could not check sector concentration: {e}")
             
             result = {
                 'approved': len(violations) == 0,
@@ -421,6 +469,51 @@ class TradingTools:
         except Exception as e:
             logger.error(f"Error getting current price: {e}")
             return {}
+
+    async def _get_portfolio_value(self) -> float:
+        """Get total portfolio value from broker"""
+        if not self.broker_manager:
+            return 0.0
+
+        try:
+            brokers = self.broker_manager.get_active_brokers()
+            if not brokers:
+                return 0.0
+
+            broker = brokers[0]
+            account = await broker.get_account()
+            return float(account.get('portfolio_value', account.get('equity', 0)))
+        except Exception as e:
+            logger.warning(f"Could not retrieve portfolio value: {e}")
+            return 0.0
+
+    async def _get_sector_exposure(self, sector: str) -> float:
+        """Get current exposure (total market value) for a given sector"""
+        if not self.broker_manager:
+            return 0.0
+
+        try:
+            brokers = self.broker_manager.get_active_brokers()
+            if not brokers:
+                return 0.0
+
+            broker = brokers[0]
+            positions = await broker.get_positions()
+            exposure = 0.0
+            for pos in positions:
+                pos_symbol = pos.get('symbol', '').upper()
+                pos_sector = self.SECTOR_MAP.get(pos_symbol, 'unknown')
+                if pos_sector == sector:
+                    exposure += abs(float(pos.get('market_value', 0)))
+            return exposure
+        except Exception as e:
+            logger.warning(f"Could not calculate sector exposure: {e}")
+            return 0.0
+
+    def record_trade(self):
+        """Record a trade execution for daily trade count tracking"""
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        self._daily_trade_count[today_str] = self._daily_trade_count.get(today_str, 0) + 1
             
     def _calculate_momentum(self, df: pd.DataFrame) -> Dict:
         """Calculate price momentum indicators"""

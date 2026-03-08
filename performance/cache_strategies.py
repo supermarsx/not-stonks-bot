@@ -378,6 +378,212 @@ class MemoryCache(BaseCache):
             self._emit_event(CacheEvent.EVICTION, key, entry.value)
 
 
+class DiskCache(BaseCache):
+    """Disk-based cache implementation using SQLite for persistent storage"""
+
+    def __init__(self, name: str, cache_dir: str = "/tmp/cache",
+                 max_size: int = 10000, max_size_mb: int = 1000,
+                 strategy: CacheStrategy = CacheStrategy.LRU):
+        super().__init__(name, strategy)
+        self.max_size = max_size
+        self.max_size_bytes = max_size_mb * 1024 * 1024
+        self.cache_dir = cache_dir
+
+        import os
+        import sqlite3
+        os.makedirs(cache_dir, exist_ok=True)
+        self._db_path = os.path.join(cache_dir, f"{name}.db")
+        self._init_db()
+
+    def _init_db(self):
+        """Initialize the SQLite database for disk caching"""
+        import sqlite3
+        conn = sqlite3.connect(self._db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cache_entries (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                last_accessed TEXT NOT NULL,
+                access_count INTEGER DEFAULT 0,
+                ttl INTEGER,
+                size_bytes INTEGER DEFAULT 0,
+                tags TEXT DEFAULT ''
+            )
+        """)
+        conn.commit()
+        conn.close()
+
+    def _get_conn(self):
+        import sqlite3
+        return sqlite3.connect(self._db_path)
+
+    def get(self, key: str) -> Optional[Any]:
+        """Get value from disk cache"""
+        with self._lock:
+            conn = self._get_conn()
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT value, created_at, ttl FROM cache_entries WHERE key = ?",
+                    (key,)
+                )
+                row = cursor.fetchone()
+                if row is None:
+                    self.stats.misses += 1
+                    self._emit_event(CacheEvent.MISS, key)
+                    return None
+
+                value_json, created_at_str, ttl = row
+
+                # Check expiration
+                if ttl is not None:
+                    created_at = datetime.fromisoformat(created_at_str)
+                    age = (datetime.now() - created_at).total_seconds()
+                    if age > ttl:
+                        cursor.execute("DELETE FROM cache_entries WHERE key = ?", (key,))
+                        conn.commit()
+                        self.stats.expirations += 1
+                        self._emit_event(CacheEvent.EXPIRATION, key)
+                        return None
+
+                # Update access tracking
+                cursor.execute(
+                    "UPDATE cache_entries SET last_accessed = ?, access_count = access_count + 1 WHERE key = ?",
+                    (datetime.now().isoformat(), key)
+                )
+                conn.commit()
+
+                self.stats.hits += 1
+                value = json.loads(value_json)
+                self._emit_event(CacheEvent.HIT, key, value)
+                return value
+            finally:
+                conn.close()
+
+    def set(self, key: str, value: Any, ttl: Optional[int] = None,
+            tags: Optional[Set[str]] = None, **kwargs) -> bool:
+        """Set value in disk cache"""
+        with self._lock:
+            conn = self._get_conn()
+            try:
+                value_json = json.dumps(value)
+                size_bytes = len(value_json.encode('utf-8'))
+
+                # Evict if needed
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM cache_entries")
+                count = cursor.fetchone()[0]
+                while count >= self.max_size:
+                    if not self._evict_entry_db(conn):
+                        return False
+                    count -= 1
+
+                now = datetime.now().isoformat()
+                tags_str = ','.join(tags) if tags else ''
+
+                cursor.execute("""
+                    INSERT OR REPLACE INTO cache_entries 
+                    (key, value, created_at, last_accessed, access_count, ttl, size_bytes, tags)
+                    VALUES (?, ?, ?, ?, 0, ?, ?, ?)
+                """, (key, value_json, now, now, ttl, size_bytes, tags_str))
+                conn.commit()
+
+                self.stats.total_operations += 1
+                self.stats.entry_count = count + 1
+                self._emit_event(CacheEvent.WARMING, key, value)
+                return True
+            except (TypeError, ValueError) as e:
+                logging.error(f"DiskCache set error for key {key}: {e}")
+                return False
+            finally:
+                conn.close()
+
+    def delete(self, key: str) -> bool:
+        """Delete value from disk cache"""
+        with self._lock:
+            conn = self._get_conn()
+            try:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM cache_entries WHERE key = ?", (key,))
+                deleted = cursor.rowcount > 0
+                conn.commit()
+                if deleted:
+                    self.stats.entry_count = max(0, self.stats.entry_count - 1)
+                    self._emit_event(CacheEvent.INVALIDATION, key)
+                return deleted
+            finally:
+                conn.close()
+
+    def exists(self, key: str) -> bool:
+        """Check if key exists in disk cache"""
+        with self._lock:
+            conn = self._get_conn()
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT created_at, ttl FROM cache_entries WHERE key = ?", (key,)
+                )
+                row = cursor.fetchone()
+                if row is None:
+                    return False
+                created_at_str, ttl = row
+                if ttl is not None:
+                    created_at = datetime.fromisoformat(created_at_str)
+                    if (datetime.now() - created_at).total_seconds() > ttl:
+                        cursor.execute("DELETE FROM cache_entries WHERE key = ?", (key,))
+                        conn.commit()
+                        return False
+                return True
+            finally:
+                conn.close()
+
+    def clear(self) -> bool:
+        """Clear all disk cache entries"""
+        with self._lock:
+            conn = self._get_conn()
+            try:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM cache_entries")
+                conn.commit()
+                self.stats.entry_count = 0
+                self.stats.total_size_bytes = 0
+                self._emit_event(CacheEvent.EVICTION, "*")
+                return True
+            finally:
+                conn.close()
+
+    def _evict_entry_db(self, conn) -> bool:
+        """Evict an entry based on strategy"""
+        cursor = conn.cursor()
+        if self.strategy == CacheStrategy.LRU:
+            cursor.execute(
+                "DELETE FROM cache_entries WHERE key = "
+                "(SELECT key FROM cache_entries ORDER BY last_accessed ASC LIMIT 1)"
+            )
+        elif self.strategy == CacheStrategy.LFU:
+            cursor.execute(
+                "DELETE FROM cache_entries WHERE key = "
+                "(SELECT key FROM cache_entries ORDER BY access_count ASC LIMIT 1)"
+            )
+        elif self.strategy == CacheStrategy.FIFO:
+            cursor.execute(
+                "DELETE FROM cache_entries WHERE key = "
+                "(SELECT key FROM cache_entries ORDER BY created_at ASC LIMIT 1)"
+            )
+        else:
+            cursor.execute(
+                "DELETE FROM cache_entries WHERE key = "
+                "(SELECT key FROM cache_entries ORDER BY last_accessed ASC LIMIT 1)"
+            )
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        if deleted:
+            self.stats.evictions += 1
+        return deleted
+
+
 class CacheWarmer:
     """Cache warming utility"""
     
@@ -569,8 +775,16 @@ class CacheManager:
                     max_memory_mb=config.get('max_memory_mb', 100),
                     strategy=self.strategy
                 )
+            elif level == CacheLevel.L3_DISK:
+                cache = DiskCache(
+                    name=f"disk_cache_{len(self._caches)}",
+                    cache_dir=config.get('cache_dir', '/tmp/cache'),
+                    max_size=config.get('max_size', 10000),
+                    max_size_mb=config.get('max_size_mb', 1000),
+                    strategy=self.strategy
+                )
             else:
-                # TODO: Implement other cache levels (Redis, Disk, Database)
+                # L2_REDIS and L4_DATABASE require external services; fall back to memory
                 self.logger.warning(f"Cache level {level} not yet implemented, using memory cache")
                 cache = MemoryCache(
                     name=f"memory_cache_{level.value}_{len(self._caches)}",

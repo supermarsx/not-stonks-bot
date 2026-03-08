@@ -356,12 +356,15 @@ Include suggested entry price, position size, stop loss, and take profit levels 
                 
             logger.info(f"Executing AI trade: {side} {symbol}")
             
+            # Calculate appropriate position size based on account and risk
+            quantity = await self._calculate_position_size(symbol)
+
             # Perform risk checks if enabled
             if risk_check:
                 risk_result = await self.tools.check_risk_limits(
                     symbol=symbol,
                     side=side,
-                    quantity=100  # TODO: Calculate appropriate position size
+                    quantity=quantity
                 )
                 
                 if not risk_result.get('approved', False):
@@ -373,17 +376,20 @@ Include suggested entry price, position size, stop loss, and take profit levels 
                     }
                     
             # Execute trade via broker
-            # TODO: Implement actual broker execution
+            order_result = await self._execute_broker_order(symbol, side, quantity)
             self.trades_executed += 1
+            self.tools.record_trade()
             
             result = {
-                'status': 'executed',
+                'status': order_result.get('status', 'executed'),
                 'symbol': symbol,
                 'side': side,
+                'quantity': quantity,
+                'order_id': order_result.get('order_id'),
+                'fill_price': order_result.get('fill_price'),
                 'reasoning': reasoning,
                 'timestamp': datetime.utcnow().isoformat(),
-                'mode': self.trading_mode.value,
-                'note': 'Broker execution integration pending'
+                'mode': self.trading_mode.value
             }
             
             logger.success(f"Trade executed: {side} {symbol}")
@@ -448,10 +454,41 @@ Include suggested entry price, position size, stop loss, and take profit levels 
             if self.active_sessions[session_id]['status'] != 'running':
                 break
                 
-            # TODO: Implement actual strategy logic
-            # - Check for signals
-            # - Evaluate opportunities
-            # - Execute trades if conditions met
+            # Execute strategy logic: analyze markets for signals and act on them
+            try:
+                session = self.active_sessions[session_id]
+                strategy_config = session['strategy_config']
+                symbols = strategy_config.get('symbols', [])
+
+                if symbols:
+                    # Analyze market for configured symbols
+                    analysis = await self.analyze_market(
+                        symbols=symbols,
+                        analysis_type="quick",
+                        use_reasoning_model=False
+                    )
+
+                    session['signals_generated'] += 1
+
+                    # Evaluate opportunities from analysis
+                    opportunities = analysis.get('opportunities', [])
+                    for opportunity in opportunities:
+                        opp_symbol = opportunity.get('symbol', '')
+                        opp_side = opportunity.get('side', 'buy')
+                        opp_reasoning = opportunity.get('reasoning', 'AI signal')
+                        confidence = opportunity.get('confidence', 0)
+
+                        if confidence >= strategy_config.get('min_confidence', 0.7):
+                            trade_result = await self.execute_ai_trade(
+                                symbol=opp_symbol,
+                                side=opp_side,
+                                reasoning=opp_reasoning
+                            )
+                            if trade_result.get('status') == 'executed':
+                                session['trades_executed'] += 1
+
+            except Exception as e:
+                logger.error(f"Error in strategy loop iteration for {session_id}: {e}")
             
             await asyncio.sleep(check_interval_seconds)
             
@@ -484,6 +521,108 @@ Include suggested entry price, position size, stop loss, and take profit levels 
         }
         
     # Helper methods for prompt construction
+
+    async def _calculate_position_size(self, symbol: str, risk_per_trade: float = 0.02) -> float:
+        """
+        Calculate position size based on account equity and risk parameters.
+        
+        Uses a fixed-fractional risk approach: risk_per_trade percent of account equity
+        divided by the current price to determine the number of shares/units.
+        
+        Args:
+            symbol: Trading symbol
+            risk_per_trade: Fraction of account equity to risk per trade (default 2%)
+        
+        Returns:
+            Calculated position size (quantity)
+        """
+        default_quantity = 100
+
+        if not self.broker_manager:
+            return default_quantity
+
+        try:
+            brokers = self.broker_manager.get_active_brokers()
+            if not brokers:
+                return default_quantity
+
+            broker = brokers[0]
+
+            # Get account equity
+            account = await broker.get_account()
+            equity = float(account.get('equity', account.get('portfolio_value', 0)))
+            if equity <= 0:
+                return default_quantity
+
+            # Get current price
+            quote = await broker.get_quote(symbol)
+            price = float(quote.get('last', quote.get('price', 0)))
+            if price <= 0:
+                return default_quantity
+
+            # Position size = (equity * risk_per_trade) / price
+            quantity = (equity * risk_per_trade) / price
+
+            # Round down to whole shares and ensure at least 1
+            quantity = max(1, int(quantity))
+
+            logger.info(f"Calculated position size for {symbol}: {quantity} (equity=${equity:.2f}, price=${price:.2f})")
+            return quantity
+
+        except Exception as e:
+            logger.warning(f"Could not calculate position size, using default: {e}")
+            return default_quantity
+
+    async def _execute_broker_order(self, symbol: str, side: str, quantity: float) -> Dict[str, Any]:
+        """
+        Execute an order through the broker manager.
+        
+        Args:
+            symbol: Trading symbol
+            side: 'buy' or 'sell'
+            quantity: Number of shares/units
+            
+        Returns:
+            Order execution result with order_id, status, fill_price
+        """
+        try:
+            brokers = self.broker_manager.get_active_brokers()
+            if not brokers:
+                return {'status': 'error', 'error': 'No active brokers available'}
+
+            broker = brokers[0]
+
+            if self.trading_mode == TradingMode.PAPER:
+                # Paper trading: simulate order execution
+                quote = await broker.get_quote(symbol)
+                price = float(quote.get('last', quote.get('price', 0)))
+                return {
+                    'status': 'filled',
+                    'order_id': f"paper_{uuid.uuid4().hex[:8]}",
+                    'fill_price': price,
+                    'quantity': quantity,
+                    'mode': 'paper'
+                }
+
+            # Live trading: submit actual order to broker
+            order = await broker.place_order(
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                order_type='market'
+            )
+
+            return {
+                'status': order.get('status', 'submitted'),
+                'order_id': order.get('id', order.get('order_id')),
+                'fill_price': order.get('filled_avg_price', order.get('fill_price')),
+                'quantity': quantity,
+                'mode': 'live'
+            }
+
+        except Exception as e:
+            logger.error(f"Broker order execution failed: {e}")
+            return {'status': 'error', 'error': str(e)}
     
     def _build_analysis_prompt(self, symbols: List[str], analysis_type: str) -> str:
         """Build market analysis prompt"""

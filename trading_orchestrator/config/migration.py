@@ -769,6 +769,52 @@ class ConfigMigrationManager:
 
 
 # Migration utilities
+
+def _compute_config_changes(source: Dict[str, Any], target: Dict[str, Any],
+                            path: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """
+    Compute the list of changes needed to transform source config into target config.
+    
+    Returns a list of change dicts with keys: path, action (add/modify/remove), new_value/old_value.
+    """
+    if path is None:
+        path = []
+    changes: List[Dict[str, Any]] = []
+
+    all_keys = set(source) | set(target)
+
+    for key in sorted(all_keys):
+        current_path = path + [key]
+
+        if key not in source:
+            # Key added in target
+            changes.append({
+                'path': current_path,
+                'action': 'add',
+                'new_value': target[key]
+            })
+        elif key not in target:
+            # Key removed in target
+            changes.append({
+                'path': current_path,
+                'action': 'remove',
+                'old_value': source[key]
+            })
+        elif isinstance(source[key], dict) and isinstance(target[key], dict):
+            # Recurse into nested dicts
+            changes.extend(_compute_config_changes(source[key], target[key], current_path))
+        elif source[key] != target[key]:
+            # Value changed
+            changes.append({
+                'path': current_path,
+                'action': 'modify',
+                'old_value': source[key],
+                'new_value': target[key]
+            })
+
+    return changes
+
+
 def create_migration_script(source_config: str, target_config: str, 
                           output_path: str) -> bool:
     """Create a migration script between two configurations"""
@@ -786,6 +832,10 @@ def create_migration_script(source_config: str, target_config: str,
         with open(target, 'r') as f:
             target_config_data = json.load(f)
         
+        # Compute migration changes between source and target configs
+        changes = _compute_config_changes(source_config_data, target_config_data)
+        changes_json = json.dumps(changes, indent=4)
+        
         # Create migration script
         migration_script = f"""#!/usr/bin/env python3
 \"\"\"
@@ -797,6 +847,33 @@ Generated on {datetime.now().isoformat()}
 import json
 from pathlib import Path
 
+
+def _apply_changes(data, changes):
+    \"\"\"Apply computed migration changes to configuration data\"\"\"
+    for change in changes:
+        keys = change['path']
+        action = change['action']
+        
+        if action == 'add' or action == 'modify':
+            target = data
+            for key in keys[:-1]:
+                if key not in target:
+                    target[key] = {{}}
+                target = target[key]
+            target[keys[-1]] = change['new_value']
+        
+        elif action == 'remove':
+            target = data
+            for key in keys[:-1]:
+                if key not in target:
+                    break
+                target = target[key]
+            else:
+                target.pop(keys[-1], None)
+    
+    return data
+
+
 def migrate_config():
     \"\"\"Apply migration from source to target configuration\"\"\"
     
@@ -805,7 +882,8 @@ def migrate_config():
         source_data = json.load(f)
     
     # Apply migration changes
-    # TODO: Add specific migration logic here
+    changes = {changes_json}
+    source_data = _apply_changes(source_data, changes)
     
     # Save migrated configuration
     with open('{target_config}', 'w') as f:

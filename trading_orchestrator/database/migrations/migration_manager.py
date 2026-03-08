@@ -141,9 +141,54 @@ class MigrationManager:
         return (current_version or 0) + 1
     
     async def rollback_migration(self, version: int):
-        """Rollback a specific migration"""
-        print(f"⚠️ Rollback functionality not implemented yet for version {version}")
-        # TODO: Implement rollback functionality
+        """Rollback a specific migration by removing it from the applied migrations table"""
+        try:
+            # Verify migration was actually applied
+            async with engine.connect() as conn:
+                result = await conn.execute(text("""
+                    SELECT version, description FROM schema_migrations
+                    WHERE version = :version
+                """), {"version": version})
+                row = result.fetchone()
+
+                if not row:
+                    print(f"⚠️ Migration version {version} has not been applied")
+                    return
+
+                description = row[1]
+
+                # Look for a rollback SQL file (e.g., 001_create_users_rollback.sql)
+                rollback_files = list(self.migrations_dir.glob(f"{version:03d}_*_rollback.sql"))
+
+                if rollback_files:
+                    rollback_path = rollback_files[0]
+                    with open(rollback_path, 'r') as f:
+                        rollback_sql = f.read()
+
+                    async with conn.begin():
+                        statements = [s.strip() for s in rollback_sql.split(';') if s.strip()]
+                        for statement in statements:
+                            if statement:
+                                await conn.execute(text(statement))
+
+                        # Remove migration record
+                        await conn.execute(text("""
+                            DELETE FROM schema_migrations WHERE version = :version
+                        """), {"version": version})
+
+                    print(f"✅ Migration {version} rolled back: {description}")
+                else:
+                    # No rollback file: just remove the migration record
+                    async with conn.begin():
+                        await conn.execute(text("""
+                            DELETE FROM schema_migrations WHERE version = :version
+                        """), {"version": version})
+
+                    print(f"⚠️ No rollback SQL found for version {version}; migration record removed")
+
+        except Exception as e:
+            print(f"❌ Rollback of migration {version} failed: {str(e)}")
+            raise
     
     async def get_migration_status(self) -> dict:
         """Get status of all migrations"""
