@@ -115,6 +115,7 @@ class AnomalyDetector:
         self.recent_anomalies: deque = deque(maxlen=100)
         self.active_anomalies: Dict[str, AnomalyEvent] = {}
         self.anomaly_rules: List[AnomalyRule] = []
+        self._alert_callbacks: List = []
         
         # Real-time data buffers
         self.cost_buffer: deque = deque(maxlen=168)  # 7 days of hourly data
@@ -473,7 +474,8 @@ class AnomalyDetector:
         # Log and alert
         logger.warning(f"Anomaly detected: {title} - {description}")
         
-        # TODO: Send alerts/notifications
+        # Send alerts/notifications based on severity
+        await self._send_anomaly_alerts(anomaly)
     
     def _get_rule_for_type(self, anomaly_type: AnomalyType) -> Optional[AnomalyRule]:
         """Get detection rule for anomaly type"""
@@ -481,6 +483,63 @@ class AnomalyDetector:
             if rule.anomaly_type == anomaly_type:
                 return rule
         return None
+
+    async def _send_anomaly_alerts(self, anomaly: AnomalyEvent):
+        """
+        Send alerts/notifications for detected anomalies.
+        
+        Dispatches to registered alert callbacks based on anomaly severity.
+        Critical and high severity anomalies are logged at higher levels.
+        """
+        try:
+            alert_data = {
+                'id': anomaly.id,
+                'type': anomaly.anomaly_type.value,
+                'severity': anomaly.severity.value,
+                'title': anomaly.title,
+                'description': anomaly.description,
+                'detected_at': anomaly.detected_at.isoformat(),
+                'current_value': anomaly.current_value,
+                'expected_value': anomaly.expected_value,
+                'deviation_percentage': anomaly.deviation_percentage,
+                'confidence_score': anomaly.confidence_score,
+                'provider': anomaly.provider,
+                'model': anomaly.model,
+            }
+
+            # Log at appropriate level based on severity
+            if anomaly.severity == AnomalySeverity.CRITICAL:
+                logger.critical(
+                    f"CRITICAL ANOMALY: {anomaly.title} - "
+                    f"Deviation: {anomaly.deviation_percentage:.1f}% "
+                    f"(confidence: {anomaly.confidence_score:.2f})"
+                )
+            elif anomaly.severity == AnomalySeverity.HIGH:
+                logger.error(
+                    f"HIGH SEVERITY ANOMALY: {anomaly.title} - "
+                    f"Deviation: {anomaly.deviation_percentage:.1f}%"
+                )
+
+            # Dispatch to registered alert callbacks
+            for callback in self._alert_callbacks:
+                try:
+                    result = callback(alert_data)
+                    if asyncio.iscoroutine(result):
+                        await result
+                except Exception as e:
+                    logger.error(f"Alert callback failed: {e}")
+
+        except Exception as e:
+            logger.error(f"Failed to send anomaly alerts: {e}")
+
+    def register_alert_callback(self, callback):
+        """
+        Register a callback to be invoked when anomalies are detected.
+        
+        Args:
+            callback: Callable that receives alert_data dict. May be sync or async.
+        """
+        self._alert_callbacks.append(callback)
     
     async def _store_anomaly_in_db(self, anomaly: AnomalyEvent):
         """Store anomaly in database"""

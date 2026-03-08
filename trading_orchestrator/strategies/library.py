@@ -729,8 +729,11 @@ class {name.replace(" ", "").replace("-", "")}Strategy(BaseTimeSeriesStrategy):
         
         super().__init__(config, timeframe="1h")
         
-        # Extract parameters with defaults
-        # TODO: Add parameter extraction here
+        # Extract parameters with defaults from schema
+        properties = {dict(parameters_schema.get('properties', {{}}))}
+        for param_name, param_schema in properties.items():
+            default = param_schema.get('default')
+            setattr(self, param_name, config.parameters.get(param_name, default))
         
         logger.info(f"{name} Strategy initialized")
     
@@ -754,12 +757,57 @@ class {name.replace(" ", "").replace("-", "")}Strategy(BaseTimeSeriesStrategy):
     
     async def _analyze_symbol(self, symbol: str) -> Optional[TradingSignal]:
         """Analyze symbol for {name} signals"""
-        # TODO: Implement strategy-specific logic
-        return None
+        try:
+            # Fetch recent market data for analysis
+            data = await self.get_market_data(symbol)
+            if not data or len(data) < 2:
+                return None
+
+            closes = [bar.get('close', 0) for bar in data]
+            current_price = Decimal(str(closes[-1]))
+            previous_price = Decimal(str(closes[-2]))
+
+            # Basic directional signal based on price momentum
+            price_change = (current_price - previous_price) / previous_price if previous_price else 0
+
+            if price_change > Decimal('0.01'):
+                signal_type = SignalType.BUY
+                confidence = min(float(abs(price_change)) * 10, 1.0)
+            elif price_change < Decimal('-0.01'):
+                signal_type = SignalType.SELL
+                confidence = min(float(abs(price_change)) * 10, 1.0)
+            else:
+                return None
+
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=signal_type,
+                price=current_price,
+                confidence=confidence,
+                timestamp=datetime.utcnow(),
+                metadata={{'strategy': '{name}', 'price_change': float(price_change)}}
+            )
+        except Exception as e:
+            logger.error(f"Error analyzing {{symbol}} for {name}: {{e}}")
+            return None
     
     async def validate_signal(self, signal: TradingSignal) -> bool:
         """Validate {name} signal"""
-        # TODO: Implement signal validation
+        if signal is None:
+            return False
+
+        # Validate required fields
+        if not signal.symbol or not signal.signal_type:
+            return False
+
+        # Validate price is positive
+        if signal.price is not None and signal.price <= 0:
+            return False
+
+        # Validate confidence is in valid range
+        if not (0.0 <= signal.confidence <= 1.0):
+            return False
+
         return True
     
     def get_strategy_info(self) -> Dict[str, Any]:
