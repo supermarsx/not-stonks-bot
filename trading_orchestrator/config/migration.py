@@ -781,7 +781,7 @@ def _compute_config_changes(source: Dict[str, Any], target: Dict[str, Any],
         path = []
     changes: List[Dict[str, Any]] = []
 
-    all_keys = set(list(source.keys()) + list(target.keys()))
+    all_keys = set(source) | set(target)
 
     for key in sorted(all_keys):
         current_path = path + [key]

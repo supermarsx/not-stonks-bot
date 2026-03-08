@@ -768,7 +768,7 @@ class {name.replace(" ", "").replace("-", "")}Strategy(BaseTimeSeriesStrategy):
             previous_price = Decimal(str(closes[-2]))
 
             # Basic directional signal based on price momentum
-            price_change = (current_price - previous_price) / previous_price if previous_price else 0
+            price_change = (current_price - previous_price) / previous_price if previous_price else Decimal('0')
 
             if price_change > Decimal('0.01'):
                 signal_type = SignalType.BUY
